@@ -56,10 +56,15 @@ def main():
     p.add_argument('--provider',choices=['local','official'],required=True)
     p.add_argument('--task',required=True)
     p.add_argument('--round',type=int,default=1)
+    p.add_argument('--diagnostic',choices=['writing-budget-8192'])
     p.add_argument('--output',type=Path,default=ROOT/'studies/2026-10-07-local-vs-cloud/results')
     a=p.parse_args()
     raw=(ROOT/'suite/tasks.json').read_bytes();suite=json.loads(raw)
     task=next(x for x in suite['tasks'] if x['id']==a.task)
+    if a.diagnostic:
+        if a.task!='W02' or a.round!=1:raise SystemExit('diagnostic registered only for W02 r1')
+        task=dict(task,max_tokens=8192)
+        a.output=ROOT/'studies/2026-10-07-local-vs-cloud/diagnostics'/a.diagnostic
     if a.round not in (1,2,3) or (a.round>1 and a.task not in suite['repeat_tasks']):raise SystemExit('unregistered repeat')
     folder=a.output/f'{a.task}-{a.provider}-r{a.round}'
     if folder.exists():raise SystemExit('preserve existing attempt; never overwrite or auto retry')
