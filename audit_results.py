@@ -7,10 +7,11 @@ def main():
     raw=(R/'suite/tasks.json').read_bytes()
     sha=hashlib.sha256(raw).hexdigest()
     rows=[]
-    for path in sorted((S/'results').glob('*/result.json')):
+    for path in sorted(list((S/'results').glob('*/result.json'))+list((S/'diagnostics').glob('*/*/result.json'))):
         d=json.loads(path.read_text(encoding='utf-8'))
         if 'grade' not in d:continue
         row={'attempt':path.parent.name,'fixture_matches':d['fixture_sha256']==sha,'answer_matches':(path.parent/'answer.txt').read_text(encoding='utf-8')==d['content'],'result_sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'usage_complete':not bool(d.get('error'))}
+        row['source']=path.relative_to(S).as_posix()
         row['usage_adds_up']=all(d['usage'][k]==sum(t['usage'][k] for t in d['turns']) for k in ['prompt_tokens','completion_tokens','total_tokens'])
         if d['task']=='E01':
             try:

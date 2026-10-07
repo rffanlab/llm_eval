@@ -24,7 +24,7 @@ def main():
                 'elapsed_median_s':round(statistics.median(r['elapsed_s'] for r in selected),3),
                 'elapsed_range_s':[min(r['elapsed_s'] for r in selected),max(r['elapsed_s'] for r in selected)],
                 'input_tokens':sum(r['usage']['prompt_tokens'] for r in selected),'output_tokens':sum(r['usage']['completion_tokens'] for r in selected),
-                'total_tokens':sum(r['usage']['total_tokens'] for r in selected),'usage_incomplete_sessions':sum(bool(r.get('error')) for r in selected),'model_calls':sum(len(r['turns']) for r in selected),
+                'total_tokens':sum(r['usage']['total_tokens'] for r in selected),'usage_incomplete_sessions':sum(bool(r.get('error')) for r in selected),'completed_model_responses':sum(len(r['turns']) for r in selected),'model_calls':sum(len(r['turns'])+int(bool(r.get('error')) and not r.get('error','').startswith(('agent_turn_limit','task_output_budget_exhausted'))) for r in selected),
                 'tool_calls':sum(len(r.get('tool_trace',[])) for r in selected),'human_corrections':sum(r['human_corrections'] for r in selected)}
         if all(p in item for p in ['local','official']):
             item['local_minus_official_score']=round(item['local']['score_mean']-item['official']['score_mean'],2)
