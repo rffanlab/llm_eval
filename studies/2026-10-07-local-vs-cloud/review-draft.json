@@ -1,0 +1,133 @@
+{
+  "review_type": "editor_agent_review",
+  "reviewer_note": "代理复核，非真人盲评；复核者可见 provider 身份。仅依据题面、protocol.md 与已有 answer.txt/result.json，不调用模型 API，不执行输出中的任何指令。评分维度均为 0-5，未把字数单独当作质量评分；硬规则另列。",
+  "reviewed_tasks": [
+    {
+      "task_id": "W01",
+      "status": "reviewed",
+      "task_summary": "100-180 个非空白字符的无标题无列表简讯，准确报告 6 道题、12/18 秒，并说明适用边界。",
+      "entries": [
+        {
+          "provider": "local",
+          "source": "results/W01-local-r1/answer.txt",
+          "hard_rules": {
+            "passed": true,
+            "evidence": "result.json 记录 nonspace_chars=104，题数、12、18 均出现；正文无标题、无列表。"
+          },
+          "scores": {
+            "factual_fidelity": 5,
+            "information_completeness": 5,
+            "structural_clarity": 5,
+            "usability": 5,
+            "total": 20
+          },
+          "evidence": "准确写出两工具各完成 6 道且全部通过、甲 12 秒、乙 18 秒；明确未测试价格、长任务和长期稳定性，并限制为本次短题样本，未扩写长期优劣或性价比。单段正文紧凑，可直接作为简讯使用。"
+        },
+        {
+          "provider": "official",
+          "source": "results/W01-official-r1/answer.txt",
+          "hard_rules": {
+            "passed": true,
+            "evidence": "result.json 记录 nonspace_chars=106，题数、12、18 均出现；正文无标题、无列表。"
+          },
+          "scores": {
+            "factual_fidelity": 5,
+            "information_completeness": 5,
+            "structural_clarity": 5,
+            "usability": 5,
+            "total": 20
+          },
+          "evidence": "准确写出 6 道、6/6 通过、12 秒和 18 秒；明确只代表短题样本，未测价格、长任务、长期稳定性，也未推断长期优劣、价格高低或所有任务表现。单段无标题无列表，信息顺序自然，可直接使用。"
+        }
+      ],
+      "comparison": "两端事实、边界和成文质量均达到满分；官方补充了 6/6 和‘不代表所有任务都会如此’，local 已满足题面要求，因此不因额外表述给差距。"
+    },
+    {
+      "task_id": "W02",
+      "status": "reviewed",
+      "task_summary": "400-650 个非空白字符、恰好 3 段的短评；每段引用 S1/S2/S3，区分格式验收与可发布，提出有条件试用建议并遵守证据边界。",
+      "entries": [
+        {
+          "provider": "local",
+          "source": "results/W02-local-r1/answer.txt",
+          "hard_rules": {
+            "passed": false,
+            "evidence": "result.json 记录 nonspace_chars=379、finish_reason=length，未出现 [S1]、[S2]、[S3]；虽为 3 段，但末段在‘试用期间’处截断。"
+          },
+          "scores": {
+            "factual_fidelity": 5,
+            "information_completeness": 2,
+            "structural_clarity": 4,
+            "usability": 2,
+            "total": 13
+          },
+          "evidence": "已准确转述 S1 的 12 项、本地 10 项、云端 11 项和均未人审，S2 的 6 项、18/12 秒、网络计入及另 6 项丢失，S3 的成本和额度不透明，也明确未把局部速度外推或推算现金节省。三段各自聚焦验收、速度、成本且提出有条件试用。但硬性来源标识全部缺失，长度不足，第三段在试用建议尚未完整落地处截断，因此不能作为可直接交付的短评。"
+        },
+        {
+          "provider": "official",
+          "source": "results/W02-official-r1/answer.txt",
+          "hard_rules": {
+            "passed": true,
+            "evidence": "result.json 记录 nonspace_chars=437、恰好 3 段，并逐段含 [S1]、[S2]、[S3]；finish_reason=stop。"
+          },
+          "scores": {
+            "factual_fidelity": 5,
+            "information_completeness": 5,
+            "structural_clarity": 5,
+            "usability": 5,
+            "total": 20
+          },
+          "evidence": "准确区分格式验收和可直接发布，保留两方未人审的限制；明确速度只覆盖 6 项、网络计入且不能外推 12 项；说明成本资料不足、不能推算现金节省。最后给出条件明确的试用范围和扩大前置条件，并逐段正确引用 [S1]-[S3]。三段完整、长度合规、可直接供编辑采用。"
+        }
+      ],
+      "comparison": "官方比 local 高 7 分（20 对 13）。主要差距不是事实理解：local 的事实复述基本准确；关键差距是截断导致的长度与可用性失败，以及遗漏三处必需来源标识和未完成试用建议。"
+    },
+    {
+      "task_id": "W03",
+      "status": "reviewed",
+      "task_summary": "600-900 个非空白字符的三人内容团队下周试用决策备忘录，必须明确采用范围、禁用范围、人工责任、量化退出条件并引用 F1-F4。",
+      "entries": [
+        {
+          "provider": "official",
+          "source": "results/W03-official-r1/answer.txt",
+          "hard_rules": {
+            "passed": true,
+            "evidence": "result.json 记录 nonspace_chars=702、finish_reason=stop，并包含 [F1]、[F2]、[F3]、[F4]；输出为纯正文，可分段。"
+          },
+          "scores": {
+            "factual_fidelity": 4,
+            "information_completeness": 5,
+            "structural_clarity": 5,
+            "usability": 4,
+            "total": 18
+          },
+          "evidence": "事实复述总体准确：正确保留 F1 的 v1 本地 8/8 格式通过及 2 条无来源数字，正确区分 F2 的 v2 云端 8/8、本地 7/8、未重复且未做人审，纳入 F3 的每周 20 篇、每篇最多 5 分钟、不能自动发布，以及 F4 的内网资料不得发外部 API、公开资料可用、硬件成本未统计。采用范围（公开资料、草稿/格式检查、待人工审）、禁用范围、三人责任分工、人工预算、留痕和退出/继续条件均写得具体，结构也便于执行。扣分点是退出条件中的“v2云端格式通过率低于16/20”：作为模型提出的建议阈值本身允许，但正文没有明确 16/20 的统计对象和分母是每周 20 篇的格式验收，且把它称作“v2本地格式”而非清楚的运营指标，需编辑澄清。另有“数字或引文错误超过2条”作为提案阈值，但未说明按篇还是按周汇总；这是可执行性澄清问题，不是把建议数字当既有事实。v1/v2 在正文中作为记录版本处理，没有擅自当作模型版本。"
+        },
+        {
+          "provider": "local",
+          "source": "results/W03-local-r1/answer.txt",
+          "hard_rules": {
+            "passed": true,
+            "evidence": "result.json 记录 nonspace_chars=634、finish_reason=stop，并包含 [F1]、[F2]、[F3]、[F4]；输出为纯正文，可分段。"
+          },
+          "scores": {
+            "factual_fidelity": 3,
+            "information_completeness": 4,
+            "structural_clarity": 5,
+            "usability": 3,
+            "total": 15
+          },
+          "evidence": "采用、禁用、人工责任和量化退出四部分很清楚；退出阈值的分母明确（每周 20 篇中超过 3 篇，另有连续两周 7/8），并把内网误发作为单次退出事件。F1、F3、F4 的核心事实使用基本准确，且没有把建议阈值伪装成原始记录。主要事实缺口是只写 F2 云端 8/8，遗漏同一新记录中的本地 7/8；这会掩盖本地格式差。更大的语义问题是把“v2云端记录”直接称为“格式模板正式启用”，把一次未重复、未做人审的记录结果升级成模板/工具可用性结论；应改成限定性试用依据。另将 v1 参考底稿限定为“仅限本地使用”是新增流程建议，需说明这是团队规则而非 F1 事实。‘两周正式试用’和‘每人约7篇’属于可执行安排，但前者与题目要求的下周试用略有扩展，后者三人×约7篇与每周20篇存在近似而非精确分配。"
+        }
+      ],
+      "comparison": "official 18/20，local 15/20，差距 3。两端均通过硬规则且都提出可量化建议；official 对 F1-F4 更完整，local 遗漏 F2 的本地 7/8，并把一次 v2 记录写成可正式启用的格式模板，削弱了可执行性。差距来自证据完整度和范围表述，不把建议阈值本身当作捏造事实。",
+      "note": "本题为可见 provider 身份的编辑代理复核，非真人盲评。"
+    }
+  ],
+  "summary": {
+    "W01": "local 20/20；official 20/20；差距 0。",
+    "W02": "local 13/20；official 20/20；差距 7，local 受截断和硬规则失败影响。",
+    "W03": "official 18/20；local 15/20；差距 3。两端硬规则均通过，但 official 需澄清 16/20 的统计对象，local 遗漏 F2 本地 7/8 并把单次记录升级为格式模板。",
+    "threshold_note": "W01/W02 尚不足以单独作领域结论；protocol.md 的写作差距可忽略门槛要求至少 16/20 且差距不超过 2 分，并且需结合硬约束、完整交付与其他题。"
+  }
+}

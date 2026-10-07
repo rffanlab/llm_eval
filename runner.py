@@ -73,7 +73,8 @@ def main():
         base=os.environ['LOCAL_BASE_URL'];key=secret('LOCAL_API_KEY');model=os.environ.get('LOCAL_MODEL','Qwen/Qwen3.8-Flash-Next')
     else:
         base='https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1';key=secret('QWEN_API_KEY');model='qwen3.8-flash'
-    existing=[json.loads(x.read_text(encoding='utf-8')) for x in a.output.glob('*/result.json')]
+    study=ROOT/'studies/2026-10-07-local-vs-cloud'
+    existing=[json.loads(x.read_text(encoding='utf-8')) for x in study.rglob('result.json')]
     if sum(x.get('usage',{}).get('total_tokens',0) for x in existing)>=400000:raise SystemExit('study token review threshold reached')
     record={'task':a.task,'provider':a.provider,'round':a.round,'model_requested':model,'fixture_sha256':hashlib.sha256(raw).hexdigest(),'started_at':dt.datetime.now(dt.timezone(dt.timedelta(hours=8))).isoformat(),'parameters':{'temperature':0,'enable_thinking':True,'max_tokens':task['max_tokens'],'stream':False},'turns':[]}
     if a.diagnostic=='total-budget-8192' and a.provider=='official':
