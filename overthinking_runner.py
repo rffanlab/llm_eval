@@ -13,13 +13,13 @@ import time
 import urllib.request
 
 
-def run(study, profile, task, mode, round_):
+def run(study, profile, task, mode, round_, suite_name='overthinking-tasks.json', collection='overthinking'):
     study = Path(study)
-    raw = (study / 'overthinking-tasks.json').read_bytes()
+    raw = (study / suite_name).read_bytes()
     suite = json.loads(raw)
     case = next(c for c in suite['cases'] if c['id'] == task)
     assert mode in ['on', 'off'] and round_ in [1, 2]
-    target = study / 'overthinking' / profile / f'{task}-{mode}-r{round_}.json'
+    target = study / collection / profile / f'{task}-{mode}-r{round_}.json'
     if target.exists():
         raise SystemExit('preserve existing attempt')
     payload = {'model': os.environ['LOCAL_MODEL'],
@@ -71,5 +71,8 @@ if __name__ == '__main__':
     parser.add_argument('--task', choices=['O01', 'O02', 'O03'], required=True)
     parser.add_argument('--thinking', choices=['on', 'off'], required=True)
     parser.add_argument('--round', type=int, choices=[1, 2], required=True)
+    parser.add_argument('--native',action='store_true',help='registered 4096-budget supplement, separate collection')
     args = parser.parse_args()
-    run(args.study, args.profile, args.task, args.thinking, args.round)
+    run(args.study,args.profile,args.task,args.thinking,args.round,
+        'overthinking-native-tasks.json' if args.native else 'overthinking-tasks.json',
+        'overthinking-native' if args.native else 'overthinking')
