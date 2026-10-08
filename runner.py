@@ -60,6 +60,7 @@ def main():
     p.add_argument('--study',type=Path,default=ROOT/'studies/2026-10-07-local-vs-cloud')
     p.add_argument('--suite',type=Path,default=ROOT/'suite/tasks.json')
     p.add_argument('--profile',help='registered deployment label, no credentials')
+    p.add_argument('--thinking',choices=['on','off'],default='on')
     p.add_argument('--output',type=Path,default=ROOT/'studies/2026-10-07-local-vs-cloud/results')
     a=p.parse_args()
     raw=a.suite.read_bytes();suite=json.loads(raw)
@@ -79,7 +80,8 @@ def main():
     study=a.study
     existing=[json.loads(x.read_text(encoding='utf-8')) for x in study.rglob('result.json')]
     if sum(x.get('usage',{}).get('total_tokens',0) for x in existing)>=400000:raise SystemExit('study token review threshold reached')
-    record={'task':a.task,'provider':a.provider,'round':a.round,'model_requested':model,'fixture_sha256':hashlib.sha256(raw).hexdigest(),'started_at':dt.datetime.now(dt.timezone(dt.timedelta(hours=8))).isoformat(),'parameters':{'temperature':0,'enable_thinking':True,'max_tokens':task['max_tokens'],'stream':False},'turns':[]}
+    thinking=a.thinking=='on'
+    record={'task':a.task,'provider':a.provider,'round':a.round,'model_requested':model,'fixture_sha256':hashlib.sha256(raw).hexdigest(),'started_at':dt.datetime.now(dt.timezone(dt.timedelta(hours=8))).isoformat(),'parameters':{'temperature':0,'enable_thinking':thinking,'max_tokens':task['max_tokens'],'stream':False},'turns':[]}
     if a.profile:record['profile']=a.profile
     if a.diagnostic=='total-budget-8192' and a.provider=='official':
         record['parameters']['max_completion_tokens']=record['parameters'].pop('max_tokens')
@@ -91,7 +93,7 @@ def main():
     try:
         for turn in range(6 if sim else 1):
             if remaining<=0:record['error']='task_output_budget_exhausted';break
-            payload={'model':model,'messages':messages,'temperature':0,'enable_thinking':True,'max_tokens':remaining,'stream':False}
+            payload={'model':model,'messages':messages,'temperature':0,'enable_thinking':thinking,'max_tokens':remaining,'stream':False}
             if a.diagnostic=='total-budget-8192' and a.provider=='official':payload['max_completion_tokens']=payload.pop('max_tokens')
             if sim:payload.update(tools=schemas(a.task),tool_choice='auto',parallel_tool_calls=False)
             req=urllib.request.Request(base.rstrip('/')+'/chat/completions',data=json.dumps(payload,ensure_ascii=False).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+key})
