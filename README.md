@@ -35,13 +35,20 @@ python check_public_archive.py
 
 以上命令不调用模型API。主试验第一次冻结commit为`42cec2a`；随后追加诊断和公开复核，不覆盖历史输出。文章/视频不自动发布到社交平台。
 
-## 2026-10-08：Halogen 升级与 Swift 1.5（执行中）
+## 2026-10-08：本地 AI Max+ 395，Halogen 升级与 Swift 1.5
 
 同一台本地 Ryzen AI Max+ 395 机器，对比 Halogen 0.9.1/W4B、0.17.2/默认 v2 和 0.17.2/Swift 1.5。
 
 - [冻结协议](studies/2026-10-08-halogen-three-way/protocol.md) · [完整提示词与验收](studies/2026-10-08-halogen-three-way/task-cards.md)
 - [模型与版本来源](studies/2026-10-08-halogen-three-way/sources.json)
 - [追加过度思考协议](studies/2026-10-08-halogen-three-way/overthinking-protocol.md) · [唯一答案短题](studies/2026-10-08-halogen-three-way/overthinking-tasks.json)
-- [阶段数据，未完成不填成绩](studies/2026-10-08-halogen-three-way/summary.json) · [操作记录与限制](studies/2026-10-08-halogen-three-way/observations.md)
+- [48 个主会话汇总](studies/2026-10-08-halogen-three-way/summary.json) · [操作记录与限制](studies/2026-10-08-halogen-three-way/observations.md)
+- [4096 预算补充协议](studies/2026-10-08-halogen-three-way/overthinking-native-protocol.md) · [思考开关结果](studies/2026-10-08-halogen-three-way/thinking-native-summary.json)
+- [公众号逐题文章](studies/2026-10-08-halogen-three-way/publication/wechat-article.md) · [可复制富文本页面](studies/2026-10-08-halogen-three-way/publication/wechat-richtext.html)
+- [B站脚本](studies/2026-10-08-halogen-three-way/publication/bilibili-script.md) · [写作复核](studies/2026-10-08-halogen-three-way/editor-review.json) · [记录完整性审计](studies/2026-10-08-halogen-three-way/audit.json)
 
-短题通过 `overthinking_runner.py` 读取进程环境连接兼容接口。当前结果仍在累积，文章与视频在全部配置完成后生成。
+已完成10个独立题型、48个主会话；硬验收旧版15/16、新版13/16（含短评段落复核）、Swift10/16，按题型分别9/10、9/10、6/10。Swift调度器三次13/13，耗时中位35.60秒，新版64.71秒；严格JSON的Agent有代码框失败，团队决策写作三组均未达编辑门槛。固定512输出探针的解码中位数55.39/70.27/75.30 token/秒，不是首字或整项任务速度。
+
+过度思考补充：1024原预算受新版正文预留策略影响，保留为接口诊断；追加登记4096预算的同三题、开关各两次，36次均答对。Swift简单题仍有额外思考开销。复杂调度关闭思考各一次13/13，不代表所有复杂工作。
+
+短题通过 `overthinking_runner.py --native` 读取进程环境连接兼容接口。全档案139个记录会话、306044个已知总token，另一次取消调用用量未知。原始失败和段落复核分别存档；恢复后首条旧版请求的长预填充单列说明。实验后恢复原0.9.1服务，单元文件未改。

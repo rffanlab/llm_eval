@@ -1,8 +1,16 @@
 """Summarize the registered local engine/model comparison without filling missing runs."""
-import json,statistics
+import json,statistics,hashlib
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent;S=ROOT/'studies/2026-10-08-halogen-three-way'
 profiles=['old-w4b','new-v2','swift-v2'];tasks=json.loads((S/'tasks.json').read_text(encoding='utf-8'))['tasks']
+adjudications=json.loads((S/'adjudications.json').read_text(encoding='utf-8'))['entries'] if (S/'adjudications.json').exists() else []
+def accepted(file,record):
+ for a in adjudications:
+  if (a['profile'],a['task'],a['round'])==(record['profile'],record['task'],record['round']):
+   assert a['answer_sha256']==hashlib.sha256((file.parent/'answer.txt').read_bytes()).hexdigest()
+   assert a['fixture_sha256']==record['fixture_sha256']
+   return a['acceptance_pass']
+ return record['grade']['pass']
 rows=[]
 for profile in profiles+['new-w4b-control']:
  for task in tasks:
@@ -13,5 +21,12 @@ for profile in profiles+['new-w4b-control']:
 totals={p:{'sessions':sum(x['n'] for x in rows if x['profile']==p),'hard_passes':sum(x['passed'] for x in rows if x['profile']==p),'known_total_tokens':sum(x['known_total_tokens'] for x in rows if x['profile']==p),'known_output_tokens':sum(x['known_output_tokens'] for x in rows if x['profile']==p),'unknown_usage_sessions':sum(x['unknown_usage_n'] for x in rows if x['profile']==p)} for p in profiles}
 complete=all(x['sessions']==16 for x in totals.values())
 data={'status':'complete' if complete else 'incomplete','primary_profiles':profiles,'registered_primary_sessions':48,'completed_primary_sessions':sum(x['sessions'] for x in totals.values()),'totals':totals,'tasks':rows,'speed_probes':{p:[json.loads(f.read_text(encoding='utf-8')) for f in sorted((S/'speed-probes'/p).glob('*.json'))] for p in profiles},'observations':'See observations.md; raw trial timing and incidents are preserved. Writing editorial scores are separate.'}
+for row in rows:
+ files=sorted((S/'results'/row['profile']).glob(row['task']+'-local-r*/result.json'))
+ ds=[json.loads(f.read_text(encoding='utf-8')) for f in files]
+ row['raw_passed']=row['passed'];row['passed']=sum(accepted(f,d) for f,d in zip(files,ds))
+for profile,total in totals.items():
+ total['raw_hard_passes']=total['hard_passes'];total['hard_passes']=sum(x['passed'] for x in rows if x['profile']==profile)
+data['adjudications']='adjudications.json; raw records and raw_passed remain unchanged'
 (S/'summary.json').write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 print(json.dumps({'status':data['status'],'totals':totals},ensure_ascii=False))

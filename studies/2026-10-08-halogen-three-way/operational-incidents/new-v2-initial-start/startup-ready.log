@@ -1,0 +1,91 @@
+halogen: halogen-flash-server 0.17.2, mode all
+halogen: /candidate/qwen38-flash-next-v2.hgn carries its own precision choices: no quality sidecar applies and none is looked for
+halogen: vision ON, tower /models/qwen38-flash-next-vision.hgn (857M)
+         an image costs ~1,000 tokens at 1280x800 and ~2,040 at 1080p;
+         HALOGEN_VISION_MAX_PIXELS caps it (default 2560x1440; larger is downscaled).
+halogen: KV budget 1 slot(s) over one 262144-position pool (each request up to 262144) = 7.3 GiB (~28 KiB/position incl. block scratch + ~115 MiB/slot) + 0.4 GiB prompt cache in RAM, on top of roughly 62.1 GiB (read from the checkpoint) of weights and 12.6 GiB of working memory (HALOGEN_MAX_TOK 32768). Those last two are estimates for this pre-flight check; the engine prints its measured figures once loaded, including the large lookup table it reads from disk and never holds. MemAvailable now 88.7 GiB.
+halogen: GTT in use before this start: 31.8 GiB of 62.5 (30.7 free; this start puts about 16.1 GiB there)
+halogen: NOTE 31.8 GiB of GTT is held by 1 process(es) on this host before this start (another model, or a previous engine still exiting). This server starts on what is left, and shares the GPU with them.
+serve_api: request defaults HALOGEN_MAX_TOKENS_DEFAULT=16384, HALOGEN_REASONING_EFFORT=medium
+serve_api: chat template /models/tokenizer/chat_template.jinja sha256 c3cf9e34abf4f9e3, thinking control probe passed
+halogen: waiting for engine on 8730 (cold load can take minutes)
+checkpoint: mapped 66.7 GB, NOT pinned (Pin::None)
+overlay: none needed (this checkpoint carries its own trunk precision)
+checkpoint: mapped 51.2 GB, NOT pinned (Pin::None)
+n-gram table: 47.68 GiB from /candidate/qwen38-flash-next-ngram.hgn (HALOGEN_NGRAM_TABLE)
+startup [   0.0 s] host memory: 17537 contiguous 2 MiB blocks of host memory free (35074 MiB)
+startup [   0.0 s] pinning weights (reads the checkpoint from disk when it is not already in the page cache; this is usually the slowest step)
+halogen: still loading, 60s elapsed (the engine is alive, state R; GTT in use 0.1 GiB; the startup lines above name the step)
+checkpoint: pinned 62.11 GiB in 1 range(s) in 35.0 s (1.9 GB/s), 62.11 GiB of payload, MemAvailable was 120.7 GiB
+startup [  35.0 s] weights pinned: 1873 contiguous 2 MiB blocks free (3746 MiB), 2841 compaction stalls during that step (1820 failed)
+startup [  35.0 s] preparing weights
+startup [  71.5 s] preparing weights, layer 0 of 48
+startup [  71.5 s] preparing weights, layer 8 of 48
+startup [  71.5 s] preparing weights, layer 16 of 48
+startup [  71.6 s] preparing weights, layer 24 of 48
+startup [  71.6 s] preparing weights, layer 32 of 48
+startup [  74.5 s] preparing weights, layer 40 of 48
+halogen: still loading, 120s elapsed (the engine is alive, state D; GTT in use 2.7 GiB; the startup lines above name the step)
+startup [  81.4 s] weights ready; reserving working memory
+checkpoint: mapped 0.9 GB, NOT pinned (Pin::None)
+checkpoint: pinned 0.84 GiB in 1 range(s) in 0.9 s (1.0 GB/s), 0.84 GiB of payload, MemAvailable was 109.2 GiB
+halogen: still loading, 180s elapsed (the engine is alive, state D; GTT in use 12.4 GiB; the startup lines above name the step)
+startup [ 142.6 s] reserving the KV pool, 262144 positions (about 7.2 GiB)
+halogen: still loading, 240s elapsed (the engine is alive, state D; GTT in use 17.5 GiB; the startup lines above name the step)
+startup [ 228.8 s] KV pool reserved: 182 contiguous 2 MiB blocks free (364 MiB), 909 compaction stalls during that step (51 failed)
+startup [ 228.8 s] model ready
+startup [ 228.8 s] preparing the prompt cache
+flash_serve: prompt cache ON, resume-anywhere (4 entries, snapshot every request, chunk 32768, 111 MiB each at ctx 262144): a warm answer is NOT bitwise the cold one
+flash_serve: prompt cache keeps the KV in place (HALOGEN_CACHE_INPLACE=1): the entry is the O(1) state, the KV rows are never copied; a follow-up turn prefills only its new tokens
+startup [ 228.8 s] memory: 62.9 GiB of weights locked in RAM (0.8 of them the vision tower's), 7.2 GiB of KV pool, 12.5 GiB of working memory, 82.7 GiB in all; the tower's scratch is added at the first image
+startup [ 228.8 s] memory: the model's 47.7 GiB lookup table is NOT held in RAM. It is read from disk through the file cache as each request needs it, which is why this server holds less than the checkpoint is large
+startup [ 228.8 s] memory: 24.0 GiB of this machine's RAM is carved out for the iGPU in firmware. That is not free memory the OS can lend to the file cache above, and it does not appear anywhere in /proc/meminfo: the machine simply reports itself smaller
+startup [ 228.8 s] host memory left for everything else: 182 contiguous 2 MiB blocks (38.2 GiB total, most of it not contiguous)
+startup [ 228.8 s] free(1) and MemAvailable will report about 100.3 GiB instead: the kernel counts this server's locked weights as reclaimable file cache, and they cannot be reclaimed
+startup [ 228.8 s] opening the socket
+flash_serve: a prompt admitted beside active streams prefills in pieces of 32768 tokens with a decode tick between them (HALOGEN_ADMIT_CHUNK; 0 = the engine's own chunk, which keeps the admitted prompt bitwise its alone self; -1 = the whole prompt at once)
+flash_serve: listening on 127.0.0.1:8730, 1 slots over ONE 262144-position KV pool, each request up to 262144 (it reserves prompt + max_tokens), max_tok 32768, BATCHED greedy or sampled; MTP depth-2 (up to 3) selectable (drafter 1, speculates while alone)
+halogen: engine listening after 274s
+halogen: engine watchdog on, 180s of silence takes the container down
+serve_api: chat template /models/tokenizer/chat_template.jinja sha256 c3cf9e34abf4f9e3, thinking control probe passed
+flash_serve: grammar: vocabulary of 248077 tokens (248044 plain, longest 128 B) in 53 ms
+serve_api: engine at 127.0.0.1:8730, listening on 0.0.0.0:8731
+halogen: WARNING 36.2 GiB of host RAM is in use before this server starts. The server sizes itself from the machine's total and leaves a fixed reserve for the OS and the model's 47.7 GiB lookup table, which is read through the file cache; whatever is already using those 36.2 GiB comes out of that cache. Expect every prompt to read the table from disk, prefill to run several times slower than published, and pauses of a minute or more. Stop the other workloads, or run this server on a host of its own.
+halogen: WARNING: that budget is close to or over what this host has free (the engine refuses the last pin under 16 GiB of MemAvailable).
+  If startup ends in "checkpoint: refusing to pin" or "HIP ... out of memory", lower HALOGEN_MAX_TOK to 16384 (the working memory, about 4 GiB back on the default checkpoint and 1.6 on w4b, for about 9% of prefill speed)
+  or HALOGEN_KV_POOL_POSITIONS (the pool, ~29.5 KiB a position); a 1,048,576-position pool fits only with HALOGEN_MAX_TOK=16384.
+halogen: WARNING 2841 compaction stalls (1820 of them failed) while 'weights pinned'. A healthy host does almost none: every clean startup measured here cost between 0 and 45 in total.
+  There may be plenty of free memory, but it is in the wrong shape: large allocations each stop to compact it, most of those attempts fail, and startup can take tens of minutes at 100% of one core with no disk activity and no output. This is a state of the host, not of the model, and it is usually a large process that exited moments ago.
+  Stop the other workloads, then either wait or run, as root:
+    echo 1 > /proc/sys/vm/compact_memory
+  and check that 'awk "/Normal/{print $14}" /proc/buddyinfo' is in the thousands before starting again.
+halogen: still reserving working memory after 61 s: 1295 contiguous 2 MiB blocks of host memory free, 888 compaction stalls since the reservations began (41 failed). Stalls climbing, few failed = the kernel is compacting host memory for this step, which finishes on its own; other large processes on this host make it slower. Stalls and failed both climbing with the block count flat = the kernel is finding nothing to compact, and this step will not finish until another large process on this host lets memory go. No stalls and no progress = report it with this log.
+halogen: still reserving the KV pool after 91 s: 469 contiguous 2 MiB blocks of host memory free, 890 compaction stalls since the reservations began (42 failed). Stalls climbing, few failed = the kernel is compacting host memory for this step, which finishes on its own; other large processes on this host make it slower. Stalls and failed both climbing with the block count flat = the kernel is finding nothing to compact, and this step will not finish until another large process on this host lets memory go. No stalls and no progress = report it with this log.
+halogen: still reserving the KV pool after 121 s: 129 contiguous 2 MiB blocks of host memory free, 894 compaction stalls since the reservations began (45 failed). Stalls climbing, few failed = the kernel is compacting host memory for this step, which finishes on its own; other large processes on this host make it slower. Stalls and failed both climbing with the block count flat = the kernel is finding nothing to compact, and this step will not finish until another large process on this host lets memory go. No stalls and no progress = report it with this log.
+prompt cache: HALOGEN_CACHE_ENTRIES=4 is below the 6 this configuration needs to keep one conversation's worth of entries per slot (1 slot(s) x [1 anchor + 4 leaves + 1 full]). Conversations past that many lose their history to the global LRU and re-prefill in full; raise it, or lower HALOGEN_CACHE_BRANCHES if the memory matters more.
+halogen: WARNING 24.0 GiB of RAM is carved out for the iGPU in firmware, and this model reads a 47.7 GiB lookup table through the host file cache on every request. A carve-out that large competes directly with that cache, and the symptom is a server that starts, answers short prompts, and then crawls on a long one with the disk busy and a process in uninterruptible sleep.
+  You are already paying for it even if nothing has thrashed yet: the KV pool sizes itself from MemTotal, which the carve-out has made smaller, so the 'kv pool' line above gave up resident conversations to keep the cache whole. Pin the pool yourself and the cache takes the whole loss instead.
+  This engine does not need dedicated VRAM: it drives the GPU through GTT and allocates from the same unified memory either way. Set the BIOS UMA or dedicated-graphics-memory option back to Auto or its minimum, which reports about 512 MiB here, and the carved RAM returns to the host.
+  Lowering HALOGEN_KV_POOL_POSITIONS or raising HALOGEN_HOST_RESERVE_GIB buys cache back on the host side if the BIOS cannot be changed.
+halogen: NOTE this server now holds most of the machine, and 182 contiguous 2 MiB blocks remain. It runs best on a host of its own. If other large processes share this machine they will compete for what is left, and when it runs out BOTH they and this server can stall for minutes at a time at full CPU with no disk activity and no output, which is not a crash and needs no restart. Lowering HALOGEN_KV_POOL_POSITIONS gives some back. HALOGEN_FLASH_PIN_TRUNK=0 gives a great deal back and costs several times the decode speed, so it is a last resort.
+/halogen/tools/serve_api.py:4159: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Started server process [426]
+INFO:     Waiting for application startup.
+serve_api: request defaults HALOGEN_MAX_TOKENS_DEFAULT=16384, HALOGEN_REASONING_EFFORT=medium (a field the request sends wins; temperature 0 in a request is greedy and takes no sampling default)
+serve_api: a sampled request that omits top_k / top_p gets top_k 20, top_p 0.95 (HALOGEN_TOP_K / HALOGEN_TOP_P where set, else the model's generation_config.json)
+serve_api: version 0.17.2, engine version 0.17.2
+INFO:     172.17.0.1:46866 - "GET /health HTTP/1.1" 200 OK
+INFO:     172.17.0.1:54792 - "GET /health HTTP/1.1" 200 OK
+INFO:     172.17.0.1:54798 - "GET /cache HTTP/1.1" 200 OK
+flash_serve: req 1 generated 2 tokens, 0.0 s
+serve_api: mtp 165 tok in 2.36s = 69.83 t/s | 55 rounds, commit 3.02/round | prompt 142, prefill 2.63s (142 new) | detok 17us/tok | pld 13 rounds, 2.54 acc/round | pool 2304/262144 1% | think on
+INFO:     172.17.0.1:54806 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+flash_serve: req 2 generated 2 tokens, 0.0 s
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8731 (Press CTRL+C to quit)

@@ -719,6 +719,9 @@ R480|service=svc-36|env=stage|status=active|owner=成员05|timeout_s=40|retry=0
 ```bash
 python runner.py --provider local --profile new-v2 --study studies/2026-10-08-halogen-three-way --suite studies/2026-10-08-halogen-three-way/tasks.json --output private-results/new-v2 --task C03 --round 1
 python overthinking_runner.py --study studies/2026-10-08-halogen-three-way --profile rerun-new-v2 --task O01 --thinking on --round 1
+python overthinking_runner.py --study studies/2026-10-08-halogen-three-way --profile rerun-native-new-v2 --task O01 --thinking on --round 1 --native
 ```
 
 主任务使用不同output，防止覆盖公开历史记录。短题runner同样拒绝覆盖任何已有profile记录。重复三次的题只有C03、A02、E01；重复不等于增加独立题型数量。
+
+1024预算的原补充保留为接口预算策略诊断。自然思考比较使用另行预登记的4096总预算，完整追加说明见 [overthinking-native-protocol.md](overthinking-native-protocol.md)，完整题面见 [overthinking-native-tasks.json](overthinking-native-tasks.json)。三道短题和验收阈值未变，各开关两次，36次新增调用；执行顺序为新版、Swift、旧版。不是事后覆盖原始成绩。

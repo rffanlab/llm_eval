@@ -1,0 +1,40 @@
+halogen: halogen-flash-server 0.17.2, mode all
+halogen: /candidate/qwen38-flash-next-v2.hgn carries its own precision choices: no quality sidecar applies and none is looked for
+halogen: vision ON, tower /models/qwen38-flash-next-vision.hgn (857M)
+         an image costs ~1,000 tokens at 1280x800 and ~2,040 at 1080p;
+         HALOGEN_VISION_MAX_PIXELS caps it (default 2560x1440; larger is downscaled).
+halogen: KV budget 1 slot(s) over one 262144-position pool (each request up to 262144) = 7.3 GiB (~28 KiB/position incl. block scratch + ~115 MiB/slot) + 0.4 GiB prompt cache in RAM, on top of roughly 62.1 GiB (read from the checkpoint) of weights and 12.6 GiB of working memory (HALOGEN_MAX_TOK 32768). Those last two are estimates for this pre-flight check; the engine prints its measured figures once loaded, including the large lookup table it reads from disk and never holds. MemAvailable now 88.7 GiB.
+halogen: GTT in use before this start: 31.8 GiB of 62.5 (30.7 free; this start puts about 16.1 GiB there)
+halogen: NOTE 31.8 GiB of GTT is held by 1 process(es) on this host before this start (another model, or a previous engine still exiting). This server starts on what is left, and shares the GPU with them.
+serve_api: request defaults HALOGEN_MAX_TOKENS_DEFAULT=16384, HALOGEN_REASONING_EFFORT=medium
+serve_api: chat template /models/tokenizer/chat_template.jinja sha256 c3cf9e34abf4f9e3, thinking control probe passed
+halogen: waiting for engine on 8730 (cold load can take minutes)
+checkpoint: mapped 66.7 GB, NOT pinned (Pin::None)
+overlay: none needed (this checkpoint carries its own trunk precision)
+checkpoint: mapped 51.2 GB, NOT pinned (Pin::None)
+n-gram table: 47.68 GiB from /candidate/qwen38-flash-next-ngram.hgn (HALOGEN_NGRAM_TABLE)
+startup [   0.0 s] host memory: 17537 contiguous 2 MiB blocks of host memory free (35074 MiB)
+startup [   0.0 s] pinning weights (reads the checkpoint from disk when it is not already in the page cache; this is usually the slowest step)
+halogen: still loading, 60s elapsed (the engine is alive, state R; GTT in use 0.1 GiB; the startup lines above name the step)
+checkpoint: pinned 62.11 GiB in 1 range(s) in 35.0 s (1.9 GB/s), 62.11 GiB of payload, MemAvailable was 120.7 GiB
+startup [  35.0 s] weights pinned: 1873 contiguous 2 MiB blocks free (3746 MiB), 2841 compaction stalls during that step (1820 failed)
+startup [  35.0 s] preparing weights
+startup [  71.5 s] preparing weights, layer 0 of 48
+startup [  71.5 s] preparing weights, layer 8 of 48
+startup [  71.5 s] preparing weights, layer 16 of 48
+startup [  71.6 s] preparing weights, layer 24 of 48
+startup [  71.6 s] preparing weights, layer 32 of 48
+startup [  74.5 s] preparing weights, layer 40 of 48
+halogen: still loading, 120s elapsed (the engine is alive, state D; GTT in use 2.7 GiB; the startup lines above name the step)
+startup [  81.4 s] weights ready; reserving working memory
+checkpoint: mapped 0.9 GB, NOT pinned (Pin::None)
+checkpoint: pinned 0.84 GiB in 1 range(s) in 0.9 s (1.0 GB/s), 0.84 GiB of payload, MemAvailable was 109.2 GiB
+halogen: WARNING 36.2 GiB of host RAM is in use before this server starts. The server sizes itself from the machine's total and leaves a fixed reserve for the OS and the model's 47.7 GiB lookup table, which is read through the file cache; whatever is already using those 36.2 GiB comes out of that cache. Expect every prompt to read the table from disk, prefill to run several times slower than published, and pauses of a minute or more. Stop the other workloads, or run this server on a host of its own.
+halogen: WARNING: that budget is close to or over what this host has free (the engine refuses the last pin under 16 GiB of MemAvailable).
+  If startup ends in "checkpoint: refusing to pin" or "HIP ... out of memory", lower HALOGEN_MAX_TOK to 16384 (the working memory, about 4 GiB back on the default checkpoint and 1.6 on w4b, for about 9% of prefill speed)
+  or HALOGEN_KV_POOL_POSITIONS (the pool, ~29.5 KiB a position); a 1,048,576-position pool fits only with HALOGEN_MAX_TOK=16384.
+halogen: WARNING 2841 compaction stalls (1820 of them failed) while 'weights pinned'. A healthy host does almost none: every clean startup measured here cost between 0 and 45 in total.
+  There may be plenty of free memory, but it is in the wrong shape: large allocations each stop to compact it, most of those attempts fail, and startup can take tens of minutes at 100% of one core with no disk activity and no output. This is a state of the host, not of the model, and it is usually a large process that exited moments ago.
+  Stop the other workloads, then either wait or run, as root:
+    echo 1 > /proc/sys/vm/compact_memory
+  and check that 'awk "/Normal/{print $14}" /proc/buddyinfo' is in the thousands before starting again.
