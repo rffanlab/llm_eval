@@ -57,9 +57,12 @@ def main():
     p.add_argument('--task',required=True)
     p.add_argument('--round',type=int,default=1)
     p.add_argument('--diagnostic',choices=['writing-budget-8192','total-budget-8192'])
+    p.add_argument('--study',type=Path,default=ROOT/'studies/2026-10-07-local-vs-cloud')
+    p.add_argument('--suite',type=Path,default=ROOT/'suite/tasks.json')
+    p.add_argument('--profile',help='registered deployment label, no credentials')
     p.add_argument('--output',type=Path,default=ROOT/'studies/2026-10-07-local-vs-cloud/results')
     a=p.parse_args()
-    raw=(ROOT/'suite/tasks.json').read_bytes();suite=json.loads(raw)
+    raw=a.suite.read_bytes();suite=json.loads(raw)
     task=next(x for x in suite['tasks'] if x['id']==a.task)
     if a.diagnostic:
         allowed=['W02'] if a.diagnostic=='writing-budget-8192' else ['W02','W03','C03']
@@ -73,10 +76,11 @@ def main():
         base=os.environ['LOCAL_BASE_URL'];key=secret('LOCAL_API_KEY');model=os.environ.get('LOCAL_MODEL','Qwen/Qwen3.8-Flash-Next')
     else:
         base='https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1';key=secret('QWEN_API_KEY');model='qwen3.8-flash'
-    study=ROOT/'studies/2026-10-07-local-vs-cloud'
+    study=a.study
     existing=[json.loads(x.read_text(encoding='utf-8')) for x in study.rglob('result.json')]
     if sum(x.get('usage',{}).get('total_tokens',0) for x in existing)>=400000:raise SystemExit('study token review threshold reached')
     record={'task':a.task,'provider':a.provider,'round':a.round,'model_requested':model,'fixture_sha256':hashlib.sha256(raw).hexdigest(),'started_at':dt.datetime.now(dt.timezone(dt.timedelta(hours=8))).isoformat(),'parameters':{'temperature':0,'enable_thinking':True,'max_tokens':task['max_tokens'],'stream':False},'turns':[]}
+    if a.profile:record['profile']=a.profile
     if a.diagnostic=='total-budget-8192' and a.provider=='official':
         record['parameters']['max_completion_tokens']=record['parameters'].pop('max_tokens')
     if a.diagnostic:record['diagnostic']=a.diagnostic
