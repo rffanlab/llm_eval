@@ -2,7 +2,7 @@
 
 可公开复跑的工作能力评测：为什么测 → 怎么测 → 测试结果。
 
-首期：137 本地 Qwen3.8 Flash Next 与阿里云 Token Plan `qwen3.8-flash` 的工作能力对照。测试前规范见 [方法](studies/2026-10-07-local-vs-cloud/protocol.md)，完整题面与验收答案由 [题库生成器](suite/build_suite.py) 写入 `suite/tasks.json`。结果保留响应正文、用量、计时、工具轨迹和失败。
+首期：本地 Ryzen AI Max+ 395 机器运行 Qwen3.8 Flash Next 与阿里云 Token Plan `qwen3.8-flash` 的工作能力对照。测试前规范见 [方法](studies/2026-10-07-local-vs-cloud/protocol.md)，完整题面与验收答案由 [题库生成器](suite/build_suite.py) 写入 `suite/tasks.json`。结果保留响应正文、用量、计时、工具轨迹和失败。
 
 运行环境 Python 3.10+，标准库。无第三方安装需求。密钥只从环境读取。`python runner.py --help` 查看逐题运行方式；本仓库不提供 Token Plan 批量执行入口。生成代码只在受限制的独立进程中执行纯函数测试，拒绝导入、文件和网络调用。
 
@@ -34,3 +34,14 @@ python check_public_archive.py
 ```
 
 以上命令不调用模型API。主试验第一次冻结commit为`42cec2a`；随后追加诊断和公开复核，不覆盖历史输出。文章/视频不自动发布到社交平台。
+
+## 2026-10-08：Halogen 升级与 Swift 1.5（执行中）
+
+同一台本地 Ryzen AI Max+ 395 机器，对比 Halogen 0.9.1/W4B、0.17.2/默认 v2 和 0.17.2/Swift 1.5。
+
+- [冻结协议](studies/2026-10-08-halogen-three-way/protocol.md) · [完整提示词与验收](studies/2026-10-08-halogen-three-way/task-cards.md)
+- [模型与版本来源](studies/2026-10-08-halogen-three-way/sources.json)
+- [追加过度思考协议](studies/2026-10-08-halogen-three-way/overthinking-protocol.md) · [唯一答案短题](studies/2026-10-08-halogen-three-way/overthinking-tasks.json)
+- [阶段数据，未完成不填成绩](studies/2026-10-08-halogen-three-way/summary.json) · [操作记录与限制](studies/2026-10-08-halogen-three-way/observations.md)
+
+短题通过 `overthinking_runner.py` 读取进程环境连接兼容接口。当前结果仍在累积，文章与视频在全部配置完成后生成。
