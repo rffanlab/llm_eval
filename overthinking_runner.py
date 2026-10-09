@@ -13,7 +13,7 @@ import time
 import urllib.request
 
 
-def run(study, profile, task, mode, round_, suite_name='overthinking-tasks.json', collection='overthinking'):
+def run(study, profile, task, mode, round_, suite_name='overthinking-tasks.json', collection='overthinking', reasoning_effort=None):
     study = Path(study)
     raw = (study / suite_name).read_bytes()
     suite = json.loads(raw)
@@ -27,6 +27,7 @@ def run(study, profile, task, mode, round_, suite_name='overthinking-tasks.json'
                             {'role': 'user', 'content': case['prompt']}],
                'temperature': 0, 'enable_thinking': mode == 'on',
                'max_tokens': suite['max_tokens'], 'stream': False}
+    if reasoning_effort:payload['reasoning_effort']=reasoning_effort if mode=='on' else 'none'
     record = {'profile': profile, 'task': task, 'thinking': mode, 'round': round_,
               'fixture_sha256': hashlib.sha256(raw).hexdigest(),
               'started_at': datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).isoformat(),
@@ -72,7 +73,8 @@ if __name__ == '__main__':
     parser.add_argument('--thinking', choices=['on', 'off'], required=True)
     parser.add_argument('--round', type=int, choices=[1, 2], required=True)
     parser.add_argument('--native',action='store_true',help='registered 4096-budget supplement, separate collection')
+    parser.add_argument('--reasoning-effort',choices=['medium'])
     args = parser.parse_args()
     run(args.study,args.profile,args.task,args.thinking,args.round,
         'overthinking-native-tasks.json' if args.native else 'overthinking-tasks.json',
-        'overthinking-native' if args.native else 'overthinking')
+        'overthinking-native' if args.native else 'overthinking',args.reasoning_effort)

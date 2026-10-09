@@ -61,6 +61,7 @@ def main():
     p.add_argument('--suite',type=Path,default=ROOT/'suite/tasks.json')
     p.add_argument('--profile',help='registered deployment label, no credentials')
     p.add_argument('--thinking',choices=['on','off'],default='on')
+    p.add_argument('--reasoning-effort',choices=['medium'],help='explicit matched effort; off requests use none')
     p.add_argument('--output',type=Path,default=ROOT/'studies/2026-10-07-local-vs-cloud/results')
     a=p.parse_args()
     raw=a.suite.read_bytes();suite=json.loads(raw)
@@ -79,10 +80,13 @@ def main():
         base='https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1';key=secret('QWEN_API_KEY');model='qwen3.8-flash'
     study=a.study
     existing=[json.loads(x.read_text(encoding='utf-8')) for x in study.rglob('result.json')]
-    if sum(x.get('usage',{}).get('total_tokens',0) for x in existing)>=400000:raise SystemExit('study token review threshold reached')
+    freeze=study/'freeze.json'
+    threshold=json.loads(freeze.read_text(encoding='utf-8')).get('main_token_review_threshold',400000) if freeze.exists() else 400000
+    if sum(x.get('usage',{}).get('total_tokens',0) for x in existing)>=threshold:raise SystemExit('study token review threshold reached')
     thinking=a.thinking=='on'
     record={'task':a.task,'provider':a.provider,'round':a.round,'model_requested':model,'fixture_sha256':hashlib.sha256(raw).hexdigest(),'started_at':dt.datetime.now(dt.timezone(dt.timedelta(hours=8))).isoformat(),'parameters':{'temperature':0,'enable_thinking':thinking,'max_tokens':task['max_tokens'],'stream':False},'turns':[]}
     if a.profile:record['profile']=a.profile
+    if a.reasoning_effort:record['parameters']['reasoning_effort']=a.reasoning_effort if thinking else 'none'
     if a.diagnostic=='total-budget-8192' and a.provider=='official':
         record['parameters']['max_completion_tokens']=record['parameters'].pop('max_tokens')
     if a.diagnostic:record['diagnostic']=a.diagnostic
@@ -94,6 +98,7 @@ def main():
         for turn in range(6 if sim else 1):
             if remaining<=0:record['error']='task_output_budget_exhausted';break
             payload={'model':model,'messages':messages,'temperature':0,'enable_thinking':thinking,'max_tokens':remaining,'stream':False}
+            if a.reasoning_effort:payload['reasoning_effort']=a.reasoning_effort if thinking else 'none'
             if a.diagnostic=='total-budget-8192' and a.provider=='official':payload['max_completion_tokens']=payload.pop('max_tokens')
             if sim:payload.update(tools=schemas(a.task),tool_choice='auto',parallel_tool_calls=False)
             req=urllib.request.Request(base.rstrip('/')+'/chat/completions',data=json.dumps(payload,ensure_ascii=False).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+key})
