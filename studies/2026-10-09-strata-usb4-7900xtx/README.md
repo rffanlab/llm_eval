@@ -1,21 +1,34 @@
-# 本地 AI Max+395＋USB4 RX7900XTX：Strata评测（进行中）
+# 本地 AI Max+395 外接7900XTX：Strata跑千问，能跑多大、多快？
 
-## 为什么做
+## 一、为什么做
 
-测Qwen3.8-Flash-Next的量化容量、真实长输入与工作交付。对照为同日重跑的Halogen0.9.1 W4B内置GPU部署；不是单独显卡、框架或量化的因果实验。
+测本地Ryzen AI Max+395通过USB4连接RX7900XTX后，用Strata运行Qwen3.8-Flash-Next能处理多大真实输入、运行哪些量化文件，以及同一套代码、Agent、写作工作能否交付。当天重跑Halogen0.9.1内置GPU部署作对照；框架、量化和设备同时不同，不作单因素因果结论。
 
-## 怎么测
+## 二、怎么测
 
-[冻结协议](protocol.md)、[本期完整任务卡](task-cards-current.md)、[模型与文件SHA](model-manifest.json)、[实际环境](environment)、[补充运行保护](pre-strata-amendments.md)、[524K安全余量修正](capacity-reserve-correction.md)。原任务字节与上一期相同，十类小型合成题，由入门到进阶；不是大型真实仓库或生产Agent认证。
+[完整协议](protocol.md) · [完整提示词与评分卡](task-cards-current.md) · [冻结SHA与参数](freeze.json) · [模型身份与完整文件SHA](model-manifest.json) · [实际环境](environment)
 
-## 已完成与未完成
+十类小型合成题，由入门到进阶；每套16主会话，C03/A02/E01各三次。代码跑功能测试，Agent检查权限、工具与严格JSON，写作先查硬规则再做编辑审读。温度0、medium思考，原预算包含思考，无格式修复、无失败自动重跑。另测固定512输出、开关思考以及32K至YaRN2的524K容量梯度；每容量点一组，不能证明全天稳定、并发或硬件绝对上限。
 
-- Halogen同日基线：16主会话，硬验收15/16，合格交付14/16，已知86,073token、累计模型会话521.936秒。固定512输出三次解码中位55.625token/s。
-- Strata IQ2_XS：16主会话，硬验收与合格交付8/16，已知111,085token、累计会话684.9643秒。固定512输出三次解码中位109.4token/s。速度与交付是两种指标。
-- IQ2真实容量梯度闭合：32K至原生262K，以及YaRN2的524K。最高检索实际输入520,190token，824.136秒；同前缀512探针复用507,904token、还需读12,271token，完整41.146秒、解码68.7token/s。每点仅一次，不能证明稳定性或硬件绝对上限。
-- IQ4主测与控制已闭合：16个主会话，硬验收13/16、合格交付12/16；调度器三次13/13，来源短评合格，团队备忘录编辑15/20未达门槛。固定512解码中位44.8token/s。已知主测小计84,573token，另一次HTTP503的后续用量未知；累计请求870.884秒不含重启恢复流程。容量梯度进行中。
-- Q4XL全部四片通过冻结SHA，但尚未启动或计分，不能说已经运行111.33GB量化。
+本地机器一次只加载一个模型；换档确认进程退出及RAM/VRAM/GTT释放，每条请求前检查实际服务、模型身份与可用内存。故障重启先诊断再续跑未记录项。
 
-[逐题当前汇总](summary.json)、[原始首答](results)、[写作审读](editor-review.json)、[容量与资源](capacity)、[运行故障与恢复记录](runtime-recovery.md)、[故障台账](runtime-incidents.json)。IQ4原失败保留，不重跑替换；框架加载控制尝试三次仍无ROCm设备，/dev/kfd打开异常。另17条未发送到模型的连接失败在独立诊断目录，性质不同。
+## 三、结果
 
-用户现场重启后先取证：旧日志显示外卡MES不响应、自动GPU reset最终ret=-110；首次verify故障触发因素仍未确证，所查日志无OOM-kill，Halogen在IQ4原启动前已停止。重启后ROCm恢复，停掉开机自启的Halogen并核对无模型进程后，才启动原配置IQ4继续未测项。当前仅IQ4运行，换档前等待进程退出、内存/显存释放；[诊断](diagnostics/post-reboot-assessment.json)与[单模型准入观测](diagnostics/single-model-admission.jsonl)保留。原Halogen最终恢复尚未验证，Q4XL等待串行测量。公众号与视频仍待完整数据和服务恢复。
+| 部署 | 硬验收 | 合格交付 | 固定512解码中位 | 主测已知token |
+|---|---:|---:|---:|---:|
+| 内置GPU / HGN | 15/16 | 14/16 | 55.6token/s | 86,073 |
+| 7900XTX / IQ2_XS | 8/16 | 8/16 | 109.4token/s | 111,085 |
+| 7900XTX / UD-IQ4 | 13/16 | 12/16 | 44.8token/s | 84,573＋未知用量 |
+| 7900XTX / UD-Q4XL | 13/16 | 12/16 | 32.7token/s | 88,624 |
+
+[逐题文章及即时比较](publication/wechat-article.md) · [富文本HTML](publication/wechat-richtext.html) · [视频文稿](publication/bilibili-script.md)
+
+[原始工作首答](results) · [写作编辑复核](editor-review.json) · [完整统计](summary.json) · [容量结果](capacity) · [同步资源](resources) · [审计与token台账](audit.json)
+
+### 故障与统计边界
+
+IQ4一次A02主测HTTP503/verify layer31失败保留，后续用量未知。外卡之后出现MES队列错误和GPU reset失败；第一次verify错误的触发原因未确证。Windows控制端另一次0x116重启中断了512K记录，原资源和日志保留，该次不评分、用量未知；另行登记相同输入与参数的完整冷重启补测。初次512K HTTP400是8token安全余量校验拒绝，没有开始推理；另17条未到达服务的连接失败独立归档。
+
+[远端运行故障和恢复](runtime-recovery.md) · [控制端中断和补测](capacity-client-interruption.md) · [安全余量修正](capacity-reserve-correction.md) · [单模型准入](diagnostics/single-model-admission.jsonl) · [原Halogen恢复验证](restored-service.json)
+
+文章的合格交付含代理编辑审读，不冒充本人验收。视频为本人授权VoxCPM2新旁白，无背景音乐与音效；源文件节选和测量回放不冒充现场录像。私有参考音频、内网地址、密钥和大型模型文件未入库。

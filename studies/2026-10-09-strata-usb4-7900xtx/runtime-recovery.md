@@ -33,3 +33,11 @@
 数据与解释分别见`diagnostics/post-reboot-before-model.json`、`diagnostics/post-reboot-assessment.json`。上游AMD文档提供其他机器的实验性USERPTR建议，本机没有验证因果，因此没有直接套用或改动冻结配置。
 
 后续换模型前的准入进一步收紧：除进程退出外，等待MemAvailable至少100GiB、外卡VRAM低于2GiB且GTT低于4GiB，确认旧分配回落；当前已就绪IQ4不重启、不改参数。此次IQ4启动实际可用内存约120.58GiB，符合这一收紧后的内存门槛。请求前仍采用原8GiB门槛。
+
+## 最后容量档与服务恢复
+
+Q4XL原生256K档的检索和同前缀512续写均完成。524288扩展窗口的检索在1800.0335秒客户端截止时仍无完整回答，保留TimeoutError，不重试替换，也不再请求本档续写。取消后状态显示部分前缀516096、生成0；这是引擎进度，不能补成完整API用量。
+
+停止模型前查询的40分钟内核窗口见`svm_range_restore_work`工作队列警告，未见OOM或GPU reset；ROCm成功枚举外接卡。警告对本次等待的贡献未测出，不据此归因于USB4或内存不足。证据见`diagnostics/q4xl-capacity-deadline.json`。
+
+Q4XL API和原生引擎退出后，已确认无已知模型进程，MemAvailable回落到130561544192字节，外卡VRAM为221614080字节、GTT为87842816字节。随后恢复原Halogen0.9.1服务，服务单元SHA不变，并完成单独D01健康验证。第一次本地恢复验证器误用了代码专用评分函数，未保存成功HTTP回复；修正通用评分入口后另做一次健康验证，未改变主测结果，两次恢复验证均不纳入评测速度和token总表。
