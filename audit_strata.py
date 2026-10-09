@@ -22,7 +22,11 @@ for p in freeze['profiles']:
         if p!='halogen-w4b':
             native=S/'capacity-status'/f'{p}-32768-262144.json'
             if not native.exists():findings.append(p+': capacity native not closed')
-            elif not load(native).get('stopped') and not (S/'capacity-status'/f'{p}-524288-524288-slack8.json').exists():findings.append(p+': corrected extension not closed after operational native completion')
+            elif not load(native).get('stopped'):
+                normal=S/'capacity-status'/f'{p}-524288-524288-slack8.json'
+                recovery=S/'capacity-status'/f'{p}-524288-524288-slack8-client-recovery.json'
+                valid_recovery=p=='strata-iq4' and recovery.exists() and (S/'capacity-client-interruption.md').exists() and (S/'environment/strata-iq4-524288-client-recovery.json').exists()
+                if not normal.exists() and not valid_recovery:findings.append(p+': corrected extension not closed after operational native completion')
     elif deployment[p]['status']!='deployment_failed':findings.append(p+': deployment '+deployment[p]['status'])
     counts[p]=c
 for group,pattern in [('results','*/*/result.json'),('preflight','*/*/result.json'),('thinking-complex','*/*/result.json'),('overthinking-native','*/*.json'),('speed-probes','*/*.json'),('preflight-probes','*/*.json'),('capacity','*/*.json')]:
@@ -43,6 +47,7 @@ for group,pattern in [('results','*/*/result.json'),('preflight','*/*/result.jso
             if d.get('input_count_matches') is not True or prompt!=d['expected_prompt_tokens'] or timing.get('cache_n',0)+timing.get('prompt_n',0)!=prompt:
                 findings.append('capacity input/cache count mismatch: '+str(f.relative_to(S)))
             suffix='-slack8' if d.get('capacity_validation_correction') else ''
+            if d.get('client_interruption_recovery'):suffix+='-client-recovery'
             resources=S/'resources'/d['profile']/f"{d['context_target']}-{d['kind']}{suffix}.jsonl"
             if not resources.exists():findings.append('missing resources: '+str(resources.relative_to(S)))
             else:
@@ -52,6 +57,11 @@ for group,pattern in [('results','*/*/result.json'),('preflight','*/*/result.jso
                 else:
                     samples.sort(key=lambda x:x['wall_epoch'])
                     capacity_observations.append({'file':str(f.relative_to(S)).replace('\\','/'),'resource_file':str(resources.relative_to(S)).replace('\\','/'),'input_tokens':prompt,'cached_input_tokens':timing.get('cache_n',0),'reread_input_tokens':timing.get('prompt_n',0),'elapsed_s':d['elapsed_s'],'acceptance_pass':d['pass'],'sample_count':len(samples),'sample_interval_target_s':2,'minimum_MemAvailable_bytes':min(x['MemAvailable'] for x in samples),'maximum_external_GPU_VRAM_bytes':max(x['xtx_vram_used'] for x in samples),'maximum_process_RSS_bytes':max(x['strata_rss'] for x in samples),'maximum_process_VmSwap_bytes':max(x['strata_swap'] for x in samples),'maximum_system_SwapUsed_bytes':max(x['SwapUsed'] for x in samples),'system_pswpin_delta_pages':samples[-1]['vmstat']['pswpin']-samples[0]['vmstat']['pswpin'],'system_pswpout_delta_pages':samples[-1]['vmstat']['pswpout']-samples[0]['vmstat']['pswpout'],'measurement_boundary':'Extrema of approximately two-second samples, not instantaneous peaks. System swap counters are system-wide; process VmSwap is separate. RSS excludes nonresident mmap pages and is not model file size.'})
+client_incident=S/'diagnostics/client-reboot-001/incident.json'
+if client_incident.exists():
+    client=load(client_incident)
+    assert client['usage_complete'] is False and client['known_total_tokens'] is None and client['full_api_response_captured'] is False
+    usage_rows.append({'file':'diagnostics/client-reboot-001/incident.json','group':'client-interrupted-capacity','known_total_tokens':None,'usage_complete':False,'unscored':True,'reason':'Client unexpectedly rebooted while remote inference was in progress; no final API response captured.'})
 if not (S/'restored-service.json').exists():findings.append('original service restoration pending')
 else:
     restored=load(S/'restored-service.json')

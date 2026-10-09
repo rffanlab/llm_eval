@@ -1,0 +1,59 @@
+{
+  "profile": "strata-iq4",
+  "context_target": 262144,
+  "kind": "probe",
+  "fixture_sha256": "d1e373e9926e94d1e3b02353a9a896690d606343cc9557dbb67817b2b1aed606",
+  "started_at": "2026-10-09T14:15:14.247031+08:00",
+  "parameters": {
+    "model": "qwen3.8-flash-next",
+    "temperature": 0,
+    "enable_thinking": false,
+    "reasoning_effort": "none",
+    "max_tokens": 512,
+    "stream": false
+  },
+  "expected_prompt_tokens": 258013,
+  "response": {
+    "id": "chatcmpl-4fda6d620c504fa3b5d15a29",
+    "object": "chat.completion",
+    "created": 1791526515,
+    "model": "qwen3.8-flash-next",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```python\n\"\"\"\n运维记录处理库 (Ops Record Processing Library)\n包含30个小型纯函数，覆盖排序、筛选、金额汇总和字段校验。\n\"\"\"\n\nfrom typing import List, Dict, Any, Optional, Union\nimport re\n\n# --- 字段校验 (Field Validation) ---\n\ndef is_valid_shard_id(shard: Any) -> bool:\n    \"\"\"\n    校验分片ID是否为有效的整数格式（0-31）。\n    \"\"\"\n    try:\n        val = int(shard)\n        return 0 <= val <= 31\n    except (ValueError, TypeError):\n        return False\n\ndef is_valid_latency(latency: Any) -> bool:\n    \"\"\"\n    校验延迟值是否为非负整数。\n    \"\"\"\n    try:\n        val = int(latency)\n        return val >= 0\n    except (ValueError, TypeError):\n        return False\n\ndef is_valid_hash(hash_str: Any) -> bool:\n    \"\"\"\n    校验哈希字符串是否为有效的十六进制字符串（长度8）。\n    \"\"\"\n    if not isinstance(hash_str, str):\n        return False\n    return bool(re.fullmatch(r'[0-9a-fA-F]{8}', hash_str))\n\ndef is_valid_event_id(event_id: Any) -> bool:\n    \"\"\"\n    校验事件ID格式是否为 EV 后跟6位数字。\n    \"\"\"\n    if not isinstance(event_id, str):\n        return False\n    return bool(re.fullmatch(r'EV\\d{6}', event_id))\n\ndef is_valid_state(state: Any) -> bool:\n    \"\"\"\n    校验状态字段是否为 'ok' 或 'error'。\n    \"\"\"\n    return state in ('ok', 'error')\n\ndef validate_event_record(record: Dict[str, Any]) -> bool:\n    \"\"\"\n    校验单条事件记录是否包含所有必要字段且格式正确。\n    \"\"\"\n    required_fields = ['id', 'shard', 'latency_ms', 'state', 'hash']\n    if not all(field in record for field in required_fields):\n        return False\n    \n    if not is_valid_event_id(record['id']):\n        return False\n    if not is_valid_shard_id(record['shard']):\n        return False\n    if not is_valid_latency(record['latency_ms']):\n        return False"
+        },
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 258013,
+      "completion_tokens": 512,
+      "total_tokens": 258525,
+      "prompt_tokens_details": {
+        "cached_tokens": 245760
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "timings": {
+      "cache_n": 245760,
+      "prompt_n": 12253,
+      "prompt_ms": 43073.1,
+      "prompt_per_token_ms": 3.515,
+      "prompt_per_second": 284.5,
+      "predicted_n": 512,
+      "predicted_ms": 12494.1,
+      "predicted_per_token_ms": 24.403,
+      "predicted_per_second": 41.0,
+      "draft_n": 433,
+      "draft_n_accepted": 358
+    }
+  },
+  "input_count_matches": true,
+  "pass": true,
+  "elapsed_s": 55.78300019999733
+}
