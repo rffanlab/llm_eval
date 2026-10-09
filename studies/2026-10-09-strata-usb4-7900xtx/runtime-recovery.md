@@ -15,3 +15,9 @@
 这次POST /v1/load内部连续三次启动引擎，均未就绪；最终日志报“no ROCm-capable device is detected”，控制连接随后关闭。没有请求任何新答案。解除GPU筛选后运行rocminfo也失败：ROCK模块已加载，但/dev/kfd的读写打开返回Invalid argument。内核记录TTM回收工作线程长期等待DMA fence；这些记录说明驱动状态异常，但尚不足以断定最初verify故障的根因。
 
 原隔离API已停止。只读占用检查发现GNOME/Xwayland等桌面客户端还持有外接卡，PCI reset_method为bus；因此没有擅自重置总线、卸载amdgpu或重启共享主机。相关结果和失败日志先存档，再向用户请求重启机器的权限。尚未运行的题、容量和Q4XL保持未完成，不编成绩。
+
+## 已获重启许可，命令尚未到达
+
+用户已明确回复“允许”。获准后的SSH连接仍然超时，重启命令未发送成功，没有观察到实际重启。机器仍能回应ICMP，这不代表SSH或GPU驱动已经恢复。已请求现场重启；恢复后先核对外接卡、服务配置、二进制和分词器，再继续未运行的题。原服务的恢复命令也未能发送，尚未验证Halogen恢复，不能把整项评测标为完成。
+
+恢复快照会另存为`environment/strata-iq4-after-reboot-native.json`，原快照和失败结果保留。原快照没有记录主机boot ID，因此后续只能记录新boot ID及启动时长，不能凭空声称核对了前后boot ID。
