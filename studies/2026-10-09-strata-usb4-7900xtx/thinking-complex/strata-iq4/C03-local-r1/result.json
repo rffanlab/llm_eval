@@ -1,0 +1,380 @@
+{
+  "task": "C03",
+  "provider": "local",
+  "round": 1,
+  "model_requested": "qwen3.8-flash-next",
+  "fixture_sha256": "864716764b106dc678c06f80d80a08b77b2c5ad50da05ec7ab46fa76109f5df9",
+  "started_at": "2026-10-09T13:51:05.558591+08:00",
+  "parameters": {
+    "temperature": 0,
+    "enable_thinking": false,
+    "max_tokens": 8192,
+    "stream": false,
+    "reasoning_effort": "none"
+  },
+  "turns": [
+    {
+      "index": 1,
+      "elapsed_s": 34.341,
+      "returned_model": "qwen3.8-flash-next",
+      "content": "```python\ndef schedule(tasks, capacity):\n    if not tasks:\n        return {\"jobs\": [], \"makespan\": 0}\n    \n    # Validate inputs\n    task_map = {}\n    for t in tasks:\n        tid = t[\"id\"]\n        if tid in task_map:\n            raise ValueError(\"Duplicate task id\")\n        task_map[tid] = t\n    \n    # Check for unknown dependencies and cycles\n    all_ids = set(task_map.keys())\n    for t in tasks:\n        for dep in t[\"deps\"]:\n            if dep not in all_ids:\n                raise ValueError(f\"Unknown dependency: {dep}\")\n    \n    # Check for cycles using topological sort (Kahn's algorithm)\n    in_degree = {tid: 0 for tid in all_ids}\n    adj = {tid: [] for tid in all_ids}\n    for t in tasks:\n        for dep in t[\"deps\"]:\n            adj[dep].append(t[\"id\"])\n            in_degree[t[\"id\"]] += 1\n    \n    queue = [tid for tid in all_ids if in_degree[tid] == 0]\n    topo_count = 0\n    while queue:\n        node = queue.pop(0)\n        topo_count += 1\n        for neighbor in adj[node]:\n            in_degree[neighbor] -= 1\n            if in_degree[neighbor] == 0:\n                queue.append(neighbor)\n    \n    if topo_count != len(all_ids):\n        raise ValueError(\"Cycle detected in dependencies\")\n    \n    # Check units > capacity\n    for t in tasks:\n        if t[\"units\"] > capacity:\n            raise ValueError(f\"Task {t['id']} units {t['units']} exceeds capacity {capacity}\")\n    \n    # Simulation\n    # State tracking\n    completed = set()\n    started = set()\n    running = []  # list of (end_time, task_id, units)\n    current_time = 0\n    result_jobs = []\n    \n    # Precompute dependencies for quick check\n    deps_map = {t[\"id\"]: set(t[\"deps\"]) for t in tasks}\n    duration_map = {t[\"id\"]: t[\"duration\"] for t in tasks}\n    units_map = {t[\"id\"]: t[\"units\"] for t in tasks}\n    \n    remaining_tasks = set(all_ids)\n    \n    while remaining_tasks or running:\n        # Release completed tasks at current_time\n        new_running = []\n        for end_time, tid, units in running:\n            if end_time <= current_time:\n                completed.add(tid)\n                remaining_tasks.discard(tid)\n            else:\n                new_running.append((end_time, tid, units))\n        running = new_running\n        \n        # Calculate current resource usage\n        current_usage = sum(units for _, _, units in running)\n        \n        # Get available tasks: deps completed, not started, not running\n        available = []\n        for tid in remaining_tasks:\n            if tid in started:\n                continue\n            if deps_map[tid].issubset(completed):\n                available.append(tid)\n        \n        # Sort by id lexicographically\n        available.sort()\n        \n        # Try to start tasks\n        for tid in available:\n            u = units_map[tid]\n            if current_usage + u <= capacity:\n                # Start task\n                started.add(tid)\n                end_time = current_time + duration_map[tid]\n                running.append((end_time, tid, u))\n                current_usage += u\n                result_jobs.append({\"id\": tid, \"start\": current_time, \"end\": end_time})\n        \n        # If no tasks are running and no tasks can be started, but there are remaining tasks, something is wrong\n        # But we already checked for cycles, so this shouldn't happen unless there's a deadlock due to capacity\n        # Actually, if capacity is sufficient for at least one task, we should be able to make progress.\n        # If no tasks are running and no tasks can be started, it means all remaining tasks have unmet deps\n        # or units > capacity (already checked). Since we checked cycles, deps should eventually be met.\n        # But if no task is running and no task can start, we might be stuck.\n        # However, if there are remaining tasks and none are running, and none can start, it's a problem.\n        # Let's advance time to the next event if there are running tasks.\n        \n        if not running:\n            if remaining_tasks:\n                # This should not happen if inputs are valid (no cycles, units <= capacity)\n                # But just in case, break to avoid infinite loop\n                break\n            else:\n                break\n        \n        # Advance to the earliest end time among running tasks\n        earliest_end = min(end_time for end_time, _, _ in running)\n        current_time = earliest_end\n    \n    # Sort jobs by id\n    result_jobs.sort(key=lambda x: x[\"id\"])\n    \n    # Calculate makespan\n    makespan = max((job[\"end\"] for job in result_jobs), default=0)\n    \n    return {\"jobs\": result_jobs, \"makespan\": makespan}\n```",
+      "reasoning_chars": 0,
+      "tool_calls": [],
+      "usage": {
+        "prompt_tokens": 231,
+        "completion_tokens": 1117,
+        "total_tokens": 1348,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "finish_reason": "stop",
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 231,
+        "prompt_ms": 6847.0,
+        "prompt_per_token_ms": 29.641,
+        "prompt_per_second": 33.7,
+        "predicted_n": 1117,
+        "predicted_ms": 27432.0,
+        "predicted_per_token_ms": 24.559,
+        "predicted_per_second": 40.7,
+        "draft_n": 946,
+        "draft_n_accepted": 760
+      }
+    }
+  ],
+  "profile": "strata-iq4",
+  "usage": {
+    "prompt_tokens": 231,
+    "completion_tokens": 1117,
+    "total_tokens": 1348
+  },
+  "content": "```python\ndef schedule(tasks, capacity):\n    if not tasks:\n        return {\"jobs\": [], \"makespan\": 0}\n    \n    # Validate inputs\n    task_map = {}\n    for t in tasks:\n        tid = t[\"id\"]\n        if tid in task_map:\n            raise ValueError(\"Duplicate task id\")\n        task_map[tid] = t\n    \n    # Check for unknown dependencies and cycles\n    all_ids = set(task_map.keys())\n    for t in tasks:\n        for dep in t[\"deps\"]:\n            if dep not in all_ids:\n                raise ValueError(f\"Unknown dependency: {dep}\")\n    \n    # Check for cycles using topological sort (Kahn's algorithm)\n    in_degree = {tid: 0 for tid in all_ids}\n    adj = {tid: [] for tid in all_ids}\n    for t in tasks:\n        for dep in t[\"deps\"]:\n            adj[dep].append(t[\"id\"])\n            in_degree[t[\"id\"]] += 1\n    \n    queue = [tid for tid in all_ids if in_degree[tid] == 0]\n    topo_count = 0\n    while queue:\n        node = queue.pop(0)\n        topo_count += 1\n        for neighbor in adj[node]:\n            in_degree[neighbor] -= 1\n            if in_degree[neighbor] == 0:\n                queue.append(neighbor)\n    \n    if topo_count != len(all_ids):\n        raise ValueError(\"Cycle detected in dependencies\")\n    \n    # Check units > capacity\n    for t in tasks:\n        if t[\"units\"] > capacity:\n            raise ValueError(f\"Task {t['id']} units {t['units']} exceeds capacity {capacity}\")\n    \n    # Simulation\n    # State tracking\n    completed = set()\n    started = set()\n    running = []  # list of (end_time, task_id, units)\n    current_time = 0\n    result_jobs = []\n    \n    # Precompute dependencies for quick check\n    deps_map = {t[\"id\"]: set(t[\"deps\"]) for t in tasks}\n    duration_map = {t[\"id\"]: t[\"duration\"] for t in tasks}\n    units_map = {t[\"id\"]: t[\"units\"] for t in tasks}\n    \n    remaining_tasks = set(all_ids)\n    \n    while remaining_tasks or running:\n        # Release completed tasks at current_time\n        new_running = []\n        for end_time, tid, units in running:\n            if end_time <= current_time:\n                completed.add(tid)\n                remaining_tasks.discard(tid)\n            else:\n                new_running.append((end_time, tid, units))\n        running = new_running\n        \n        # Calculate current resource usage\n        current_usage = sum(units for _, _, units in running)\n        \n        # Get available tasks: deps completed, not started, not running\n        available = []\n        for tid in remaining_tasks:\n            if tid in started:\n                continue\n            if deps_map[tid].issubset(completed):\n                available.append(tid)\n        \n        # Sort by id lexicographically\n        available.sort()\n        \n        # Try to start tasks\n        for tid in available:\n            u = units_map[tid]\n            if current_usage + u <= capacity:\n                # Start task\n                started.add(tid)\n                end_time = current_time + duration_map[tid]\n                running.append((end_time, tid, u))\n                current_usage += u\n                result_jobs.append({\"id\": tid, \"start\": current_time, \"end\": end_time})\n        \n        # If no tasks are running and no tasks can be started, but there are remaining tasks, something is wrong\n        # But we already checked for cycles, so this shouldn't happen unless there's a deadlock due to capacity\n        # Actually, if capacity is sufficient for at least one task, we should be able to make progress.\n        # If no tasks are running and no tasks can be started, it means all remaining tasks have unmet deps\n        # or units > capacity (already checked). Since we checked cycles, deps should eventually be met.\n        # But if no task is running and no task can start, we might be stuck.\n        # However, if there are remaining tasks and none are running, and none can start, it's a problem.\n        # Let's advance time to the next event if there are running tasks.\n        \n        if not running:\n            if remaining_tasks:\n                # This should not happen if inputs are valid (no cycles, units <= capacity)\n                # But just in case, break to avoid infinite loop\n                break\n            else:\n                break\n        \n        # Advance to the earliest end time among running tasks\n        earliest_end = min(end_time for end_time, _, _ in running)\n        current_time = earliest_end\n    \n    # Sort jobs by id\n    result_jobs.sort(key=lambda x: x[\"id\"])\n    \n    # Calculate makespan\n    makespan = max((job[\"end\"] for job in result_jobs), default=0)\n    \n    return {\"jobs\": result_jobs, \"makespan\": makespan}\n```",
+  "elapsed_s": 34.3425,
+  "human_corrections": 0,
+  "usage_complete": true,
+  "grade": {
+    "score": 100.0,
+    "pass": true,
+    "tests": [
+      {
+        "test": 1,
+        "pass": true,
+        "actual": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "expected": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 2,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 3,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 4,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 5,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 6,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 4
+            },
+            {
+              "id": "b",
+              "start": 4,
+              "end": 6
+            },
+            {
+              "id": "c",
+              "start": 0,
+              "end": 1
+            }
+          ],
+          "makespan": 6
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 4
+            },
+            {
+              "id": "b",
+              "start": 4,
+              "end": 6
+            },
+            {
+              "id": "c",
+              "start": 0,
+              "end": 1
+            }
+          ],
+          "makespan": 6
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 7,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "c",
+              "start": 2,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "c",
+              "start": 2,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 8,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 2,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 4
+            },
+            {
+              "id": "z",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 4
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 2,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 4
+            },
+            {
+              "id": "z",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 4
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 9,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 10,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 11,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 12,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 13,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      }
+    ]
+  },
+  "end_to_end_output_tps": 32.525
+}

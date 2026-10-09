@@ -1,6 +1,6 @@
 # llm_eval
 
-最新进行中：[本地 AI Max+395＋USB4 RX7900XTX 的 Strata 工作与容量评测](studies/2026-10-09-strata-usb4-7900xtx/README.md)。已完成同日基线和IQ2；IQ4出现native推理/驱动故障，原始失败保留，尚未完成的测试明确列出。
+最新进行中：[本地 AI Max+395＋USB4 RX7900XTX 的 Strata 工作与容量评测](studies/2026-10-09-strata-usb4-7900xtx/README.md)。已完成同日基线、IQ2，以及经现场重启后续完的IQ4主测；原推理/驱动故障保留。IQ4容量和Q4XL仍在串行测试，未完成项明确列出。
 
 可公开复跑的工作能力评测：为什么测 → 怎么测 → 测试结果。
 
