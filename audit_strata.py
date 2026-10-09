@@ -22,7 +22,7 @@ for p in freeze['profiles']:
         if p!='halogen-w4b':
             native=S/'capacity-status'/f'{p}-32768-262144.json'
             if not native.exists():findings.append(p+': capacity native not closed')
-            elif not load(native).get('stopped') and not (S/'capacity-status'/f'{p}-524288-524288.json').exists():findings.append(p+': extension not closed after operational native completion')
+            elif not load(native).get('stopped') and not (S/'capacity-status'/f'{p}-524288-524288-slack8.json').exists():findings.append(p+': corrected extension not closed after operational native completion')
     elif deployment[p]['status']!='deployment_failed':findings.append(p+': deployment pending')
     counts[p]=c
 for group,pattern in [('results','*/*/result.json'),('preflight','*/*/result.json'),('thinking-complex','*/*/result.json'),('overthinking-native','*/*.json'),('speed-probes','*/*.json'),('preflight-probes','*/*.json'),('capacity','*/*.json')]:
@@ -35,7 +35,8 @@ for group,pattern in [('results','*/*/result.json'),('preflight','*/*/result.jso
             fixture=load(S/'capacity-fixtures'/f"{d['context_target']}.json")
             sha=hashlib.sha256((S/'capacity-fixtures'/f"{d['context_target']}.json").read_bytes()).hexdigest()
             if d['fixture_sha256']!=sha:findings.append('capacity SHA mismatch: '+str(f.relative_to(S)))
-            resources=S/'resources'/d['profile']/f"{d['context_target']}-{d['kind']}.jsonl"
+            suffix='-slack8' if d.get('capacity_validation_correction') else ''
+            resources=S/'resources'/d['profile']/f"{d['context_target']}-{d['kind']}{suffix}.jsonl"
             if not resources.exists():findings.append('missing resources: '+str(resources.relative_to(S)))
             else:
                 samples=[json.loads(l) for l in resources.read_text().splitlines() if l.strip()]
@@ -45,6 +46,7 @@ else:
     restored=load(S/'restored-service.json')
     if not restored.get('original_unit_unchanged') or not restored.get('short_task',{}).get('grade',{}).get('pass'):findings.append('restoration verification failed')
 if summary['status']!='main_complete':findings.append('summary not complete')
-out={'status':'complete' if not findings else 'incomplete','integrity_findings':findings,'counts':counts,'known_total_tokens_all_recorded':sum(r['known_total_tokens'] or 0 for r in usage_rows),'unknown_usage_recordings':sum(not r['usage_complete'] for r in usage_rows),'recorded_api_attempts':len(usage_rows),'token_ledger':usage_rows,'boundaries':'All archived preflights, main/control and capacity attempts counted separately. Restoration short task is separate from benchmark. An operationally completed capacity ladder may contain acceptance failures.'}
+transport=load(S/'diagnostics/transport-failure-001/incident.json')
+out={'status':'complete' if not findings else 'incomplete','integrity_findings':findings,'counts':counts,'known_total_tokens_all_recorded':sum(r['known_total_tokens'] or 0 for r in usage_rows),'unknown_usage_recordings':sum(not r['usage_complete'] for r in usage_rows),'recorded_model_test_recordings':len(usage_rows),'unsent_transport_recordings_separately_preserved':len(transport['records']),'token_ledger':usage_rows,'boundaries':'Task sessions may contain multiple HTTP calls; this counts archived recordings, not HTTP requests. All preflight, main/control and capacity recordings are separate. Restoration short task is separate from benchmark. An operationally completed capacity ladder may contain acceptance failures. Client connection-refused attempts proven unseen by the server are preserved as transport diagnostics and excluded from model scores.'}
 (S/'audit.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 print(json.dumps({k:v for k,v in out.items() if k!='token_ledger'},ensure_ascii=False,indent=2))
