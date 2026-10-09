@@ -1,0 +1,60 @@
+Strata - Qwen3.8-Flash-Next on a normal PC (a GPU + system RAM + CPU)
+
+=== Step 1: checking your PC ===
+  Your AMD GPUs:
+    GPU 0: AMD Radeon 8060S (Ryzen AI Max, Strix Halo, gfx1151), unified memory: 0.5 GB BIOS carve-out + 62 GB shared with the RAM, 63 GB usable by the GPU - can be used
+    GPU 1: AMD Radeon RX 7900 series (gfx1100), 24 GB VRAM - can be used
+  [ok] GPU: AMD Radeon RX 7900 series (gfx1100), 24.0 GB VRAM, gfx1100 (AMD: docs/AMD_HIP.md)
+  [ok] RAM: 125 GB
+  [ok] CPU: AMD RYZEN AI MAX+ 395 w/ Radeon 8060S (AVX-512)
+
+=== Step 2: your choices ===
+  [ok] model: Qwen3.8-Flash-Next (Unsloth)
+
+  1) UD-IQ4_XS ~4-bit i-quant (Unsloth Dynamic), between IQ3_S and UD-Q4_K_XL in quality; on a PC with less than ~80 GB of RAM part of its experts are read from the SSD; download 94 GB, keeps ~55 GB of its 60 GB of experts in RAM
+  2) UD-Q4_K_XL 4-bit (Unsloth Dynamic), EXPERIMENTAL: the best quality, but most experts come from the SSD on a 64 GB PC (7-8.5 tokens/s measured); download 111 GB, keeps ~71 GB of its 77 GB of experts in RAM
+  [ok] RAM budget: 55 GiB of UD-IQ4_XS's experts in RAM, the rest read from the model files on the SSD
+  [ok] size: UD-IQ4_XS
+  [ok] context: 262144 tokens
+  [ok] KV cache: 8-bit
+  [ok] images: off
+
+=== Step 3: Python packages ===
+  [ok] numpy, jinja2, regex, pyyaml, tqdm, requests, cmake, ninja, pillow, psutil already installed
+
+=== Step 4: the Strata engine ===
+  [ok] llama.cpp 3cf0325 (gguf-py, ggml, mtmd)
+  [ok] engine already built for this PC
+  [ok] engine: /srv/ai/services/strata-eval-20261009/source/engine/strata
+
+=== Step 5: downloading Qwen3.8-Flash-Next (Unsloth) UD-IQ4_XS ===
+  checking Qwen3.8-Flash-Next-UD-IQ4_XS-00001-of-00003.gguf (SHA-256, 0.0 GB) ...
+  checking Qwen3.8-Flash-Next-UD-IQ4_XS-00002-of-00003.gguf (SHA-256, 49.8 GB) ...
+  checking Qwen3.8-Flash-Next-UD-IQ4_XS-00003-of-00003.gguf (SHA-256, 43.8 GB) ...
+  [ok] model files present
+
+=== Step 6: preparing the model for Strata ===
+  > /srv/ai/services/strata-eval-20261009/source/.venv/bin/python /srv/ai/services/strata-eval-20261009/source/tools/iq_pack.py --gguf /srv/ai/models/llm/strata-qwen38-20261009/models/strata-iq4/Qwen3.8-Flash-Next-UD-IQ4_XS-00001-of-00003.gguf --out /srv/ai/models/llm/strata-qwen38-20261009/packs/unsloth-ud-iq4_xs --compat-bf16
+tokenizer/: vocab 248320, merges 247587, pre qwen35, specials {'tokenizer.ggml.eos_token_id': 248046, 'tokenizer.ggml.padding_token_id': 248044, 'tokenizer.ggml.bos_token_id': 248044}
+model shards: Qwen3.8-Flash-Next-UD-IQ4_XS-00001-of-00003.gguf, Qwen3.8-Flash-Next-UD-IQ4_XS-00002-of-00003.gguf, Qwen3.8-Flash-Next-UD-IQ4_XS-00003-of-00003.gguf
+1 layer(s) have their gate/up/down in different shards: native_experts.txt v4, per-role shard column for 14
+index.txt: 1079 tensors, 303 served natively, 0 in extra.bin, arena 1.38 GiB
+conversions.json: 460 tensors converted to the engine's form (264 exact, 196 rounded; max |err| 0.0144)
+narrowed to F16 by the loader: blk.1.ple_conv1d.weight (f32->f16 by the loader (index kind 3, round-to-nearest-even), index kind 3)
+compat-bf16: 195 tensors, 1.20 GiB; expert and PLE table bytes unchanged
+  [ok] model prepared: /srv/ai/models/llm/strata-qwen38-20261009/packs/unsloth-ud-iq4_xs
+  [ok] MTP draft layer: /srv/ai/models/llm/strata-qwen38-20261009/mtp/rt
+
+=== Step 7: writing the start script ===
+  [ok] KV streaming on: the context's KV cache lives in RAM (3.6 GB), more experts fit in VRAM
+  [ok] RAM budget: 55 GiB (less the KV cache's RAM)
+  [ok] hipBLASLt tuning table: gfx1100-hipblaslt-100202.txt (faster prompts)
+  [ok] parallel requests: one at a time (--parallel 1)
+  tip: with 125 GB of RAM, --prefill auto:32768 in the config's args read prompts 21-35% faster in community benchmarks (#433 #440 #834); not set, nothing changes
+  tip: for several agents or clients at once, --conversation-cache-mib 8192 in the config's args keeps each one's conversation; without it they were measured re-reading ~90% of their prompts (#882 #440; docs/DETAILS.md, Multiple conversations)
+  [ok] start script: run-unsloth-ud-iq4_xs.sh
+
+All set.
+  API (OpenAI):     http://127.0.0.1:8734/v1   (any API key; model name: anything)
+  API (Anthropic):  http://127.0.0.1:8734/v1/messages
+  Next time:        just run ./setup.sh (or run-unsloth-ud-iq4_xs.sh) - it starts right away

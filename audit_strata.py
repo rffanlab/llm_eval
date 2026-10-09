@@ -23,7 +23,7 @@ for p in freeze['profiles']:
             native=S/'capacity-status'/f'{p}-32768-262144.json'
             if not native.exists():findings.append(p+': capacity native not closed')
             elif not load(native).get('stopped') and not (S/'capacity-status'/f'{p}-524288-524288-slack8.json').exists():findings.append(p+': corrected extension not closed after operational native completion')
-    elif deployment[p]['status']!='deployment_failed':findings.append(p+': deployment pending')
+    elif deployment[p]['status']!='deployment_failed':findings.append(p+': deployment '+deployment[p]['status'])
     counts[p]=c
 for group,pattern in [('results','*/*/result.json'),('preflight','*/*/result.json'),('thinking-complex','*/*/result.json'),('overthinking-native','*/*.json'),('speed-probes','*/*.json'),('preflight-probes','*/*.json'),('capacity','*/*.json')]:
     for f in sorted((S/group).glob(pattern)):
@@ -31,6 +31,9 @@ for group,pattern in [('results','*/*/result.json'),('preflight','*/*/result.jso
         complete=d.get('usage_complete',not bool(d.get('error')))
         known=u.get('total_tokens') if isinstance(u.get('total_tokens'),int) else None
         usage_rows.append({'file':str(f.relative_to(S)).replace('\\','/'),'group':group,'known_total_tokens':known,'usage_complete':complete and known is not None})
+        if str(f.relative_to(S)).replace('\\','/')=='capacity/strata-iq2/524288-retrieval.json' and d.get('http_status')==400:
+            usage_rows[-1]['known_no_model_inference']=True
+            usage_rows[-1]['no_inference_evidence']='Initial CTX_SLACK=8 request validation rejection, separately retained and documented in capacity-reserve-correction.md. No model generation began.'
         if group=='capacity' and not d.get('error'):
             fixture=load(S/'capacity-fixtures'/f"{d['context_target']}.json")
             sha=hashlib.sha256((S/'capacity-fixtures'/f"{d['context_target']}.json").read_bytes()).hexdigest()
@@ -56,5 +59,7 @@ else:
 if summary['status']!='main_complete':findings.append('summary not complete')
 transport=load(S/'diagnostics/transport-failure-001/incident.json')
 out={'status':'complete' if not findings else 'incomplete','integrity_findings':findings,'counts':counts,'known_total_tokens_all_recorded':sum(r['known_total_tokens'] or 0 for r in usage_rows),'unknown_usage_recordings':sum(not r['usage_complete'] for r in usage_rows),'recorded_model_test_recordings':len(usage_rows),'unsent_transport_recordings_separately_preserved':len(transport['records']),'token_ledger':usage_rows,'capacity_observations':capacity_observations,'boundaries':'Task sessions may contain multiple HTTP calls; this counts archived recordings, not HTTP requests. All preflight, main/control and capacity recordings are separate. Restoration short task is separate from benchmark. An operationally completed capacity ladder may contain acceptance failures. Client connection-refused attempts proven unseen by the server are preserved as transport diagnostics and excluded from model scores.'}
+out['known_no_inference_rejections']=sum(bool(r.get('known_no_model_inference')) for r in usage_rows)
+out['unknown_inference_usage_recordings']=sum(not r['usage_complete'] and not r.get('known_no_model_inference') for r in usage_rows)
 (S/'audit.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 print(json.dumps({k:v for k,v in out.items() if k not in ['token_ledger','capacity_observations']},ensure_ascii=False,indent=2))
