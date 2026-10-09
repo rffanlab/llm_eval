@@ -1,5 +1,5 @@
 """One capacity request per invocation; preserve first attempt including failure."""
-import argparse,datetime,hashlib,json,os,time,urllib.request
+import argparse,datetime,hashlib,json,os,time,urllib.request,urllib.error
 from pathlib import Path
 p=argparse.ArgumentParser()
 p.add_argument('--study',type=Path,required=True);p.add_argument('--profile',required=True)
@@ -8,6 +8,9 @@ p.add_argument('--kind',choices=['retrieval','probe'],required=True)
 a=p.parse_args()
 fixture=a.study/'capacity-fixtures'/f'{a.context}.json'
 raw=fixture.read_bytes();case=json.loads(raw)
+snapshot=json.loads((a.study/'environment'/f'{a.profile}.json').read_text(encoding='utf-8'))
+tokenizer=snapshot['identity']['tokenizer_sha256']
+assert all(tokenizer.get(k)==v for k,v in case['tokenizer_files_sha256'].items()),'freeze matching tokenizer fixtures before any capacity request'
 f=a.study/'capacity'/a.profile/f'{a.context}-{a.kind}.json'
 if f.exists():raise SystemExit('never overwrite or auto retry')
 messages=case['messages' if a.kind=='retrieval' else 'probe_messages']
@@ -20,6 +23,7 @@ try:
     r['response']=data
     text=data['choices'][0]['message'].get('content') or ''
     r['input_count_matches']=data.get('usage',{}).get('prompt_tokens')==r['expected_prompt_tokens']
+    if not r['input_count_matches']:r['invalid_measurement']='API prompt token count differs from frozen tokenizer count'
     if a.kind=='retrieval':
         try:parsed=json.loads(text)
         except Exception:parsed=None
@@ -32,7 +36,9 @@ try:
         r['pass']=r['input_count_matches'] and r['strict_format_pass'] and all(r['semantic_checks'].values())
     else:
         r['pass']=r['input_count_matches'] and data.get('usage',{}).get('completion_tokens')==512 and data.get('timings',{}).get('predicted_n')==512
-except Exception as e:r.update(error=type(e).__name__,**{'pass':False})
+except Exception as e:
+    r.update(error=type(e).__name__,**{'pass':False})
+    if isinstance(e,urllib.error.HTTPError):r['http_status']=e.code
 r['elapsed_s']=time.monotonic()-start
 f.parent.mkdir(parents=True,exist_ok=True);f.write_text(json.dumps(r,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 print(json.dumps({k:r[k] for k in ['profile','context_target','kind','pass','elapsed_s']},ensure_ascii=False),flush=True)

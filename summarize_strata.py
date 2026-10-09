@@ -24,6 +24,7 @@ for profile in profiles:
                     ok=a['acceptance_pass']
             accepted.append(ok)
             review=next((r for r in reviews if (r['profile'],r['task'])==(profile,task['id'])),None)
+            if review:assert review['answer_sha256']==hashlib.sha256((f.parent/'answer.txt').read_bytes()).hexdigest(),'editor review must bind exact full reply'
             usable.append(ok and (task['domain']!='writing' or bool(review and review['scores']['total']>=16)))
             timely.append(usable[-1] and d['elapsed_s']<=limit)
         rows.append({'profile':profile,'task':task['id'],'domain':task['domain'],'n':len(ds),'raw_passes':sum(d['grade']['pass'] for d in ds),'accepted_passes':sum(accepted),'complete_deliverables':sum(usable),'latency_limit_s':limit,'timely_complete_deliverables':sum(timely),'elapsed_s':[d['elapsed_s'] for d in ds],'median_elapsed_s':statistics.median(d['elapsed_s'] for d in ds),'median_total_tokens':statistics.median(d['usage']['total_tokens'] for d in ds) if all(d['usage_complete'] for d in ds) else None,'known_total_tokens':sum(d['usage']['total_tokens'] for d in ds),'unknown_usage_sessions':sum(not d['usage_complete'] for d in ds),'answers':[str(f.parent.relative_to(S)) for f in files]})
@@ -31,6 +32,7 @@ for profile in profiles:
     probes=[load(f) for f in sorted((S/'speed-probes'/profile).glob('*.json'))]
     valid=[d for d in probes if d.get('response',{}).get('usage',{}).get('completion_tokens')==512 and d.get('response',{}).get('timings',{}).get('predicted_n')==512]
     totals[profile]={'deployment':deploy.get(profile,{'status':'pending'}),'main_sessions':sum(r['n'] for r in pr),'raw_passes':sum(r['raw_passes'] for r in pr) if pr else None,'accepted_passes':sum(r['accepted_passes'] for r in pr) if pr else None,'complete_deliverables':sum(r['complete_deliverables'] for r in pr) if pr else None,'known_main_tokens':sum(r['known_total_tokens'] for r in pr),'known_main_elapsed_s':sum(sum(r['elapsed_s']) for r in pr),'unknown_usage_sessions':sum(r['unknown_usage_sessions'] for r in pr),'speed_probe_n':len(probes),'valid_512_n':len(valid),'median_decode_tps':statistics.median(d['response']['timings']['predicted_per_second'] for d in valid) if valid else None}
+    totals[profile]['timely_complete_deliverables']=sum(r['timely_complete_deliverables'] for r in pr) if pr else None
     for task in ['O01','O02','O03']:
         modes={}
         for mode in ['on','off']:
