@@ -14,7 +14,8 @@ for profile in profiles:
         files=sorted((S/'results'/profile).glob(task['id']+'-local-r*/result.json'))
         ds=[load(f) for f in files]
         if not ds:continue
-        accepted=[];usable=[]
+        accepted=[];usable=[];timely=[]
+        limit=60 if task['id'] in ['D01','C01','W01','C02','A01'] else 240
         for f,d in zip(files,ds):
             ok=d['grade']['pass']
             for a in adjud:
@@ -24,7 +25,8 @@ for profile in profiles:
             accepted.append(ok)
             review=next((r for r in reviews if (r['profile'],r['task'])==(profile,task['id'])),None)
             usable.append(ok and (task['domain']!='writing' or bool(review and review['scores']['total']>=16)))
-        rows.append({'profile':profile,'task':task['id'],'domain':task['domain'],'n':len(ds),'raw_passes':sum(d['grade']['pass'] for d in ds),'accepted_passes':sum(accepted),'complete_deliverables':sum(usable),'elapsed_s':[d['elapsed_s'] for d in ds],'median_elapsed_s':statistics.median(d['elapsed_s'] for d in ds),'median_total_tokens':statistics.median(d['usage']['total_tokens'] for d in ds) if all(d['usage_complete'] for d in ds) else None,'known_total_tokens':sum(d['usage']['total_tokens'] for d in ds),'unknown_usage_sessions':sum(not d['usage_complete'] for d in ds),'answers':[str(f.parent.relative_to(S)) for f in files]})
+            timely.append(usable[-1] and d['elapsed_s']<=limit)
+        rows.append({'profile':profile,'task':task['id'],'domain':task['domain'],'n':len(ds),'raw_passes':sum(d['grade']['pass'] for d in ds),'accepted_passes':sum(accepted),'complete_deliverables':sum(usable),'latency_limit_s':limit,'timely_complete_deliverables':sum(timely),'elapsed_s':[d['elapsed_s'] for d in ds],'median_elapsed_s':statistics.median(d['elapsed_s'] for d in ds),'median_total_tokens':statistics.median(d['usage']['total_tokens'] for d in ds) if all(d['usage_complete'] for d in ds) else None,'known_total_tokens':sum(d['usage']['total_tokens'] for d in ds),'unknown_usage_sessions':sum(not d['usage_complete'] for d in ds),'answers':[str(f.parent.relative_to(S)) for f in files]})
     pr=[r for r in rows if r['profile']==profile]
     probes=[load(f) for f in sorted((S/'speed-probes'/profile).glob('*.json'))]
     valid=[d for d in probes if d.get('response',{}).get('usage',{}).get('completion_tokens')==512 and d.get('response',{}).get('timings',{}).get('predicted_n')==512]
