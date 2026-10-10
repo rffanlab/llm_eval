@@ -63,6 +63,7 @@ def main():
     p.add_argument('--thinking',choices=['on','off'],default='on')
     p.add_argument('--reasoning-effort',choices=['medium'],help='explicit matched effort; off requests use none')
     p.add_argument('--preserve-thinking',choices=['on','off'],help='explicit template reasoning-history policy for a registered comparison')
+    p.add_argument('--presence-penalty',type=float,help='explicit matched penalty; absent preserves historical request behavior')
     p.add_argument('--output',type=Path,default=ROOT/'studies/2026-10-07-local-vs-cloud/results')
     a=p.parse_args()
     raw=a.suite.read_bytes();suite=json.loads(raw)
@@ -89,6 +90,7 @@ def main():
     if a.profile:record['profile']=a.profile
     if a.reasoning_effort:record['parameters']['reasoning_effort']=a.reasoning_effort if thinking else 'none'
     if a.preserve_thinking:record['parameters']['chat_template_kwargs']={'enable_thinking':thinking,'reasoning_effort':a.reasoning_effort if thinking else 'none','preserve_thinking':a.preserve_thinking=='on'}
+    if a.presence_penalty is not None:record['parameters']['presence_penalty']=a.presence_penalty
     if a.diagnostic=='total-budget-8192' and a.provider=='official':
         record['parameters']['max_completion_tokens']=record['parameters'].pop('max_tokens')
     if a.diagnostic:record['diagnostic']=a.diagnostic
@@ -102,6 +104,7 @@ def main():
             payload={'model':model,'messages':messages,'temperature':0,'enable_thinking':thinking,'max_tokens':remaining,'stream':False}
             if a.reasoning_effort:payload['reasoning_effort']=a.reasoning_effort if thinking else 'none'
             if a.preserve_thinking:payload['chat_template_kwargs']=record['parameters']['chat_template_kwargs']
+            if a.presence_penalty is not None:payload['presence_penalty']=a.presence_penalty
             if a.diagnostic=='total-budget-8192' and a.provider=='official':payload['max_completion_tokens']=payload.pop('max_tokens')
             if sim:payload.update(tools=schemas(a.task),tool_choice='auto',parallel_tool_calls=False)
             req=urllib.request.Request(base.rstrip('/')+'/chat/completions',data=json.dumps(payload,ensure_ascii=False).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+key})

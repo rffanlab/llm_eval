@@ -8,7 +8,7 @@
 
 同一Ryzen AI Max+395 / 128GB / 内置Radeon8060S gfx1151 / Ubuntu24.04.5 / ROCm7.2.1。Gufo0.11.0提交2a3b09e187208c3895eee7391ca0a6a3179a2efc；源码按官方release配置编译，主机GCC13及ROCm7.2.1与上游合格工具链GCC15.3/ROCm7.2.3不同，实际环境单列。对照现有Halogen0.9.1 HGN W4B+overlay，不称新版本Halogen。本期Gufo为Unsloth UD-Q4_K_XL四分片，HF revision38bb39ee97821de2c9009abb7e93950eec396e66、总111334654784字节，MTP使用官方shared-Q8_0辅助权重2786568256字节；每个文件加载前完整SHA核验。源码build目录独立，权重复用原模型盘，不复制主模型，不更改驱动。
 
-十类冻结合成工作题，与此前题面逐字一致。每部署16主会话，C03/A02/E01各3次，其余1次。温度0、medium思考，总输出预算包含思考，Agent最多6轮共享预算，不修JSON、不改答案、不覆盖失败。两端显式preserve_thinking=false，保留其他工具事实与消息，避免两框架默认历史策略不同；语义预检单列不计分。未运行真实生产Agent或大型仓库修复。
+十类冻结合成工作题，与此前题面逐字一致。每部署16主会话，C03/A02/E01各3次，其余1次。温度0、存在惩罚0、medium思考，总输出预算包含思考，Agent最多6轮共享预算，不修JSON、不改答案、不覆盖失败。两端显式preserve_thinking=false，保留其他工具事实与消息，避免两框架默认历史策略不同；语义预检单列不计分。未运行真实生产Agent或大型仓库修复。
 
 验收：数据与来源精确；代码所有独立功能测试通过；Agent动作/权限正确且最后严格JSON；写作硬规则与代理编辑四维0—5，总分至少16/20。代理审读非本人验收、不叫盲审。D01/C01/W01/C02/A01等待限60秒，其余240秒。逐题报告输入、思考、正文、总token与请求/会话等待，未知usage不补零。费用不测不编。时间不含模型加载、准备、核验、停机恢复及编辑复核。
 
@@ -31,3 +31,7 @@
 - https://github.com/gufo-org/gufo/tree/2a3b09e187208c3895eee7391ca0a6a3179a2efc
 - https://github.com/gufo-org/gufo/blob/2a3b09e187208c3895eee7391ca0a6a3179a2efc/docs/models/qwen3.8-flash-next/README.md
 - https://github.com/pixmaate/gufo
+
+## 运行前语义核查补充
+
+尚未请求任何预检或计分推理时，核查到Gufo关闭思考的原生preset存在惩罚1.5，现两端逐条显式设为0；初始freeze保留为freeze-v1-before-semantic-audit.json。Gufo Chat未提供可靠reasoning_tokens细分，思考字符与总输出另列，思考token未知不能填0，不满足数据条件时严格过度思考标签为未知。Gufo RAM快照缓存事前固定1GiB、1会话，未启用磁盘快照；Halogen保留原110MB缓存，属于整套部署体验而非单因素缓存控制。

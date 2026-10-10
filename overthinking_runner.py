@@ -13,7 +13,7 @@ import time
 import urllib.request
 
 
-def run(study, profile, task, mode, round_, suite_name='overthinking-tasks.json', collection='overthinking', reasoning_effort=None, preserve_thinking=None):
+def run(study, profile, task, mode, round_, suite_name='overthinking-tasks.json', collection='overthinking', reasoning_effort=None, preserve_thinking=None, presence_penalty=None):
     study = Path(study)
     raw = (study / suite_name).read_bytes()
     suite = json.loads(raw)
@@ -29,6 +29,7 @@ def run(study, profile, task, mode, round_, suite_name='overthinking-tasks.json'
                'max_tokens': suite['max_tokens'], 'stream': False}
     if reasoning_effort:payload['reasoning_effort']=reasoning_effort if mode=='on' else 'none'
     if preserve_thinking is not None:payload['chat_template_kwargs']={'enable_thinking':mode=='on','reasoning_effort':reasoning_effort if mode=='on' else 'none','preserve_thinking':preserve_thinking}
+    if presence_penalty is not None:payload['presence_penalty']=presence_penalty
     record = {'profile': profile, 'task': task, 'thinking': mode, 'round': round_,
               'fixture_sha256': hashlib.sha256(raw).hexdigest(),
               'started_at': datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).isoformat(),
