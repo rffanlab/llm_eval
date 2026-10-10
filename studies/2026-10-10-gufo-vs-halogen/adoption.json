@@ -1,0 +1,75 @@
+{
+  "status": "promoted",
+  "decision": "Use Gufo on the local AI Max+395 after all registered deployment gates and actual consumer checks passed",
+  "measurement_gates": {
+    "quality_gain": true,
+    "no_accepted_case_regression": true,
+    "all_code_and_agent": true,
+    "writing_mean": true,
+    "decode_at_least90percent": true,
+    "wait_sum_at_most120percent": true,
+    "repeated_wait_at_most125percent": true,
+    "all_native_capacity_pairs": true,
+    "candidate_absolute_wait_limits": true
+  },
+  "matched_runtime_gate": true,
+  "consumer_preview_gate": true,
+  "actual_gateway_final_r2_gate": true,
+  "actual_gateway_A01_A02_tools_gate": true,
+  "service_state": {
+    "state": "promoted-and-final-gateway-verified",
+    "kernel_default": "7.0.0-31-generic; existing99-ai-brain-kernel.cfg unchanged",
+    "ttm_pages_limit": 30408704,
+    "backend": "Gufo0.11.0 UD-Q4_K_XL + shared-Q8_0 MTP + BF16 vision projector",
+    "router_dependency": [
+      "tmp.mount",
+      "ai-llm-gufo.service",
+      "network-online.target"
+    ],
+    "router_original_fragment_sha256": "e8f1580475cad3b655930bd24a30924b4b9566baa0ed39441f0d6016794f97eb",
+    "router_new_fragment_sha256": "a3693d81582341059e666825e6f363dde1a04c30e5b6a538d572fa26c7d50139",
+    "router_original_backup_retained": true,
+    "halogen_unit_unchanged": true,
+    "halogen_enabled": false,
+    "gufo_enabled": true,
+    "same_client_endpoint_key_model_aliases": true,
+    "main_and_mtp_weights_unchanged": "text benchmark identity preserved; vision projector and16384 default output cap added for consumer compatibility",
+    "rollback": "sudo python3 /srv/ai/services/gufo-eval-20261010/service-transition.py rollback",
+    "transition_report_state": "promoted-pending-final-gateway-check",
+    "final_gateway_verified": true
+  },
+  "final_single_model_snapshot": {
+    "profile": "gufo-q4xl-mtp-gtt116-vision",
+    "processes": [
+      {
+        "pid": 43347,
+        "executable": "gufo",
+        "own_gufo": true
+      }
+    ],
+    "MemAvailable_bytes": 32652759040,
+    "gpu": [
+      {
+        "card": "card1",
+        "pci": "0000:c5:00.0",
+        "device_id": "0x1586",
+        "VRAM": 374829056,
+        "GTT": 97743560704
+      }
+    ],
+    "health": {
+      "status": "ready",
+      "model": "Qwen/Qwen3.8-Flash-Next"
+    },
+    "observed_at_epoch": 1791641725.5653603,
+    "boot_id": "dbbfa9b8-7b7f-426a-92b7-8900f1612b6c"
+  },
+  "qualification": "Corrected116GiB GTT environment; initial loading failure retained. Text measurements use no vision projector; current consumer deployment adds verified BF16 projector and16384 default output budget. No all-day stability claim.",
+  "integration_failure_retained": {
+    "source": "compatibility/consumer-final.json and compatibility/service-tools-final/",
+    "cause": "Dependency lists in systemd drop-ins are additive; clearing Wants/After did not remove old Halogen dependency. Promotion assertion stopped before router restart, old backend unavailable. Entire router fragment then corrected with original backup retained; final-r2 separately passed. This is gateway integration, not a main benchmark answer retry.",
+    "primary_source": "https://github.com/systemd/systemd/blob/main/man/systemd.unit.xml"
+  },
+  "rollback": "sudo python3 /srv/ai/services/gufo-eval-20261010/service-transition.py rollback",
+  "rollback_effect": "Stop Gufo, confirm allocation release, restore original router fragment/drop-in and Halogen enablement; leave approved116GiB TTM setting until explicit boot rollback."
+}

@@ -1,6 +1,8 @@
 # llm_eval
 
-最新进行中：[本地 AI Max+395＋USB4 RX7900XTX 的 Strata 工作与容量评测](studies/2026-10-09-strata-usb4-7900xtx/README.md)。已完成同日基线、IQ2，以及经现场重启后续完的IQ4主测；原推理/驱动故障保留。IQ4容量和Q4XL仍在串行测试，未完成项明确列出。
+最新已完成：[本地 AI Max+395：Gufo Q4_K_XL与Halogen工作、token及容量对照](studies/2026-10-10-gufo-vs-halogen/README.md)。同一重启环境的主测合格交付15/16对14/16，原始加载与接入失败保留；达到事前门槛后，现有服务切到Gufo并保留回滚。
+
+上一期：[本地 AI Max+395＋USB4 RX7900XTX 的 Strata 工作与容量评测](studies/2026-10-09-strata-usb4-7900xtx/README.md)。
 
 可公开复跑的工作能力评测：为什么测 → 怎么测 → 测试结果。
 

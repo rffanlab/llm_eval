@@ -1,0 +1,110 @@
+{
+  "frozen_at": "2026-10-10T21:14:49.138798+08:00",
+  "compatibility_inference_recordings_before_freeze": 0,
+  "scope": "Existing gateway contract, distinct from accuracy/timing benchmark. Main Agent suite already covers tool calls. Existing vision requires separate projector verification before a full-service promotion.",
+  "cases": [
+    {
+      "id": "models",
+      "method": "GET",
+      "path": "/v1/models"
+    },
+    {
+      "id": "invalid-auth",
+      "method": "GET",
+      "path": "/v1/models",
+      "auth": "invalid"
+    },
+    {
+      "id": "stream",
+      "method": "POST",
+      "path": "/v1/chat/completions",
+      "payload": {
+        "model": "Qwen/Qwen3.8-Flash-Next",
+        "messages": [
+          {
+            "role": "user",
+            "content": "只输出OK，不加其它字符。"
+          }
+        ],
+        "temperature": 0,
+        "reasoning_effort": "none",
+        "presence_penalty": 0,
+        "chat_template_kwargs": {
+          "enable_thinking": false,
+          "preserve_thinking": false,
+          "reasoning_effort": "none"
+        },
+        "max_tokens": 32,
+        "stream": true,
+        "stream_options": {
+          "include_usage": true
+        }
+      }
+    },
+    {
+      "id": "schema",
+      "method": "POST",
+      "path": "/v1/chat/completions",
+      "payload": {
+        "model": "Qwen/Qwen3.8-Flash-Next",
+        "messages": [
+          {
+            "role": "user",
+            "content": "仅输出JSON，字段code必须是整数7。"
+          }
+        ],
+        "temperature": 0,
+        "reasoning_effort": "none",
+        "presence_penalty": 0,
+        "chat_template_kwargs": {
+          "enable_thinking": false,
+          "preserve_thinking": false,
+          "reasoning_effort": "none"
+        },
+        "max_tokens": 32,
+        "stream": false,
+        "response_format": {
+          "type": "json_schema",
+          "json_schema": {
+            "name": "compat_code",
+            "strict": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "integer",
+                  "const": 7
+                }
+              },
+              "required": [
+                "code"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "responses",
+      "method": "POST",
+      "path": "/v1/responses",
+      "payload": {
+        "model": "Qwen/Qwen3.8-Flash-Next",
+        "input": "只输出OK，不加其它字符。",
+        "temperature": 0,
+        "reasoning": {
+          "effort": "none"
+        },
+        "max_output_tokens": 32
+      }
+    },
+    {
+      "id": "health-no-auth",
+      "method": "GET",
+      "path": "/health",
+      "auth": "none"
+    }
+  ],
+  "pre_check_amendment": "Before any compatibility request, include unauthenticated health probe required by the existing gateway."
+}
