@@ -644,14 +644,14 @@ R480|service=svc-36|env=stage|status=active|owner=成员05|timeout_s=40|retry=0
 
 启动一个部署，确认其他推理引擎退出、加载前释放达标、请求前至少8GiB可用。只通过进程环境设置 LOCAL_BASE_URL（含/v1）、LOCAL_MODEL、LOCAL_API_KEY，不写入公开文件。run_one.py每次只执行一个已注册项，不自动重试或覆盖。
 
-`ash
+```bash
 python studies/2026-10-10-qwen27b-vs-next-flash/run_one.py next-flash-mtp main --task D01 --round 1
 python studies/2026-10-10-qwen27b-vs-next-flash/run_one.py 27b-dflash2 thinking --task O01 --round 1 --thinking off
 python studies/2026-10-10-qwen27b-vs-next-flash/run_one.py 27b-dflash2 probe --round 1
 python studies/2026-10-10-qwen27b-vs-next-flash/run_one.py 27b-dflash2 repetition --round 1
 python studies/2026-10-10-qwen27b-vs-next-flash/run_one.py 27b-dflash2 timing --fixture large --repeat new-prefix
 python studies/2026-10-10-qwen27b-vs-next-flash/run_one.py 27b-dflash2 capacity --context 32768 --capacity-kind retrieval
-`
+```
 
 主测顺序见freeze.json。O01/O02/O03开关各两次，代码固定512输出三次；重复数字固定512另三次。三档流式计时各测新前缀和准确重复，实际输入、prefill、cache、首字与完整等待分列。容量服务配置262144，三档相同消息，检索后512续写；同前缀不等于命中缓存。Gufo思考token缺失保持未知。27b-ar仅执行六条速度控制及C03/W03单次，不构成第三套完整题库结果。
 
