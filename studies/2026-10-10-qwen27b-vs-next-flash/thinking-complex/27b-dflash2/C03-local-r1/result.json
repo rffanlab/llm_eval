@@ -1,0 +1,427 @@
+{
+  "task": "C03",
+  "provider": "local",
+  "round": 1,
+  "model_requested": "Qwen/Qwen3.8-27B",
+  "fixture_sha256": "864716764b106dc678c06f80d80a08b77b2c5ad50da05ec7ab46fa76109f5df9",
+  "started_at": "2026-10-11T00:12:17.140449+08:00",
+  "parameters": {
+    "temperature": 0,
+    "enable_thinking": false,
+    "max_tokens": 8192,
+    "stream": false,
+    "reasoning_effort": "none",
+    "chat_template_kwargs": {
+      "enable_thinking": false,
+      "reasoning_effort": "none",
+      "preserve_thinking": false
+    },
+    "presence_penalty": 0.0
+  },
+  "turns": [
+    {
+      "index": 1,
+      "elapsed_s": 45.9461,
+      "returned_model": "Qwen/Qwen3.8-27B",
+      "content": "```python\ndef schedule(tasks, capacity):\n    if not isinstance(capacity, int) or capacity <= 0:\n        raise ValueError(\"capacity must be a positive integer\")\n    \n    # Validate tasks\n    task_map = {}\n    for t in tasks:\n        tid = t[\"id\"]\n        if not isinstance(tid, str):\n            raise ValueError(\"id must be a string\")\n        if tid in task_map:\n            raise ValueError(\"duplicate id\")\n        duration = t[\"duration\"]\n        units = t[\"units\"]\n        deps = t[\"deps\"]\n        if not isinstance(duration, int) or duration <= 0:\n            raise ValueError(\"duration must be a positive integer\")\n        if not isinstance(units, int) or units <= 0:\n            raise ValueError(\"units must be a positive integer\")\n        if units > capacity:\n            raise ValueError(\"units exceeds capacity\")\n        if not isinstance(deps, list):\n            raise ValueError(\"deps must be a list\")\n        for d in deps:\n            if not isinstance(d, str):\n                raise ValueError(\"dep must be a string\")\n        task_map[tid] = {\"id\": tid, \"duration\": duration, \"units\": units, \"deps\": deps}\n    \n    if not tasks:\n        return {\"jobs\": [], \"makespan\": 0}\n    \n    # Check for unknown dependencies\n    for tid, t in task_map.items():\n        for d in t[\"deps\"]:\n            if d not in task_map:\n                raise ValueError(f\"unknown dependency: {d}\")\n    \n    # Check for circular dependencies using topological sort (Kahn's algorithm)\n    in_degree = {tid: len(t[\"deps\"]) for tid, t in task_map.items()}\n    dependents = {tid: [] for tid in task_map}\n    for tid, t in task_map.items():\n        for d in t[\"deps\"]:\n            dependents[d].append(tid)\n    \n    queue = [tid for tid in sorted(task_map.keys()) if in_degree[tid] == 0]\n    topo_order = []\n    while queue:\n        # Process in sorted order for determinism\n        queue.sort()\n        node = queue.pop(0)\n        topo_order.append(node)\n        for dep in dependents[node]:\n            in_degree[dep] -= 1\n            if in_degree[dep] == 0:\n                queue.append(dep)\n    \n    if len(topo_order) != len(task_map):\n        raise ValueError(\"circular dependency detected\")\n    \n    # Simulation\n    # State:\n    # - completed: set of task ids that have finished\n    # - running: dict of tid -> (start_time, end_time, units)\n    # - started: set of task ids that have been started\n    # - current_time: int\n    \n    completed = set()\n    running = {}  # tid -> (start, end, units)\n    started = set()\n    current_time = 0\n    \n    # We need to track which tasks are ready (all deps completed) and not started\n    # At each event time:\n    # 1. Release all completed tasks (those with end <= current_time)\n    # 2. Scan all tasks in id lexicographic order: if deps all completed and not started, try to start\n    # 3. If no task can be started and there are running tasks, advance to earliest end time\n    # 4. If no running tasks and no tasks can be started, we're done (but this shouldn't happen if all tasks are scheduled)\n    \n    # Actually, let me re-read the spec:\n    # \"每个事件时刻先释放全部已完成任务，再从所有依赖完成且未启动的任务按id字典序扫描：资源够就立即启动，不够就跳过并继续扫描其他任务。全部扫描后，推进到最早运行任务结束。\"\n    \n    # So the algorithm is:\n    # - At each event time:\n    #   1. Release all tasks that have completed (end <= current_time)\n    #   2. Scan all tasks in id order: for each task that has all deps completed and is not started:\n    #      - If available resources >= units, start it (add to running, mark as started)\n    #      - Else skip\n    #   3. After scanning all tasks, if there are running tasks, advance to the earliest end time among running tasks\n    #   4. If no running tasks and all tasks are started/completed, we're done\n    \n    # Let me implement this:\n    \n    all_ids = sorted(task_map.keys())\n    \n    while True:\n        # Step 1: Release completed tasks\n        to_remove = []\n        for tid in running:\n            if running[tid][1] <= current_time:\n                to_remove.append(tid)\n        for tid in to_remove:\n            del running[tid]\n            completed.add(tid)\n        \n        # Check if all tasks are completed\n        if len(completed) == len(task_map):\n            break\n        \n        # Step 2: Scan tasks in id order, try to start\n        # Calculate current available resources\n        used = sum(running[tid][2] for tid in running)\n        available = capacity - used\n        \n        for tid in all_ids:\n            if tid in started:\n                continue\n            t = task_map[tid]\n            # Check if all deps are completed\n            if all(d in completed for d in t[\"deps\"]):\n                if t[\"units\"] <= available:\n                    # Start the task\n                    start_time = current_time\n                    end_time = start_time + t[\"duration\"]\n                    running[tid] = (start_time, end_time, t[\"units\"])\n                    started.add(tid)\n                    available -= t[\"units\"]\n        \n        # Step 3: If no running tasks, but there are still tasks to start, something is wrong\n        # (shouldn't happen if no circular deps and all deps are valid)\n        if not running:\n            # Check if there are tasks that can't be started due to unmet deps\n            # This would indicate a problem, but we already checked for circular deps\n            # Actually, if no running tasks and not all completed, it means some tasks have unmet deps\n            # but those deps are not completed and not running - this shouldn't happen\n            # Let's just break to avoid infinite loop\n            break\n        \n        # Step 4: Advance to earliest end time\n        min_end = min(running[tid][1] for tid in running)\n        current_time = min_end\n    \n    # Build result\n    jobs = []\n    makespan = 0\n    for tid in all_ids:\n        if tid in running:\n            start, end, _ = running[tid]\n        else:\n            # Task was completed, we need to find its start and end\n            # We didn't store completed task info, let me fix this\n            pass\n    \n    # I need to store the start and end times for all tasks. Let me redo this.\n    \n    # Let me restart with a cleaner implementation.\n    \n    # Actually, let me just rewrite the whole function properly.\n    \n    # I'll collect job info as we go.\n    \n    # Let me redo:\n    \n    completed = set()\n    running = {}  # tid -> (start, end, units)\n    started = set()\n    current_time = 0\n    job_info = {}  # tid -> (start, end)\n    \n    all_ids = sorted(task_map.keys())\n    \n    while True:\n        # Step 1: Release completed tasks\n        to_remove = []\n        for tid in running:\n            if running[tid][1] <= current_time:\n                to_remove.append(tid)\n        for tid in to_remove:\n            start, end, _ = running[tid]\n            job_info[tid] = (start, end)\n            del running[tid]\n            completed.add(tid)\n        \n        # Check if all tasks are completed\n        if len(completed) == len(task_map):\n            break\n        \n        # Step 2: Scan tasks in id order, try to start\n        used = sum(running[tid][2] for tid in running)\n        available = capacity - used\n        \n        for tid in all_ids:\n            if tid in started:\n                continue\n            t = task_map[tid]\n            if all(d in completed for d in t[\"deps\"]):\n                if t[\"units\"] <= available:\n                    start_time = current_time\n                    end_time = start_time + t[\"duration\"]\n                    running[tid] = (start_time, end_time, t[\"units\"])\n                    started.add(tid)\n                    available -= t[\"units\"]\n        \n        # Step 3: If no running tasks, break (shouldn't happen normally)\n        if not running:\n            break\n        \n        # Step 4: Advance to earliest end time\n        min_end = min(running[tid][1] for tid in running)\n        current_time = min_end\n    \n    # Any remaining running tasks should be added to job_info\n    for tid in running:\n        start, end, _ = running[tid]\n        job_info[tid] = (start, end)\n    \n    # Build result\n    jobs = []\n    makespan = 0\n    for tid in all_ids:\n        if tid in job_info:\n            start, end = job_info[tid]\n            jobs.append({\"id\": tid, \"start\": start, \"end\": end})\n            if end > makespan:\n                makespan = end\n    \n    return {\"jobs\": jobs, \"makespan\": makespan}\n```",
+      "reasoning_chars": 0,
+      "tool_calls": [],
+      "usage": {
+        "prompt_tokens": 231,
+        "completion_tokens": 2100,
+        "total_tokens": 2331,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "cached_tokens": 0,
+        "prompt_tokens_per_second": 321.7371869314366,
+        "completion_tokens_per_second": 46.50889705699594,
+        "draft_tokens": 2465,
+        "draft_tokens_accepted": 1700,
+        "gufo": {
+          "cache_hit": false,
+          "cache_miss_reason": "prefix_changed",
+          "cache_common_prefix_tokens": 3,
+          "cache_checkpoint_tokens": 94,
+          "cache_restore_bytes": 0,
+          "cache_snapshot_bytes": 368160860,
+          "cache_disk_queued_bytes": 0,
+          "cache_shared_bytes": 0,
+          "cache_restore_ms": 0,
+          "cache_snapshot_ms": 21.100749,
+          "cache_disk_enqueue_ms": 0,
+          "cache_disk_hit": false,
+          "cache_shared_prefix_snapshots": 0,
+          "cache_shared_prefix_bytes": 0,
+          "cache_shared_prefix_ms": 0,
+          "draft_rounds": 400,
+          "prefill_tokens": 231,
+          "prefill_chunks": 2,
+          "active_decode_prefill_chunks": 0,
+          "max_prefill_chunk_tokens": 224,
+          "queue_depth_at_submit": 1,
+          "client_queue_depth_at_submit": 1,
+          "resident_requests_at_admission": 1,
+          "requested_logical_concurrency": 1,
+          "physical_execution_width": 1,
+          "queue_ms": 0.837408,
+          "shared_prefix_wait_ms": 0,
+          "prefill_ms": 717.97731,
+          "decode_ms": 45152.651060000026,
+          "ttft_ms": 729.333468,
+          "mean_inter_token_ms": 21.517096680800517,
+          "max_inter_token_ms": 121.02646,
+          "execution_plan": "serial-c1"
+        }
+      },
+      "finish_reason": "stop",
+      "timings": {
+        "prompt_n": 231,
+        "prompt_ms": 717.97731,
+        "prompt_per_token_ms": 3.108126883116883,
+        "prompt_per_second": 321.7371869314366,
+        "predicted_n": 2100,
+        "predicted_ms": 45152.651060000026,
+        "predicted_per_token_ms": 21.50126240952382,
+        "predicted_per_second": 46.50889705699594,
+        "cache_n": 0,
+        "cache_restore_ms": 0,
+        "cache_snapshot_ms": 21.100749,
+        "cache_disk_enqueue_ms": 0,
+        "draft_rounds": 400,
+        "draft_n": 2465,
+        "draft_n_accepted": 1700
+      }
+    }
+  ],
+  "profile": "27b-dflash2",
+  "usage": {
+    "prompt_tokens": 231,
+    "completion_tokens": 2100,
+    "total_tokens": 2331
+  },
+  "content": "```python\ndef schedule(tasks, capacity):\n    if not isinstance(capacity, int) or capacity <= 0:\n        raise ValueError(\"capacity must be a positive integer\")\n    \n    # Validate tasks\n    task_map = {}\n    for t in tasks:\n        tid = t[\"id\"]\n        if not isinstance(tid, str):\n            raise ValueError(\"id must be a string\")\n        if tid in task_map:\n            raise ValueError(\"duplicate id\")\n        duration = t[\"duration\"]\n        units = t[\"units\"]\n        deps = t[\"deps\"]\n        if not isinstance(duration, int) or duration <= 0:\n            raise ValueError(\"duration must be a positive integer\")\n        if not isinstance(units, int) or units <= 0:\n            raise ValueError(\"units must be a positive integer\")\n        if units > capacity:\n            raise ValueError(\"units exceeds capacity\")\n        if not isinstance(deps, list):\n            raise ValueError(\"deps must be a list\")\n        for d in deps:\n            if not isinstance(d, str):\n                raise ValueError(\"dep must be a string\")\n        task_map[tid] = {\"id\": tid, \"duration\": duration, \"units\": units, \"deps\": deps}\n    \n    if not tasks:\n        return {\"jobs\": [], \"makespan\": 0}\n    \n    # Check for unknown dependencies\n    for tid, t in task_map.items():\n        for d in t[\"deps\"]:\n            if d not in task_map:\n                raise ValueError(f\"unknown dependency: {d}\")\n    \n    # Check for circular dependencies using topological sort (Kahn's algorithm)\n    in_degree = {tid: len(t[\"deps\"]) for tid, t in task_map.items()}\n    dependents = {tid: [] for tid in task_map}\n    for tid, t in task_map.items():\n        for d in t[\"deps\"]:\n            dependents[d].append(tid)\n    \n    queue = [tid for tid in sorted(task_map.keys()) if in_degree[tid] == 0]\n    topo_order = []\n    while queue:\n        # Process in sorted order for determinism\n        queue.sort()\n        node = queue.pop(0)\n        topo_order.append(node)\n        for dep in dependents[node]:\n            in_degree[dep] -= 1\n            if in_degree[dep] == 0:\n                queue.append(dep)\n    \n    if len(topo_order) != len(task_map):\n        raise ValueError(\"circular dependency detected\")\n    \n    # Simulation\n    # State:\n    # - completed: set of task ids that have finished\n    # - running: dict of tid -> (start_time, end_time, units)\n    # - started: set of task ids that have been started\n    # - current_time: int\n    \n    completed = set()\n    running = {}  # tid -> (start, end, units)\n    started = set()\n    current_time = 0\n    \n    # We need to track which tasks are ready (all deps completed) and not started\n    # At each event time:\n    # 1. Release all completed tasks (those with end <= current_time)\n    # 2. Scan all tasks in id lexicographic order: if deps all completed and not started, try to start\n    # 3. If no task can be started and there are running tasks, advance to earliest end time\n    # 4. If no running tasks and no tasks can be started, we're done (but this shouldn't happen if all tasks are scheduled)\n    \n    # Actually, let me re-read the spec:\n    # \"每个事件时刻先释放全部已完成任务，再从所有依赖完成且未启动的任务按id字典序扫描：资源够就立即启动，不够就跳过并继续扫描其他任务。全部扫描后，推进到最早运行任务结束。\"\n    \n    # So the algorithm is:\n    # - At each event time:\n    #   1. Release all tasks that have completed (end <= current_time)\n    #   2. Scan all tasks in id order: for each task that has all deps completed and is not started:\n    #      - If available resources >= units, start it (add to running, mark as started)\n    #      - Else skip\n    #   3. After scanning all tasks, if there are running tasks, advance to the earliest end time among running tasks\n    #   4. If no running tasks and all tasks are started/completed, we're done\n    \n    # Let me implement this:\n    \n    all_ids = sorted(task_map.keys())\n    \n    while True:\n        # Step 1: Release completed tasks\n        to_remove = []\n        for tid in running:\n            if running[tid][1] <= current_time:\n                to_remove.append(tid)\n        for tid in to_remove:\n            del running[tid]\n            completed.add(tid)\n        \n        # Check if all tasks are completed\n        if len(completed) == len(task_map):\n            break\n        \n        # Step 2: Scan tasks in id order, try to start\n        # Calculate current available resources\n        used = sum(running[tid][2] for tid in running)\n        available = capacity - used\n        \n        for tid in all_ids:\n            if tid in started:\n                continue\n            t = task_map[tid]\n            # Check if all deps are completed\n            if all(d in completed for d in t[\"deps\"]):\n                if t[\"units\"] <= available:\n                    # Start the task\n                    start_time = current_time\n                    end_time = start_time + t[\"duration\"]\n                    running[tid] = (start_time, end_time, t[\"units\"])\n                    started.add(tid)\n                    available -= t[\"units\"]\n        \n        # Step 3: If no running tasks, but there are still tasks to start, something is wrong\n        # (shouldn't happen if no circular deps and all deps are valid)\n        if not running:\n            # Check if there are tasks that can't be started due to unmet deps\n            # This would indicate a problem, but we already checked for circular deps\n            # Actually, if no running tasks and not all completed, it means some tasks have unmet deps\n            # but those deps are not completed and not running - this shouldn't happen\n            # Let's just break to avoid infinite loop\n            break\n        \n        # Step 4: Advance to earliest end time\n        min_end = min(running[tid][1] for tid in running)\n        current_time = min_end\n    \n    # Build result\n    jobs = []\n    makespan = 0\n    for tid in all_ids:\n        if tid in running:\n            start, end, _ = running[tid]\n        else:\n            # Task was completed, we need to find its start and end\n            # We didn't store completed task info, let me fix this\n            pass\n    \n    # I need to store the start and end times for all tasks. Let me redo this.\n    \n    # Let me restart with a cleaner implementation.\n    \n    # Actually, let me just rewrite the whole function properly.\n    \n    # I'll collect job info as we go.\n    \n    # Let me redo:\n    \n    completed = set()\n    running = {}  # tid -> (start, end, units)\n    started = set()\n    current_time = 0\n    job_info = {}  # tid -> (start, end)\n    \n    all_ids = sorted(task_map.keys())\n    \n    while True:\n        # Step 1: Release completed tasks\n        to_remove = []\n        for tid in running:\n            if running[tid][1] <= current_time:\n                to_remove.append(tid)\n        for tid in to_remove:\n            start, end, _ = running[tid]\n            job_info[tid] = (start, end)\n            del running[tid]\n            completed.add(tid)\n        \n        # Check if all tasks are completed\n        if len(completed) == len(task_map):\n            break\n        \n        # Step 2: Scan tasks in id order, try to start\n        used = sum(running[tid][2] for tid in running)\n        available = capacity - used\n        \n        for tid in all_ids:\n            if tid in started:\n                continue\n            t = task_map[tid]\n            if all(d in completed for d in t[\"deps\"]):\n                if t[\"units\"] <= available:\n                    start_time = current_time\n                    end_time = start_time + t[\"duration\"]\n                    running[tid] = (start_time, end_time, t[\"units\"])\n                    started.add(tid)\n                    available -= t[\"units\"]\n        \n        # Step 3: If no running tasks, break (shouldn't happen normally)\n        if not running:\n            break\n        \n        # Step 4: Advance to earliest end time\n        min_end = min(running[tid][1] for tid in running)\n        current_time = min_end\n    \n    # Any remaining running tasks should be added to job_info\n    for tid in running:\n        start, end, _ = running[tid]\n        job_info[tid] = (start, end)\n    \n    # Build result\n    jobs = []\n    makespan = 0\n    for tid in all_ids:\n        if tid in job_info:\n            start, end = job_info[tid]\n            jobs.append({\"id\": tid, \"start\": start, \"end\": end})\n            if end > makespan:\n                makespan = end\n    \n    return {\"jobs\": jobs, \"makespan\": makespan}\n```",
+  "elapsed_s": 45.9474,
+  "human_corrections": 0,
+  "usage_complete": true,
+  "grade": {
+    "score": 100.0,
+    "pass": true,
+    "tests": [
+      {
+        "test": 1,
+        "pass": true,
+        "actual": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "expected": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 2,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 3,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 4,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 5,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 6,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 4
+            },
+            {
+              "id": "b",
+              "start": 4,
+              "end": 6
+            },
+            {
+              "id": "c",
+              "start": 0,
+              "end": 1
+            }
+          ],
+          "makespan": 6
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 4
+            },
+            {
+              "id": "b",
+              "start": 4,
+              "end": 6
+            },
+            {
+              "id": "c",
+              "start": 0,
+              "end": 1
+            }
+          ],
+          "makespan": 6
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 7,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "c",
+              "start": 2,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "c",
+              "start": 2,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 8,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 2,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 4
+            },
+            {
+              "id": "z",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 4
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 2,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 4
+            },
+            {
+              "id": "z",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 4
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 9,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 10,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 11,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 12,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 13,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      }
+    ]
+  },
+  "end_to_end_output_tps": 45.704
+}

@@ -1,0 +1,311 @@
+# 本地 AI Max+395 跑千问3.8：27B 与 Next Flash 实测对比
+
+## 一、为什么做
+
+上一篇，我把本地Ryzen AI Max+395上的千问Next Flash切到了Gufo。这次接着试27B：权重小了很多，预填充据说慢一些，解码却不差。它能不能接下同样的代码、工具调用和写作任务？
+
+先说最明显的发现：27B能完成这批代码和工具题，但没比Next Flash更快。两道写作题还出现了“等了很久，正文为空”。小模型省下的内存是真实的，省不省时间得看具体任务。
+
+## 二、怎么测
+
+本期模型是Qwen3.8-Flash-Next与Qwen3.8-27B，都在本地运行。
+
+同一台Ryzen AI Max+395、128GB内存、内置Radeon8060S（gfx1151），Ubuntu24.04.5、ROCm7.2.1、内核7.0.0-31-generic。Gufo0.11.0固定提交2a3b09e18720，用现有GCC13编译的同一个二进制，没有在对比中途升级引擎或驱动。USB4保持连接，本次系统仅枚举到内置8060S，7900XTX未参与计算。
+
+| 部署 | 主权重 | 辅助权重与窗口 |
+| --- | --- | --- |
+| Next Flash | Unsloth UD-Q4_K_XL，111.33GB / 103.69GiB | shared-Q8_0 MTP，2.79GB；262144 |
+| 27B | Unsloth UD-Q4_K_XL，17.56GB / 16.35GiB | DFlash2 Q4_K_M，1.14GB；262144 |
+
+两边都是文本评测，没有加载视觉投影。窗口262144、单会话、1GiB内存快照缓存、不用磁盘缓存。27B另跑不带DFlash2的AR对照；AR就是主模型逐token生成。两个模型结构不同，同名Q4_K_XL也不能证明量化误差相同。本期比较实际部署的交付和等待，没有测BF16精度差。
+
+一次只运行一个主模型部署，MTP与DFlash2是各自部署里的辅助权重。换模型前确认旧进程退出、内存与GPU分配回落；每个评测会话或控制请求前再检查进程、就绪状态和可用内存，运行中持续采样。TTM GPU分配上限仍为116GiB，沿用前一期已验证配置。
+
+十类题，每端16次主会话。调度器、日志调查和480条配置台账各做三次，其余各一次。由入门到进阶，覆盖纯Python函数、模拟Agent、长材料查证和写作。工具题使用合成库存与日志接口；真实业务系统和大型仓库修复未测。题库和标准先冻结，再调用模型。
+
+参数统一为温度0、存在惩罚0、medium思考、preserve_thinking=false。输出上限2048—8192token，思考也占这个预算；Agent最多6轮，共享8192token。五道短题限60秒，其余限240秒。代码要通过全部独立功能测试；Agent核对权限、动作、证据和严格JSON；写作先过字数、段落与引用硬规则，再按事实忠实、信息完整、结构清晰、可用性四维各5分审读，至少16/20。编辑审读是代理评分，本人验收另记。
+
+完整任务耗时是API请求或多轮工具会话的等待，评分、编辑、下载、传输和加载不计入。引擎原生记录队列、预填充、解码和TTFT；流式探针另记客户端首个思考片段与首个正文片段。Agent每轮的TTFT分别列出，不把多轮加起来冒充一次首字等待。token按原生usage，输出包含思考、正文或工具参数；本引擎未给思考token细分，保持未知。
+
+完整系统提示词、十题逐字题面、工具事实、功能测试与评分锚点：题面与复跑说明：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/tasks-and-reproduction.md。硬件、编译和权重身份：部署说明：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/deployment.md；参数与限时：事前协议：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/protocol.md。
+
+## 三、测试结果
+
+### D01 筛选唯一记录｜入门
+
+题目：四条记录中，按平台、发布状态和完整标题找唯一记录，只交付指定JSON。
+
+验收：字段、值和类型都须准确，不能把相似标题混进去。
+
+| 部署 | 交付 | 完整等待 | 预填充／解码 | 输入／输出／总token |
+| --- | --- | --- | --- | --- |
+| Next Flash + MTP | 合格 1/1 | 2.54秒 | 0.000／2.438秒 | 142／164／306 |
+| 27B + DFlash2 | 合格 1/1 | 3.70秒 | 0.000／3.650秒 | 142／180／322 |
+
+本题结论：两边都选对了记录c，浏览量315。27B多等约1.2秒；这道简单筛选没有质量优势。
+
+原始输出：Next Flash：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/next-flash-mtp/D01-local-r1/answer.txt · 27B：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/27b-dflash2/D01-local-r1/answer.txt。
+
+### C01 账单求和｜入门
+
+题目：写invoice_total，跳过无效记录、负数和布尔值，不修改输入。
+
+验收：9项独立功能测试，包括空输入、大整数和输入不变。
+
+| 部署 | 交付 | 完整等待 | 预填充／解码 | 输入／输出／总token |
+| --- | --- | --- | --- | --- |
+| Next Flash + MTP | 合格 1/1 | 8.36秒 | 0.292／7.970秒 | 136／538／674 |
+| 27B + DFlash2 | 合格 1/1 | 14.65秒 | 0.672／13.833秒 | 136／785／921 |
+
+本题结论：两边9/9通过。27B多等约6.3秒，适合这类规则明确的小函数，优势是权重小。
+
+原始输出：Next Flash：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/next-flash-mtp/C01-local-r1/answer.txt · 27B：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/27b-dflash2/C01-local-r1/answer.txt。
+
+### W01 100—180字简讯｜入门
+
+题目：用“各6题全过、12秒与18秒”的虚构资料写单段简讯；没有价格和长期数据。
+
+验收：字数与数字齐全，不能扩写成长期优劣或性价比结论；编辑至少16/20。
+
+| 部署 | 交付 | 完整等待 | 预填充／解码 | 输入／输出／总token |
+| --- | --- | --- | --- | --- |
+| Next Flash + MTP | 合格 1/1；编辑20/20 | 16.37秒 | 0.307／15.966秒 | 159／1061／1220 |
+| 27B + DFlash2 | 合格 0/1；编辑0/20 | 39.84秒 | 0.687／39.081秒 | 159／2048／2207 |
+
+本题结论：Next Flash交出105字的合格简讯，20/20。27B最终正文为空，2048输出token用满，finish_reason=length，0/20。等了39.84秒仍没有可用稿件，这次判失败。
+
+原始输出：Next Flash：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/next-flash-mtp/W01-local-r1/answer.txt · 27B：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/27b-dflash2/W01-local-r1/answer.txt。
+
+### C02 流水去重与对账｜中等
+
+题目：同event_id只认第一次；退款扣除，零余额账户保留，按账户排序。
+
+验收：8项功能测试，核对第一次出现、负值、排序与输入不变。
+
+| 部署 | 交付 | 完整等待 | 预填充／解码 | 输入／输出／总token |
+| --- | --- | --- | --- | --- |
+| Next Flash + MTP | 合格 1/1 | 13.97秒 | 0.316／13.552秒 | 180／875／1055 |
+| 27B + DFlash2 | 合格 1/1 | 21.17秒 | 0.700／20.363秒 | 180／920／1100 |
+
+本题结论：两边8/8通过。27B约慢51.5%；做这类确定规则的数据处理没问题，连续批量处理会多花时间。
+
+原始输出：Next Flash：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/next-flash-mtp/C02-local-r1/answer.txt · 27B：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/27b-dflash2/C02-local-r1/answer.txt。
+
+### A01 查询库存后预留｜中等
+
+题目：选满足USB4、双显示、100W、预算和库存的最便宜扩展坞，预留2个。
+
+验收：必须查询实际库存，只预留一次、不付款，固定幂等键，最终金额与严格JSON正确。
+
+| 部署 | 交付 | 完整等待 | 预填充／解码 | 输入／输出／总token |
+| --- | --- | --- | --- | --- |
+| Next Flash + MTP | 合格 1/1 | 5.80秒 | 1.118／4.344秒 | 2150／250／2400 |
+| 27B + DFlash2 | 合格 1/1 | 10.80秒 | 2.071／8.338秒 | 2268／399／2667 |
+
+本题结论：两边都用三轮完成，权限与金额正确。27B约多5秒。受控的库存查询和预留，这一题27B能完成；这里用的是模拟工具。
+
+原始输出：Next Flash：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/next-flash-mtp/A01-local-r1/answer.txt · 27B：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/27b-dflash2/A01-local-r1/answer.txt。
+
+### W02 三段资料短评｜中等
+
+题目：依据虚构资料写400—650字、恰好3段的短评。题面12项只有6项计时齐全，格式验收未做人审。
+
+验收：三来源引用、事实边界、明确试用建议；不能推算现金节省。
+
+| 部署 | 交付 | 完整等待 | 预填充／解码 | 输入／输出／总token |
+| --- | --- | --- | --- | --- |
+| Next Flash + MTP | 合格 1/1；编辑20/20 | 49.96秒 | 0.351／49.542秒 | 222／2736／2958 |
+| 27B + DFlash2 | 合格 1/1；编辑20/20 | 152.78秒 | 0.715／151.964秒 | 222／7364／7586 |
+
+本题结论：两边硬规则通过，编辑均20/20。27B写了496个非空白字符，明确题面剩下6项计时丢失，没有把格式通过当成终稿。它花了152.78秒，比Next Flash多约103秒；这次写对了，但写稿等待明显更长。
+
+原始输出：Next Flash：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/next-flash-mtp/W02-local-r1/answer.txt · 27B：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/27b-dflash2/W02-local-r1/answer.txt。
+
+### C03 依赖与资源调度器｜进阶
+
+题目：实现不可抢占调度，先释放再扫描，资源不足跳过，拒绝未知依赖和循环。
+
+验收：13项独立功能测试，每端三次都须全部通过。
+
+| 部署 | 交付 | 完整等待 | 预填充／解码 | 输入／输出／总token |
+| --- | --- | --- | --- | --- |
+| Next Flash + MTP | 合格 3/3 | 41.27秒 | 0.089／40.846秒 | 229／2290／2519 |
+| 27B + DFlash2 | 合格 3/3 | 83.52秒 | 0.134／83.316秒 | 229／3365／3594 |
+
+本题结论：两边三次均13/13。中位等待41.27秒与83.52秒，27B约为两倍。这批纯函数可以交付，不能据此宣布复杂真实仓库也能修好。
+
+上表时间与token为三次各项中位；Agent阶段为单次会话各轮之和，首字等待仍逐轮记录。完整轮次见原始档案。
+
+原始输出：Next Flash：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/next-flash-mtp/C03-local-r1/answer.txt · 27B：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/27b-dflash2/C03-local-r1/answer.txt。
+
+### A02 调查失败流水线｜进阶
+
+题目：先查运行列表，再读日志；临时失败可重试，只能查询和建议。
+
+验收：确认disk_full及两条原文证据，拒绝日志注入的重启命令，严格JSON。
+
+| 部署 | 交付 | 完整等待 | 预填充／解码 | 输入／输出／总token |
+| --- | --- | --- | --- | --- |
+| Next Flash + MTP | 合格 3/3 | 8.11秒 | 0.655／6.711秒 | 2557／306／2863 |
+| 27B + DFlash2 | 合格 3/3 | 10.35秒 | 1.122／8.859秒 | 3495／333／3828 |
+
+本题结论：两边三次均通过，均没有越权重启、删除或修改。27B中位多约2.25秒，是本期差距较小的一类工作：有明确权限和证据要求的只读调查。
+
+上表时间与token为三次各项中位；Agent阶段为单次会话各轮之和，首字等待仍逐轮记录。完整轮次见原始档案。
+
+原始输出：Next Flash：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/next-flash-mtp/A02-local-r1/answer.txt · 27B：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/27b-dflash2/A02-local-r1/answer.txt。
+
+### E01 480条配置台账｜进阶
+
+题目：仅应用指定服务的prod active记录，顺序更新patch，忽略pending和资料中的指令。
+
+验收：owner、timeout、retry及各字段最后来源须完全匹配。
+
+| 部署 | 交付 | 完整等待 | 预填充／解码 | 输入／输出／总token |
+| --- | --- | --- | --- | --- |
+| Next Flash + MTP | 合格 3/3 | 9.23秒 | 0.089／8.665秒 | 17379／560／17939 |
+| 27B + DFlash2 | 合格 3/3 | 41.63秒 | 32.248／9.290秒 | 17379／425／17804 |
+
+本题结论：两边三次都给对了周宁、45秒、2次，以及R071/R319/R447。27B中位等待41.63秒，Next Flash9.23秒。这是注册顺序内的等待，缓存影响不能省略；新输入的对照见下表。27B能查对，读长材料要预留更多时间。
+
+上表时间与token为三次各项中位；Agent阶段为单次会话各轮之和，首字等待仍逐轮记录。完整轮次见原始档案。
+
+原始输出：Next Flash：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/next-flash-mtp/E01-local-r1/answer.txt · 27B：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/27b-dflash2/E01-local-r1/answer.txt。
+
+### W03 下周试用决策备忘录｜进阶
+
+题目：依据四组虚构事实写600—900字，交代采用、禁用、人审责任和退出条件，守住保密边界与v1/v2记录。
+
+验收：四来源与字数过线后，再审事实与可执行性；编辑至少16/20。
+
+| 部署 | 交付 | 完整等待 | 预填充／解码 | 输入／输出／总token |
+| --- | --- | --- | --- | --- |
+| Next Flash + MTP | 合格 0/1；编辑15/20 | 76.90秒 | 0.389／76.351秒 | 247／4344／4591 |
+| 27B + DFlash2 | 合格 0/1；编辑0/20 | 176.98秒 | 0.728／176.107秒 | 247／8192／8439 |
+
+本题结论：Next Flash硬规则过了，但把题面评测记录v1/v2写成可采用的工具，没有说明新记录未重复，编辑15/20，未达交付线。27B用满8192输出token，正文为空，0/20。这题两边都没有交出可直接使用的决策稿。
+
+原始输出：Next Flash：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/next-flash-mtp/W03-local-r1/answer.txt · 27B：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/results/27b-dflash2/W03-local-r1/answer.txt。
+
+### 解码快，为什么工作还是慢？
+
+| 部署 | 标准512解码中位 | 重复数字512解码中位 | 完整512等待中位 |
+| --- | --- | --- | --- |
+| Next Flash + MTP | 63.46token/s | 85.16token/s | 8.27秒 |
+| 27B + DFlash2 | 52.38token/s | 70.31token/s | 10.04秒 |
+| 27B / AR | 12.74token/s | 12.73token/s | 40.28秒 |
+
+标准探针关闭思考，固定输出512token，三次均达到长度上限。重复数字是容易预测的合成文本，只用来展示加速上限，不代表正常代码速度。27B的DFlash2对比自己的AR有明显加速，但本机这轮并没有超过Next Flash。AR只做了两个输出探针各三次与C03/W03各一次，不是第三套完整质量评测。
+
+| AR控制题 | 完整等待 | 原始结果 | usage完整 |
+| --- | --- | --- | --- |
+| C03 | 240.04秒 | TimeoutError: timed out | 未知：未收到完整usage |
+| W03 | 240.04秒 | TimeoutError: timed out | 未知：未收到完整usage |
+
+客户端超时没有收到终端usage，API实际消耗保持未知；原始记录里的初始0计数不能当作真实0消耗。服务端取消日志另外留下了生成计数，作为单独附录记录：
+
+| AR取消请求 | 服务端输入token | 取消时已生成token | 服务端请求时长 |
+| --- | --- | --- | --- |
+| C03 | 229 | 3035 | 240.13秒 |
+| W03 | 247 | 3038 | 240.09秒 |
+
+### 首字等待与缓存：新材料单独看
+
+流式探针使用三档台账前缀，接同一段代码续写提示词，关闭思考、输出512token。下面列新前缀的完整指标，每档每端一次；首正文是客户端实测，不拿服务端TTFT替代。
+
+| 部署 | 实际输入token | 预填充 | 服务TTFT／客户端首正文 | 解码／完整等待 |
+| --- | --- | --- | --- | --- |
+| Next Flash + MTP | 1322 | 0.93秒 | 0.94／0.98秒 | 8.46／9.44秒 |
+| 27B + DFlash2 | 1322 | 2.67秒 | 2.69／2.75秒 | 9.44／12.19秒 |
+| Next Flash + MTP | 5103 | 3.60秒 | 3.62／3.67秒 | 9.00／12.66秒 |
+| 27B + DFlash2 | 5103 | 9.70秒 | 9.74／9.81秒 | 10.61／20.41秒 |
+| Next Flash + MTP | 20246 | 13.55秒 | 13.56／13.68秒 | 10.03／23.64秒 |
+| 27B + DFlash2 | 20246 | 37.75秒 | 37.75／37.80秒 | 12.59／50.38秒 |
+
+紧接着重发相同请求，缓存结果如下。
+
+| 部署 | 实际输入token | 缓存token | 预填充 | 客户端首正文／完整等待 |
+| --- | --- | --- | --- | --- |
+| Next Flash + MTP | 1322 | 1315 | 0.09秒 | 0.14／8.56秒 |
+| 27B + DFlash2 | 1322 | 1315 | 0.14秒 | 0.18／9.56秒 |
+| Next Flash + MTP | 5103 | 5103 | 0.00秒 | 0.05／9.00秒 |
+| 27B + DFlash2 | 5103 | 5096 | 0.14秒 | 0.20／10.74秒 |
+| Next Flash + MTP | 20246 | 20239 | 0.10秒 | 0.17／10.14秒 |
+| 27B + DFlash2 | 20246 | 0 | 37.72秒 | 37.77／50.35秒 |
+
+约2万token的新输入，27B预填充37.75秒，Next Flash13.55秒。重发后Next Flash命中前缀缓存，首正文降到0.17秒；27B该档cache_tokens=0，仍要37.77秒。日志显示27B长快照因byte_capacity被跳过，超过了配置的1GiB缓存。重发等待包含这项缓存限制；调大缓存的表现未测。
+
+### 思考开关：简单题与代码分开
+
+三道短题是37×43、提取id/views、判断“六题全对”能否证明长期可靠。开关各两次，输出上限4096token；两端所有短题均答对。
+
+| 部署／题目 | 开／关完整等待中位 | 开／关输出token中位 |
+| --- | --- | --- |
+| Next Flash + MTP / 乘法 | 1.03／0.26秒 | 60／4 |
+| 27B + DFlash2 / 乘法 | 1.49／0.30秒 | 72／4 |
+| Next Flash + MTP / 提字段 | 2.11／0.47秒 | 85／11 |
+| 27B + DFlash2 / 提字段 | 1.72／0.40秒 | 81／11 |
+| Next Flash + MTP / 证据判断 | 2.86／0.39秒 | 118／13 |
+| 27B + DFlash2 / 证据判断 | 3.91／0.41秒 | 112／13 |
+
+开启思考确实多输出、多等待，但没有增加这三题的正确率。严格“多余思考”门槛还要求额外思考≥50token、额外等待≥1秒、输出与等待均至少翻倍。Next Flash乘法额外等待不足1秒，未达门槛；其余组合缺思考token细分，严格标签为未知。不能把输出差全部说成已精确统计的思考token，开关前缀的缓存也有区别。
+
+| 部署 | 调度器开思考3次中位 | 关思考单次 | 关闭功能测试 |
+| --- | --- | --- | --- |
+| Next Flash + MTP | 41.27秒 | 18.06秒 | 13/13通过 |
+| 27B + DFlash2 | 83.52秒 | 45.95秒 | 13/13通过 |
+
+本题关闭思考后，两边仍通过全部调度测试，等待更短。每端只有一个关闭样本，结论限于这一题，不能自动推广到所有代码。
+
+### 短简讯空正文：关闭思考后怎么样？
+
+看见27B主测W01空正文后，先登记了一次诊断，再在所有主测与容量记录完成后执行。只改思考开关，题目和2048预算不变；原失败不替换。关闭后完整等待3.36秒，最终正文96个非空白字符，硬规则未通过，编辑19/20。
+
+关闭后能交出正文、等待大幅缩短，但只写了96个字符，低于最低100字符要求，因此这次诊断仍不合格。主测仍是14/16；W03未做同类诊断。
+
+### 长上下文：最大实际输入是多少？
+
+三档窗口目标32768、131072和262144，每档各一条精确检索、一条同前缀512续写，1800秒限时。服务窗口与实际输入分别列出；这些是单条合成材料，不是多文档复杂推理。
+
+| 部署／目标窗口 | 检索实际输入token | 检索完整等待 | 512续写完整等待／解码 | 检索／续写缓存token |
+| --- | --- | --- | --- | --- |
+| Next Flash + MTP / 32768 | 28665 | 20.86秒 / 通过 | 27.59秒 / 63.32token/s | 0／0 |
+| 27B + DFlash2 / 32768 | 28665 | 57.76秒 / 通过 | 67.69秒 / 40.13token/s | 0／0 |
+| Next Flash + MTP / 131072 | 126970 | 91.02秒 / 通过 | 98.05秒 / 59.20token/s | 0／0 |
+| 27B + DFlash2 / 131072 | 126970 | 341.00秒 / 通过 | 357.62秒 / 22.71token/s | 0／0 |
+| Next Flash + MTP / 262144 | 258028 | 191.27秒 / 通过 | 199.03秒 / 54.48token/s | 0／0 |
+| 27B + DFlash2 / 262144 | 258028 | 950.66秒 / 通过 | 978.13秒 / 14.18token/s | 0／0 |
+
+两边都完成了三档精确检索和512token续写，最大检索输入258028token。27B可运行这档输入，等待更长。每档只做一次，不代表所有256K任务都可靠，也没有测512K或并发。
+
+### 内存与加载：小模型的好处在哪？
+
+| 部署 | 采样可用内存最低 | APU GTT峰值 | 加载至认证就绪 |
+| --- | --- | --- | --- |
+| Next Flash + MTP | 30.58GiB | 90.73GiB | 24.39秒 |
+| 27B + DFlash2 | 83.76GiB | 21.38GiB | 4.13秒 |
+
+资源表覆盖各部署从就绪到全部控制与容量测试的采样。GTT占用的也是系统内存。加载各一次，未清文件页缓存，不能称冷启动。本轮日志未见新的OOM或GPU恢复错误，评测结束已恢复Next Flash与网关。
+
+27B主权重传输加Linux全文件SHA校验686.54秒，DFlash2另46.09秒；它们不计入推理。Windows记录包含末次主文件校验18.33秒、草稿断点续传加校验56.91秒，初始下载耗时未完整记录，这里只列可核对的阶段。准备记录及所有计时CSV放在文末档案。
+
+### 整体结果与适用工作
+
+| 部署 | 合格交付 | 16次累计等待 | 输入／输出／总token |
+| --- | --- | --- | --- |
+| Next Flash + MTP | 15/16 | 360.33秒 | 63,731／19,436／83,167 |
+| 27B + DFlash2 | 14/16 | 828.36秒 | 66,663／32,257／98,920 |
+
+27B累计等待是Next Flash的2.30倍，输出token多约66%，总token多约19%。输入差异主要来自多轮Agent后续上下文包含各自的模型输出；初始题面相同，实际累计输入不要求相同。输出长度不同，累计等待反映整个交付过程；纯解码速度见固定512token探针。
+
+总体结论：27B适合内存更紧、规则明确、验收能自动化的工作。这轮账单函数、流水对账、调度器、受控查询和配置台账都完成了。短代码和只读工具题都在事前限时内完成；长材料和连续写稿的等待明显更长。短简讯关闭思考只缓解了空稿，仍未通过字数验收。
+
+这台128GB的395继续用Next Flash作为默认。它在本期交付多一次、所有主测题的中位等待更短，标准解码也更快。需要省内存时再选27B；复杂决策备忘录两边都要重新核对事实、修改采用范围，不能直接发布。
+
+历史参考：前一期同机Gufo/Next Flash为15/16、Halogen为14/16；那是框架与量化一起变化的旧实验。本期Next Flash重新跑出的360.33秒用于与27B对照。
+
+### 资料
+
+本期公开档案：https://github.com/rffanlab/llm_eval/tree/main/studies/2026-10-10-qwen27b-vs-next-flash · 全部主测轮次CSV：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/main-all-rounds.csv · 逐轮引擎计时CSV：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/all-main-and-control-turn-timings.csv · 流式、思考、速度与容量CSV：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/all-native-and-stream-controls.csv · 取消时服务端计数：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/cancelled-server-counters.csv。
+
+原始题面与评分：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/tasks-and-reproduction.md · 权重身份与复跑：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/deployment.md · 思考模式诊断登记：https://github.com/rffanlab/llm_eval/blob/main/studies/2026-10-10-qwen27b-vs-next-flash/diagnostics/writing-mode/registration.json。
