@@ -1,0 +1,70 @@
+```python
+"""
+Invoice validation, event sorting, and amount summarization library.
+"""
+
+def validate_invoice_dict(invoice):
+    """
+    Validate that the input is a dictionary and contains required keys.
+    """
+    if not isinstance(invoice, dict):
+        raise TypeError("Invoice must be a dictionary")
+    required_keys = {"id", "amount", "status"}
+    if not required_keys.issubset(invoice.keys()):
+        raise ValueError(f"Missing required keys: {required_keys - invoice.keys()}")
+    return True
+
+def check_amount_positive(amount):
+    """
+    Check if the amount is a positive number.
+    """
+    if not isinstance(amount, (int, float)):
+        raise TypeError("Amount must be a number")
+    if amount <= 0:
+        raise ValueError("Amount must be positive")
+    return True
+
+def check_status_valid(status):
+    """
+    Check if the status is one of the allowed values.
+    """
+    allowed = {"enabled", "disabled", "pending"}
+    if status not in allowed:
+        raise ValueError(f"Invalid status: {status}")
+    return True
+
+def validate_invoice_fields(invoice):
+    """
+    Validate all fields in the invoice dictionary.
+    """
+    validate_invoice_dict(invoice)
+    check_amount_positive(invoice["amount"])
+    check_status_valid(invoice["status"])
+    return True
+
+def sort_events_by_timestamp(events):
+    """
+    Sort a list of event dictionaries by their timestamp field.
+    """
+    if not isinstance(events, list):
+        raise TypeError("Events must be a list")
+    return sorted(events, key=lambda e: e.get("timestamp", 0))
+
+def sort_events_by_id(events):
+    """
+    Sort a list of event dictionaries by their id field.
+    """
+    if not isinstance(events, list):
+        raise TypeError("Events must be a list")
+    return sorted(events, key=lambda e: e.get("id", 0))
+
+def sort_events_by_amount(events):
+    """
+    Sort a list of event dictionaries by their amount field.
+    """
+    if not isinstance(events, list):
+        raise TypeError("Events must be a list")
+    return sorted(events, key=lambda e: e.get("amount", 0))
+
+def filter_enabled_events(events):
+    """

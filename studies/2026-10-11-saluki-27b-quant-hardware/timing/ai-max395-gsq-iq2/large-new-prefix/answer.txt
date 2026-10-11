@@ -1,0 +1,68 @@
+```python
+"""
+Invoice validation, event sorting, and amount summarization library.
+
+This module provides 30 small, pure functions for working with invoice
+dictionaries, event lists, and monetary amounts. All functions are pure
+(no side effects) and operate on plain Python data structures.
+"""
+
+from typing import Any, Dict, List, Optional, Tuple
+
+
+# ---------------------------------------------------------------------------
+# 1. Invoice validation helpers
+# ---------------------------------------------------------------------------
+
+def is_valid_invoice(invoice: Dict[str, Any]) -> bool:
+    """
+    Return True if the invoice dictionary contains the required keys
+    ('id', 'amount', 'status') and the amount is a positive number.
+    """
+    if not isinstance(invoice, dict):
+        return False
+    required = {"id", "amount", "status"}
+    if not required.issubset(invoice.keys()):
+        return False
+    amount = invoice.get("amount")
+    if not isinstance(amount, (int, float)) or amount <= 0:
+        return False
+    return True
+
+
+def has_positive_amount(invoice: Dict[str, Any]) -> bool:
+    """
+    Return True if the invoice's 'amount' field is a positive number.
+    """
+    amount = invoice.get("amount")
+    return isinstance(amount, (int, float)) and amount > 0
+
+
+def is_status_enabled(invoice: Dict[str, Any]) -> bool:
+    """
+    Return True if the invoice's 'status' field equals 'enabled'.
+    """
+    return invoice.get("status") == "enabled"
+
+
+def has_valid_id(invoice: Dict[str, Any]) -> bool:
+    """
+    Return True if the invoice's 'id' field is a non-empty string.
+    """
+    inv_id = invoice.get("id")
+    return isinstance(inv_id, str) and len(inv_id) > 0
+
+
+def is_revision_valid(invoice: Dict[str, Any]) -> bool:
+    """
+    Return True if the invoice's 'revision' field is a string starting
+    with 'v' followed by a positive integer.
+    """
+    rev = invoice.get("revision")
+    if not isinstance(rev, str) or not rev.startswith("v"):
+        return False
+    suffix = rev[1:]
+    return suffix.isdigit() and int(suffix) > 0
+
+
+def is_quota_valid(invoice

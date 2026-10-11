@@ -1,0 +1,342 @@
+{
+  "profile": "ai-max395-gsq-iq2",
+  "kind": "main",
+  "case": "C03",
+  "round": 1,
+  "thinking": false,
+  "started_at": "2026-10-11T16:31:57.736608+00:00",
+  "output_budget": 8192,
+  "timeout_s": 240,
+  "turns": [
+    {
+      "index": 1,
+      "elapsed_s": 34.9761858000129,
+      "content": "```python\ndef schedule(tasks, capacity):\n    if not isinstance(tasks, list):\n        raise ValueError\n    if not isinstance(capacity, int) or capacity <= 0:\n        raise ValueError\n\n    ids = set()\n    info = {}\n    for t in tasks:\n        if not isinstance(t, dict):\n            raise ValueError\n        tid = t.get(\"id\")\n        dur = t.get(\"duration\")\n        units = t.get(\"units\")\n        deps = t.get(\"deps\")\n        if not isinstance(tid, str) or not tid:\n            raise ValueError\n        if not isinstance(dur, int) or dur <= 0:\n            raise ValueError\n        if not isinstance(units, int) or units <= 0:\n            raise ValueError\n        if not isinstance(deps, list):\n            raise ValueError\n        if tid in ids:\n            raise ValueError\n        ids.add(tid)\n        info[tid] = {\"duration\": dur, \"units\": units, \"deps\": list(deps)}\n\n    for tid in ids:\n        for d in info[tid][\"deps\"]:\n            if not isinstance(d, str) or d not in ids:\n                raise ValueError\n        if info[tid][\"units\"] > capacity:\n            raise ValueError\n\n    indeg = {tid: 0 for tid in ids}\n    children = {tid: [] for tid in ids}\n    for tid in ids:\n        for d in info[tid][\"deps\"]:\n            indeg[tid] += 1\n            children[d].append(tid)\n\n    def has_cycle():\n        state = {tid: 0 for tid in ids}\n        def dfs(u):\n            if state[u] == 1:\n                return True\n            state[u] = 1\n            for v in children[u]:\n                if dfs(v):\n                    return True\n            state[u] = 2\n            return False\n        for u in sorted(ids):\n            if state[u] == 0 and dfs(u):\n                return True\n        return False\n\n    if has_cycle():\n        raise ValueError\n\n    remaining = set(ids)\n    finished = set()\n    running = {}\n    used = 0\n    t = 0\n    jobs = []\n\n    while remaining or running:\n        while finished:\n            for tid in sorted(finished):\n                used -= info[tid][\"units\"]\n                jobs.append({\"id\": tid, \"start\": t, \"end\": t})\n            finished.clear()\n\n        for tid in sorted(remaining):\n            if all(d in finished for d in info[tid][\"deps\"]):\n                if used + info[tid][\"units\"] <= capacity:\n                    running[tid] = t + info[tid][\"duration\"]\n                    used += info[tid][\"units\"]\n                    remaining.remove(tid)\n\n        if running:\n            t = min(running.values())\n            for tid in list(running):\n                if running[tid] == t:\n                    finished.add(tid)\n                    del running[tid]\n        else:\n            break\n\n    return {\"jobs\": sorted(jobs, key=lambda x: x[\"id\"]), \"makespan\": t}\n```",
+      "reasoning_chars": 0,
+      "tool_calls": [],
+      "usage": {
+        "completion_tokens": 682,
+        "prompt_tokens": 231,
+        "total_tokens": 913,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "finish_reason": "stop",
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 231,
+        "prompt_ms": 972.326,
+        "prompt_per_token_ms": 4.209203463203464,
+        "prompt_per_second": 237.57464060407722,
+        "predicted_n": 682,
+        "predicted_ms": 33713.673,
+        "predicted_per_token_ms": 49.50612775330397,
+        "predicted_per_second": 20.199519642965036
+      },
+      "returned_model": "ai-max395-gsq-iq2"
+    }
+  ],
+  "usage_complete": true,
+  "human_corrections": 0,
+  "parameters": {
+    "temperature": 0,
+    "seed": 42,
+    "top_p": 1,
+    "top_k": 0,
+    "min_p": 0,
+    "repeat_penalty": 1,
+    "presence_penalty": 0,
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "cache_prompt": true
+  },
+  "response_headers_s": 34.97593020001659,
+  "server_timing_header": null,
+  "content": "```python\ndef schedule(tasks, capacity):\n    if not isinstance(tasks, list):\n        raise ValueError\n    if not isinstance(capacity, int) or capacity <= 0:\n        raise ValueError\n\n    ids = set()\n    info = {}\n    for t in tasks:\n        if not isinstance(t, dict):\n            raise ValueError\n        tid = t.get(\"id\")\n        dur = t.get(\"duration\")\n        units = t.get(\"units\")\n        deps = t.get(\"deps\")\n        if not isinstance(tid, str) or not tid:\n            raise ValueError\n        if not isinstance(dur, int) or dur <= 0:\n            raise ValueError\n        if not isinstance(units, int) or units <= 0:\n            raise ValueError\n        if not isinstance(deps, list):\n            raise ValueError\n        if tid in ids:\n            raise ValueError\n        ids.add(tid)\n        info[tid] = {\"duration\": dur, \"units\": units, \"deps\": list(deps)}\n\n    for tid in ids:\n        for d in info[tid][\"deps\"]:\n            if not isinstance(d, str) or d not in ids:\n                raise ValueError\n        if info[tid][\"units\"] > capacity:\n            raise ValueError\n\n    indeg = {tid: 0 for tid in ids}\n    children = {tid: [] for tid in ids}\n    for tid in ids:\n        for d in info[tid][\"deps\"]:\n            indeg[tid] += 1\n            children[d].append(tid)\n\n    def has_cycle():\n        state = {tid: 0 for tid in ids}\n        def dfs(u):\n            if state[u] == 1:\n                return True\n            state[u] = 1\n            for v in children[u]:\n                if dfs(v):\n                    return True\n            state[u] = 2\n            return False\n        for u in sorted(ids):\n            if state[u] == 0 and dfs(u):\n                return True\n        return False\n\n    if has_cycle():\n        raise ValueError\n\n    remaining = set(ids)\n    finished = set()\n    running = {}\n    used = 0\n    t = 0\n    jobs = []\n\n    while remaining or running:\n        while finished:\n            for tid in sorted(finished):\n                used -= info[tid][\"units\"]\n                jobs.append({\"id\": tid, \"start\": t, \"end\": t})\n            finished.clear()\n\n        for tid in sorted(remaining):\n            if all(d in finished for d in info[tid][\"deps\"]):\n                if used + info[tid][\"units\"] <= capacity:\n                    running[tid] = t + info[tid][\"duration\"]\n                    used += info[tid][\"units\"]\n                    remaining.remove(tid)\n\n        if running:\n            t = min(running.values())\n            for tid in list(running):\n                if running[tid] == t:\n                    finished.add(tid)\n                    del running[tid]\n        else:\n            break\n\n    return {\"jobs\": sorted(jobs, key=lambda x: x[\"id\"]), \"makespan\": t}\n```",
+  "usage": {
+    "prompt_tokens": 231,
+    "completion_tokens": 682,
+    "total_tokens": 913
+  },
+  "elapsed_s": 34.97738360002404,
+  "grade": {
+    "score": 46.15,
+    "pass": false,
+    "tests": [
+      {
+        "test": 1,
+        "pass": true,
+        "actual": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "expected": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 2,
+        "pass": false,
+        "actual": {
+          "jobs": [],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 3,
+        "pass": false,
+        "actual": {
+          "jobs": [
+            {
+              "id": "b",
+              "start": 2,
+              "end": 2
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 4,
+        "pass": false,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 3,
+              "end": 3
+            }
+          ],
+          "makespan": 5
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 5,
+        "pass": false,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 3,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 6,
+        "pass": false,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 4,
+              "end": 4
+            },
+            {
+              "id": "c",
+              "start": 1,
+              "end": 1
+            }
+          ],
+          "makespan": 6
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 4
+            },
+            {
+              "id": "b",
+              "start": 4,
+              "end": 6
+            },
+            {
+              "id": "c",
+              "start": 0,
+              "end": 1
+            }
+          ],
+          "makespan": 6
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 7,
+        "pass": false,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 2,
+              "end": 2
+            },
+            {
+              "id": "b",
+              "start": 2,
+              "end": 2
+            }
+          ],
+          "makespan": 2
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "c",
+              "start": 2,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 8,
+        "pass": false,
+        "actual": {
+          "jobs": [
+            {
+              "id": "z",
+              "start": 2,
+              "end": 2
+            }
+          ],
+          "makespan": 2
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 2,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 4
+            },
+            {
+              "id": "z",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 4
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 9,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 10,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 11,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 12,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 13,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      }
+    ]
+  }
+}

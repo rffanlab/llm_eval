@@ -1,0 +1,64 @@
+```python
+"""
+Invoice Validation, Event Sorting, and Amount Summarization Library.
+
+This module provides 30 small, pure functions for working with invoice
+dictionaries, event lists, and monetary amounts. All functions are pure
+(no side effects) and operate on plain Python data structures.
+"""
+
+from typing import Any, Dict, List, Optional, Tuple
+
+
+# ---------------------------------------------------------------------------
+# 1. Invoice Validation Functions
+# ---------------------------------------------------------------------------
+
+def validate_invoice_keys(invoice: Dict[str, Any]) -> bool:
+    """
+    Check that an invoice dictionary contains the required top-level keys.
+
+    Required keys: 'id', 'amount', 'currency', 'date', 'vendor'.
+    Returns True if all keys are present, False otherwise.
+    """
+    required = {'id', 'amount', 'currency', 'date', 'vendor'}
+    return required.issubset(invoice.keys())
+
+
+def validate_invoice_id(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the 'id' field is a non-empty string.
+    Returns True if valid, False otherwise.
+    """
+    val = invoice.get('id')
+    return isinstance(val, str) and len(val) > 0
+
+
+def validate_invoice_amount(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the 'amount' field is a positive number (int or float).
+    Returns True if valid, False otherwise.
+    """
+    val = invoice.get('amount')
+    return isinstance(val, (int, float)) and val > 0
+
+
+def validate_invoice_currency(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the 'currency' field is a non-empty string of length 3.
+    Returns True if valid, False otherwise.
+    """
+    val = invoice.get('currency')
+    return isinstance(val, str) and len(val) == 3
+
+
+def validate_invoice_date(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the 'date' field is a string in YYYY-MM-DD format.
+    Returns True if valid, False otherwise.
+    """
+    val = invoice.get('date')
+    if not isinstance(val, str) or len(val) != 10:
+        return False
+    parts = val.split('-')
+    if len(parts) != 3:
