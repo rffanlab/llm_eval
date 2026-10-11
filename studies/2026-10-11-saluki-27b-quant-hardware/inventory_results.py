@@ -67,8 +67,8 @@ def result_files(study: Path) -> list[Path]:
 def native_measurements(record: dict[str, Any]) -> dict[str, int | float | None]:
     """Aggregate per-turn native timings, preserving unknowns as blank.
 
-    A multi-turn Agent row sums token counts and milliseconds.  Its rate is
-    derived once from those sums; per-turn rates are never added together.
+    A multi-turn Agent row sums token counts and milliseconds. Its rate is
+    weighted by each turn's decode duration; per-turn rates are never added.
     """
     turns = record.get("turns")
     if not isinstance(turns, list):
@@ -92,9 +92,13 @@ def native_measurements(record: dict[str, Any]) -> dict[str, int | float | None]
     prompt_ms = sum_field(timings, "prompt_ms")
     predicted_n = sum_field(timings, "predicted_n")
     predicted_ms = sum_field(timings, "predicted_ms")
+    # The pinned engine excludes the first generated token from decode steps.
+    # Keep its reported rate for one turn; duration-weight multiple turns.
+    # API/generated counts remain the full counts, rather than decode steps.
     rate = None
-    if predicted_n is not None and predicted_ms is not None and predicted_ms > 0:
-        rate = predicted_n / predicted_ms * 1000
+    reported_rates = [number(t.get('predicted_per_second')) for t in timings]
+    if predicted_ms is not None and predicted_ms > 0 and all(v is not None for v in reported_rates):
+        rate = sum(v * t['predicted_ms'] for v,t in zip(reported_rates,timings)) / predicted_ms
     return {
         "native_timings_complete": True,
         "native_prompt_n": prompt_n,

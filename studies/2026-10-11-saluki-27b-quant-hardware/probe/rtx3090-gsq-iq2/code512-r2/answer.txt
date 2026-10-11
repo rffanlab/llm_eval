@@ -1,0 +1,69 @@
+```python
+def validate_invoice(invoice):
+    """Validate that the invoice is a dictionary with required keys."""
+    if not isinstance(invoice, dict):
+        return False
+    required_keys = {"id", "amount", "date"}
+    return all(k in invoice for k in required_keys)
+
+
+def validate_id(invoice):
+    """Check that the invoice id is a non-empty string."""
+    return isinstance(invoice.get("id"), str) and len(invoice["id"]) > 0
+
+
+def validate_amount(invoice):
+    """Check that the amount is a positive number."""
+    amount = invoice.get("amount")
+    return isinstance(amount, (int, float)) and amount > 0
+
+
+def validate_date(invoice):
+    """Check that the date is a string in YYYY-MM-DD format."""
+    date_str = invoice.get("date")
+    if not isinstance(date_str, str):
+        return False
+    parts = date_str.split("-")
+    return len(parts) == 3 and all(p.isdigit() for p in parts)
+
+
+def validate_currency(invoice):
+    """Check that the currency field, if present, is a string."""
+    currency = invoice.get("currency")
+    return currency is None or isinstance(currency, str)
+
+
+def validate_items(invoice):
+    """Check that items, if present, is a list."""
+    items = invoice.get("items")
+    return items is None or isinstance(items, list)
+
+
+def validate_item(item):
+    """Check that a single item has name and quantity."""
+    if not isinstance(item, dict):
+        return False
+    return "name" in item and "quantity" in item
+
+
+def validate_quantity(item):
+    """Check that quantity is a positive integer."""
+    q = item.get("quantity")
+    return isinstance(q, int) and q > 0
+
+
+def validate_name(item):
+    """Check that the item name is a non-empty string."""
+    name = item.get("name")
+    return isinstance(name, str) and len(name) > 0
+
+
+def validate_price(item):
+    """Check that the item price is a non-negative number."""
+    price = item.get("price")
+    return isinstance(price, (int, float)) and price >= 0
+
+
+def validate_invoice_complete(invoice):
+    """Check that all required fields are present and valid."""
+    return (validate

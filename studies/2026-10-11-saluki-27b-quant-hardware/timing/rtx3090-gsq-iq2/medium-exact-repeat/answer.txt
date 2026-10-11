@@ -1,0 +1,68 @@
+```python
+"""
+Invoice validation, event sorting, and amount summarization library.
+
+This module provides 30 small, pure functions for working with invoice
+dictionaries, event lists, and monetary amounts. All functions are pure
+(no side effects) and operate on plain Python data structures.
+"""
+
+from typing import Any, Dict, List, Optional, Tuple
+
+
+# ---------------------------------------------------------------------------
+# 1. Invoice validation helpers
+# ---------------------------------------------------------------------------
+
+def is_valid_invoice(invoice: Dict[str, Any]) -> bool:
+    """
+    Return True if the invoice dictionary contains the required keys
+    ('id', 'amount', 'currency') and the amount is a positive number.
+    """
+    if not isinstance(invoice, dict):
+        return False
+    required = {"id", "amount", "currency"}
+    if not required.issubset(invoice.keys()):
+        return False
+    amount = invoice.get("amount")
+    if not isinstance(amount, (int, float)) or amount <= 0:
+        return False
+    return True
+
+
+def has_positive_amount(invoice: Dict[str, Any]) -> bool:
+    """
+    Return True if the invoice's 'amount' field is a positive number.
+    """
+    amount = invoice.get("amount")
+    return isinstance(amount, (int, float)) and amount > 0
+
+
+def currency_is_valid(invoice: Dict[str, Any]) -> bool:
+    """
+    Return True if the 'currency' field is a non-empty string of length 3.
+    """
+    cur = invoice.get("currency")
+    return isinstance(cur, str) and len(cur) == 3
+
+
+def invoice_id_is_unique(invoices: List[Dict[str, Any]]) -> bool:
+    """
+    Return True if all invoice 'id' values in the list are unique.
+    """
+    ids = [inv.get("id") for inv in invoices]
+    return len(ids) == len(set(ids))
+
+
+def is_empty_invoice(invoice: Dict[str, Any]) -> bool:
+    """
+    Return True if the invoice dictionary is empty.
+    """
+    return len(invoice) == 0
+
+
+def has_required_fields(invoice: Dict[str, Any]) -> bool:
+    """
+    Return True if the invoice contains at least the keys 'id' and 'amount'.
+    """
+    return "id" in
