@@ -40,4 +40,3 @@ https://github.com/rffanlab/llm_eval/tree/main/studies/2026-10-10-qwen27b-vs-nex
 05:32 接近256K：能读完，还要等多久？
 05:58 27B关闭DFlash2，差多少？
 06:20 综合这轮结果，推荐哪一个？
-
