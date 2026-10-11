@@ -15,8 +15,17 @@ def main(summary_path,compatibility_path,output,allow_partial=False):
         assert entry['source'] not in seen;seen.add(entry['source'])
         assert row['case']=='W02' and row['hard_pass']==entry['original_hard_pass']
         answer=S/pathlib.Path(entry['source']).parent/'answer.txt'
-        assert hashlib.sha256(answer.read_bytes()).hexdigest()==entry['answer_sha256']
-        assert row['editor_score']==entry['editor_score']
+        if 'answer_sha256' in entry:
+            assert hashlib.sha256(answer.read_bytes()).hexdigest()==entry['answer_sha256']
+            assert row['editor_score']==entry['editor_score']
+        else:
+            # Timed-out, empty records have no paragraph checks in the registered
+            # interpreter. Retain their failure, verifying the actual empty body.
+            assert entry.get('error') and row.get('error')==entry['error']
+            assert answer.read_text(encoding='utf-8')=='' and row['body_chars']==0
+            assert row['accepted'] is False and row['hard_pass'] is False
+            assert entry['compatible_accepted'] is False and entry['compatible_hard_pass'] is False
+            assert row['editor_score'] in (None,0)
         row['original_accepted']=row['accepted'];row['original_hard_pass']=row['hard_pass']
         row['original_outcome']=row['outcome']
         row['accepted']=entry['compatible_accepted'];row['hard_pass']=entry['compatible_hard_pass']

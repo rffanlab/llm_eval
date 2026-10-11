@@ -1,0 +1,74 @@
+```python
+"""
+A library of 30 small pure functions for validating invoice dictionaries,
+sorting events, and summarizing amounts.
+"""
+
+import re
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+
+def validate_invoice_structure(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the invoice dictionary contains the required top-level keys.
+    
+    Args:
+        invoice: The invoice dictionary to validate.
+        
+    Returns:
+        True if the structure is valid, False otherwise.
+    """
+    required_keys = {'id', 'items', 'total', 'currency', 'date'}
+    return all(key in invoice for key in required_keys)
+
+
+def validate_invoice_id(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the invoice ID is a non-empty string.
+    
+    Args:
+        invoice: The invoice dictionary to validate.
+        
+    Returns:
+        True if the ID is valid, False otherwise.
+    """
+    invoice_id = invoice.get('id')
+    return isinstance(invoice_id, str) and len(invoice_id) > 0
+
+
+def validate_invoice_date(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the invoice date is a string in YYYY-MM-DD format.
+    
+    Args:
+        invoice: The invoice dictionary to validate.
+        
+    Returns:
+        True if the date is valid, False otherwise.
+    """
+    date_str = invoice.get('date')
+    if not isinstance(date_str, str):
+        return False
+    pattern = r'^\d{4}-\d{2}-\d{2}$'
+    return bool(re.match(pattern, date_str))
+
+
+def validate_invoice_currency(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the currency is a 3-letter uppercase string.
+    
+    Args:
+        invoice: The invoice dictionary to validate.
+        
+    Returns:
+        True if the currency is valid, False otherwise.
+    """
+    currency = invoice.get('currency')
+    if not isinstance(currency, str):
+        return False
+    return len(currency) == 3 and currency.isalpha() and currency.isupper()
+
+
+def validate_invoice_items(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the items field is a non-empty list
