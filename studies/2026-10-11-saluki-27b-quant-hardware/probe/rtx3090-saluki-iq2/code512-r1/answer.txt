@@ -1,0 +1,76 @@
+```python
+"""
+Invoice and Event Validation, Sorting, and Summarization Library.
+
+This module provides a collection of small, pure functions for:
+1. Validating invoice dictionaries.
+2. Sorting event lists.
+3. Summarizing monetary amounts.
+
+All functions are pure (no side effects) and operate on standard Python data types.
+"""
+
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
+
+# =============================================================================
+# Invoice Validation Functions
+# =============================================================================
+
+def is_valid_invoice(invoice: Dict[str, Any]) -> bool:
+    """
+    Check if an invoice dictionary contains all required fields.
+
+    Required fields: 'invoice_id', 'customer_id', 'items', 'total_amount'.
+    All fields must be present and not None.
+
+    Args:
+        invoice: The invoice dictionary to validate.
+
+    Returns:
+        True if the invoice is valid, False otherwise.
+    """
+    required_fields = ['invoice_id', 'customer_id', 'items', 'total_amount']
+    return all(field in invoice and invoice[field] is not None for field in required_fields)
+
+
+def has_positive_total(invoice: Dict[str, Any]) -> bool:
+    """
+    Check if the invoice total amount is a positive number.
+
+    Args:
+        invoice: The invoice dictionary to check.
+
+    Returns:
+        True if total_amount is a positive number, False otherwise.
+    """
+    total = invoice.get('total_amount')
+    return isinstance(total, (int, float)) and total > 0
+
+
+def has_non_empty_items(invoice: Dict[str, Any]) -> bool:
+    """
+    Check if the invoice items list is non-empty.
+
+    Args:
+        invoice: The invoice dictionary to check.
+
+    Returns:
+        True if items is a non-empty list, False otherwise.
+    """
+    items = invoice.get('items')
+    return isinstance(items, list) and len(items) > 0
+
+
+def has_valid_item_count(invoice: Dict[str, Any], max_items: int) -> bool:
+    """
+    Check if the invoice has no more than max_items items.
+
+    Args:
+        invoice: The invoice dictionary to check.
+        max_items: The maximum allowed number of items.
+
+    Returns:
+        True if item count is within limit, False otherwise.
+    """
+    items

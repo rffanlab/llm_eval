@@ -168,11 +168,15 @@ def main(study: Path, output_dir: Path) -> None:
     ]
     rows = []
     parse_errors = []
+    in_progress = []
     for path in result_files(study):
         try:
             record = load_json(path)
             if not isinstance(record, dict):
                 raise ValueError("result is not an object")
+            if number(record.get("elapsed_s")) is None or not isinstance(record.get("grade"), dict):
+                in_progress.append(path.relative_to(study).as_posix())
+                continue
             rows.append(ledger_row(path, record))
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             parse_errors.append({"file": path.relative_to(study).as_posix(), "error": str(exc)})
@@ -206,6 +210,8 @@ def main(study: Path, output_dir: Path) -> None:
         "models_declared": [model.get("id") for model in models if isinstance(model, dict)],
         "record_count": len(rows),
         "parse_errors": parse_errors,
+        "in_progress_files": in_progress,
+        "record_count_is_terminal_only": True,
         "counts": counts,
         "main_order_source": "freeze.json:main_order",
         "missing_records_are_unknown": True,
