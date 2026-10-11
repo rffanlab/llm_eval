@@ -8,8 +8,8 @@ DENY={'open','exec','eval','compile','globals','locals','vars','getattr','setatt
 def load(source):
     tree=ast.parse(source)
     for node in ast.walk(tree):
-        if isinstance(node,ast.Name) and (node.id in DENY or node.id.startswith('_')):raise ValueError('forbidden name '+node.id)
-        if isinstance(node,ast.Attribute) and node.attr.startswith('_'):raise ValueError('private attribute denied')
+        if isinstance(node,ast.Name) and (node.id in DENY or node.id.startswith('__')):raise ValueError('forbidden name '+node.id)
+        if isinstance(node,ast.Attribute) and node.attr.startswith('__'):raise ValueError('private attribute denied')
         if isinstance(node,(ast.ClassDef,ast.AsyncFunctionDef,ast.Global,ast.Nonlocal)):raise ValueError('unsupported syntax')
         if isinstance(node,ast.Import) and any(n.name not in SAFE for n in node.names):raise ValueError('import denied')
         if isinstance(node,ast.ImportFrom) and (node.module not in SAFE or node.level or any(n.name not in SAFE[node.module] for n in node.names)):raise ValueError('from import denied')
