@@ -1,5 +1,7 @@
 # Evaluation rules
 
+- Every future capability comparison includes at least one frozen long-horizon episode from `long_horizon/`: persistent workspace/history, multiple dependent stages, requirement changes, an observed recoverable tool failure, final artifacts and regression checks. Long input, long output or repeated independent single questions do not qualify. Preserve stage snapshots, complete tool traces, time/token totals and failures; report end-to-end delivery before speed.
+
 - Present every study in three stages: why evaluate, how evaluate (hardware, environment, prompts, settings, scoring), then results.
 - Freeze prompts, reference answers and acceptance criteria before calls. Preserve failures, truncations and partial runs.
 - Keep provider credentials, private addresses, SSH credentials and voice references out of Git.
