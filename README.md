@@ -1,6 +1,24 @@
 # llm_eval
 
-最新已完成：[本地 AI Max+395：Qwen3.8 27B与Next Flash实测](studies/2026-10-10-qwen27b-vs-next-flash/README.md)。同一Gufo0.11.0，两边Q4_K_XL，分别配DFlash2与MTP；主测合格14/16对15/16，完整等待828.36秒对360.33秒。107个记录包含首正文、预填充、解码、缓存、思考开关与最长258028token实际输入，附逐题文章及视频发布资料。
+## 后续必测：长程任务
+
+[LH01完整题面、文件、工具及验收](long_horizon/README.md)已加入统一方法。每次后续能力比较至少包含一个同会话、同工作区的多阶段任务；本期补测[Halogen与Gufo](studies/2026-10-12-halogen-gufo-long-horizon/protocol.md)。阶段产物持续传递，包含需求变更、一次受控工具失败、最终发布与旧功能回归。长材料检索或重复单题不能替代。
+
+本地复跑只用Python标准库；先停其他模型并配置自动进程/内存准入命令，再逐episode运行：
+
+```bash
+export LOCAL_BASE_URL='http://127.0.0.1:YOUR_PORT/v1'
+export LOCAL_MODEL='YOUR_MODEL_ID'
+export LOCAL_API_KEY='YOUR_LOCAL_KEY'
+export LOCAL_GUARD_COMMAND='["python3","your_guard.py","YOUR_PROFILE"]'
+python long_horizon/runner.py --profile YOUR_PROFILE --round 1 --output ./private-long-horizon-results
+```
+
+guard须每请求返回JSON快照并在其他模型/内存不足/繁忙时非零退出。原始输出不覆盖；每次使用新工作区与会话。本题冻结按文件字节校验，克隆时保持LF（`core.autocrlf=false`）。输出中的credentials从环境读取，不写入记录。个人Token Plan不得拿来无人值守批量跑套件。
+
+最新已完成：[本地 AI Max+395：Halogen与Gufo长程任务补测](studies/2026-10-12-halogen-gufo-long-horizon/README.md)。同一会话与工作区连续四阶段，每端两轮，共164次正式API请求。两端最终文件2/2正确，严格完整交付均0/2；完整等待中位Halogen521.73秒、Gufo445.73秒。Gufo适合作为带测试的开发助手，Halogen报告更准确、内存余量更大。完整题面、工具、阶段快照、原始调用、语义复核及文章视频资料分别存档，未来题库修订不覆盖本期原分。
+
+此前：[本地 AI Max+395：Qwen3.8 27B与Next Flash实测](studies/2026-10-10-qwen27b-vs-next-flash/README.md)。同一Gufo0.11.0，两边Q4_K_XL，分别配DFlash2与MTP；主测合格14/16对15/16，完整等待828.36秒对360.33秒。107个记录包含首正文、预填充、解码、缓存、思考开关与最长258028token实际输入，附逐题文章及视频发布资料。
 
 前一期：[本地 AI Max+395：Gufo Q4_K_XL与Halogen工作、token及容量对照](studies/2026-10-10-gufo-vs-halogen/README.md)。同一重启环境的主测合格交付15/16对14/16，原始加载与接入失败保留；达到事前门槛后，现有服务切到Gufo并保留回滚。
 

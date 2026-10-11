@@ -29,7 +29,7 @@ orders.csv表头order_id,customer,paid_cents,refund_cents,net_cents；customers.
 publish(dataset="v2"或"final")执行纯函数并通过宿主事务写入发布目录与manifest.json。manifest记录三个文件的SHA256及dataset。工具首次发布会在写入第一个临时文件后注入一次ENOSPC；这时current旧版必须保持原样，可在故障解除后重试。模型不需要自行实现宿主文件事务，但需要使用真实失败反馈完成恢复、核对发布，不能只说已重试。
 '''
 HANDOFF='''# 最终交付说明
-delivery.md中文正文400至900字，面向项目使用者。须包含：最终已付/退款/净额（元）、A/B客户净额、迟到退款R04的金额及对总净额的影响、截止时间、排除的订单O05和退款R02/R03及原因、v1仍兼容、实际执行的测试及故障恢复经过、具体业务风险。标注引用文件路径data/final/refunds.csv和release/summary.json。
+delivery.md全部内容去掉空白后400至900个字符（Markdown标记、中文、英文、数字、路径均计入），面向项目使用者。须包含：最终已付/退款/净额（元）、A/B客户净额、迟到退款R04的金额及对总净额的影响、截止时间、排除的订单O05和退款R02/R03及原因、v1仍兼容、实际执行的测试及故障恢复经过、具体业务风险。标注引用文件路径data/final/refunds.csv和release/summary.json。
 不能把没执行过的验收声称通过；独立隐藏验收不会反馈给模型，不能声称隐藏测试全部通过。最终金额从当前发布读取核对。最终净额应比v2减少迟到成功退款金额，订单本金不变。
 '''
 START='''def reconcile(orders_csv, refunds_csv, policy="v1", cutoff=None):
