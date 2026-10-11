@@ -47,6 +47,8 @@ try:
   req=urllib.request.Request(base.rstrip('/')+'/chat/completions',data=json.dumps(payload,ensure_ascii=False).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+key})
   at=time.monotonic()
   with urllib.request.urlopen(req,timeout=max(.1,left)) as response:
+   record['response_headers_s']=time.monotonic()-at
+   record['server_timing_header']=response.headers.get('Server-Timing')
    if not streaming:data=json.load(response)
    else:
     chunks=[];answer=[];thought=[];usage=None;timings=None;finished=None

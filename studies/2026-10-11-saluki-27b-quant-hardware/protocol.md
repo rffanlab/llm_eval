@@ -12,7 +12,7 @@
 
 四份27B权重：Saluki IQ2-mix 7.898GB、其声明底版GSQ-RCO IQ2_XS 8.423GB、Unsloth UD-Q4_K_XL 17.559GB、UD-Q5_K_XL 20.877GB。固定revision、实际文件字节与完整SHA256见models.json。Q8及其他超过24GiB显存的部署取消；禁止以CPU卸载绕过限制。若Q5连同KV/计算缓冲不能全层装入3090，记录部署不满足条件并跳过，不报它的混合CPU速度。
 
-同一llama.cpp提交23b0202a189c44a54625aadcb37a946dd1d6278d，分别编译CUDA sm86和ROCm gfx1151。固定Qwen官方chat-template.jinja覆盖四份文件内置模板，排除模板差异；固定32K上下文、单slot、F16 K/V、FA开启、batch512/ubatch256、生成线程8、预填充线程16、全层GPU卸载。不使用MTP/DFlash，以测相同的自回归生成；前期Gufo加速成绩只能单列历史参考。
+同一llama.cpp提交23b0202a189c44a54625aadcb37a946dd1d6278d，分别编译CUDA sm86和ROCm gfx1151。固定Qwen官方chat-template.jinja覆盖四份文件内置模板，排除模板差异；固定32K上下文、单slot、F16 K/V、FA开启、batch512/ubatch256、生成线程8、预填充线程16、全层GPU卸载。不使用MTP/DFlash，显式--spec-type none，以测相同的自回归生成；前期Gufo加速成绩只能单列历史参考。395也限制实测GTT+VRAM合计≤24GiB，超过限额立即停止并跳过该部署。
 
 加载前：旧推理服务退出，3090显存使用<1GiB且可用主内存≥40GiB；395 GTT<4GiB、VRAM<2GiB、可用主内存≥100GiB。请求前确认唯一待测进程、正确模型、空闲slot；可用主内存≥8GiB，3090额外保留≥512MiB显存。实际资源以1秒采样保存。模型加载/就绪、下载与SHA单独记时，不计进API速度；不清全机页缓存，加载不能称为冷启动。
 
