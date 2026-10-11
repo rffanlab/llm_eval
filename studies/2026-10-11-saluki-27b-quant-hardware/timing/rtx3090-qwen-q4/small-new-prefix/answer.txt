@@ -1,0 +1,81 @@
+```python
+"""
+A library of 30 small pure functions for validating invoice dictionaries,
+sorting events, and summarizing amounts.
+
+All functions are pure: they do not modify their inputs and have no side effects.
+"""
+
+from typing import Any, Dict, List, Optional, Tuple, Union
+import math
+
+
+def validate_invoice_dict(invoice: Any) -> bool:
+    """
+    Validate that the input is a dictionary representing an invoice.
+    
+    Args:
+        invoice: The object to validate.
+        
+    Returns:
+        True if the input is a dict, False otherwise.
+    """
+    return isinstance(invoice, dict)
+
+
+def has_required_fields(invoice: Dict[str, Any]) -> bool:
+    """
+    Check if the invoice dictionary contains all required fields.
+    
+    Required fields are: 'id', 'amount', 'currency'.
+    
+    Args:
+        invoice: The invoice dictionary.
+        
+    Returns:
+        True if all required fields are present, False otherwise.
+    """
+    required = {'id', 'amount', 'currency'}
+    return required.issubset(invoice.keys())
+
+
+def is_valid_id(invoice: Dict[str, Any]) -> bool:
+    """
+    Check if the invoice has a valid 'id' field.
+    
+    The id must be a non-empty string.
+    
+    Args:
+        invoice: The invoice dictionary.
+        
+    Returns:
+        True if the id is valid, False otherwise.
+    """
+    if 'id' not in invoice:
+        return False
+    return isinstance(invoice['id'], str) and len(invoice['id']) > 0
+
+
+def is_valid_amount(invoice: Dict[str, Any]) -> bool:
+    """
+    Check if the invoice has a valid 'amount' field.
+    
+    The amount must be a number (int or float) and non-negative.
+    
+    Args:
+        invoice: The invoice dictionary.
+        
+    Returns:
+        True if the amount is valid, False otherwise.
+    """
+    if 'amount' not in invoice:
+        return False
+    amount = invoice['amount']
+    if not isinstance(amount, (int, float)):
+        return False
+    if isinstance(amount, float) and math.isnan(amount):
+        return False
+    return amount >= 0
+
+
+def is_valid_currency(invoice:
