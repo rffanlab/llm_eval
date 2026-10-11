@@ -1,6 +1,6 @@
 # Saluki 27B：量化与硬件对照
 
-状态：题面、验收和顺序已冻结；RTX3090四个版本各48条记录已闭合；AI Max+395正在逐个执行，全部配置受24GiB分配上限约束。全部获准部署完成前不发布总体推荐。
+状态：题面、验收和顺序已冻结；RTX3090四个版本各48条记录已闭合；AI Max+395的Saluki也已闭合48条记录，GSQ正在执行，之后逐个执行Q4与Q5。全部配置受24GiB分配上限约束。全部获准部署完成前不发布总体推荐。
 
 - [协议](protocol.md)：三步结构、四组权重、RTX3090与Ryzen AI Max+395、全层GPU限制与停止条件。
 - [完整题面与确定答案](tasks.json)：12类/每部署18主会话；答案不会传给被测模型。
@@ -29,4 +29,4 @@ python build_compatibility_summary.py --summary summary.json --compatibility par
 python build_measurement_tables.py --summary summary.json --compatibility compatibility-summary.json --output-dir measurements
 ```
 
-CSV保存每条记录的原始接受状态、编辑分、完整等待、prefill/decode、token、缓存和错误；Markdown按同题呈现四种量化与两套硬件。重复主测的时间、token取各轮中位；原始逐轮数值仍在CSV中。简单思考题的开关各重复两次，分别取中位。首正文来自流式计时，非流式请求没有测量时保持未知。
+CSV保存每条记录的原始接受状态、编辑分、完整等待、prefill/decode、token、缓存和错误；Markdown按同题呈现四种量化与两套硬件。重复主测的时间、token均取每轮中位；原始逐轮数值仍在CSV中。简单思考题的开关各重复两次，分别取中位。首正文来自流式计时，非流式请求没有测量时保持未知。
