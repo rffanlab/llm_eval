@@ -3,8 +3,8 @@
 No inference, repairs, new scores, or replacement of first attempts occurs here.
 Use --allow-partial only with a private output path while collection is running.
 """
-import argparse,hashlib,itertools,json,pathlib,statistics
-from inventory_results import ledger_row,native_measurements,result_files
+import argparse,hashlib,json,pathlib,statistics
+from inventory_results import ledger_row,result_files
 S=pathlib.Path(__file__).resolve().parent
 load=lambda p:json.loads(p.read_text(encoding='utf-8'))
 median=lambda xs:statistics.median(xs) if xs else None
@@ -37,6 +37,7 @@ def main(output,allow_partial=False):
   r=load(p);rel=p.relative_to(S).as_posix();group,profile,folder,_=rel.split('/')
   if 'elapsed_s' not in r or 'grade' not in r:pending.append(rel);continue
   assert r['profile']==profile and r['elapsed_s']>=0
+  assert all(t.get('returned_model')==profile for t in r.get('turns',[])),rel
   assert (p.parent/'answer.txt').read_text(encoding='utf-8')==r.get('content',''),rel
   row=ledger_row(p,r);row.update(collection=group,folder=folder,source=rel,body_chars=len(''.join(r.get('content','').split())),finish_reason=r['turns'][-1].get('finish_reason') if r.get('turns') else None)
   row['accepted']=row['hard_pass'];row['editor_score']=None
