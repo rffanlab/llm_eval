@@ -78,12 +78,19 @@ def main(output,allow_partial=False):
    sampler=S/'environment'/host/(variant+'-resources.jsonl')
    samples=[json.loads(l) for l in sampler.read_text().splitlines()] if sampler.exists() else []
    allocations=[x['gpu'][0]['used_bytes'] if host=='rtx3090' else sum(g['GTT']+g['VRAM'] for g in x['gpu']) for x in samples]
-   if complete:assert allocations and max(allocations)<=24*2**30,profile
+   expected_filename=next(x['filename'] for x in models if x['id']==variant)
+   single_model_observed=bool(samples) and all(
+    len(x.get('processes',[]))==1 and x['processes'][0].get('owned') is True
+    and x['processes'][0].get('model_files')==[expected_filename] for x in samples)
+   if complete:
+    assert allocations and max(allocations)<=24*2**30,profile
+    assert single_model_observed,('runtime single-model evidence failed',profile)
    basic=['D01','C01','C02','A01','R01']
    basic_pass={c:next((x['accepted'] for x in mains if x['case']==c),None) for c in basic}
    known=[x for x in mains if x['total_tokens'] is not None]
    probes=[x for x in rs if x['collection']=='probe']
    profiles[profile]={'host':host,'variant':variant,'status':state,'terminal_records':len(rs),'missing_records':missing,'unreviewed_writing':unreviewed,'main_recorded':len(mains),'main_expected':18,'accepted_sessions':sum(x['accepted'] is True for x in mains) if complete else None,'completion_rate':sum(x['accepted'] is True for x in mains)/18 if complete else None,'basic_task_passes':basic_pass,'basic_all_pass':all(v is True for v in basic_pass.values()) if complete else None,'main_total_wait_s':sum(x['elapsed_s'] for x in mains) if len(mains)==18 else None,'known_main_total_tokens':sum(x['total_tokens'] for x in known) if known else None,'main_incomplete_usage':[x['source'] for x in mains if x['usage_complete'] is not True],'load_and_ready_s':launch.get('load_and_ready_s',launch.get('load_s')) if launch else None,'load_cache_controlled':False,'peak_runtime_gpu_allocation_bytes':max(allocations) if allocations else None,'minimum_runtime_memavailable_bytes':min(x['MemAvailable_bytes'] for x in samples) if samples else None,'resource_samples':len(samples),'fixed512_decode_median_tokens_per_s':median([x['native_predicted_per_second'] for x in probes if x['native_predicted_per_second'] is not None]),'fixed512_full_wait_median_s':median([x['elapsed_s'] for x in probes]),'launch_status':launch.get('status') if launch else None}
+   profiles[profile]['single_expected_model_in_all_runtime_samples']=single_model_observed if samples else None
    for task in tasks:
     cases=[x for x in mains if x['case']==task['id']]
     task_rows.append({'profile':profile,'task':task['id'],'difficulty':task.get('level',task.get('difficulty')),'domain':task['domain'],'status':state,'rounds_recorded':len(cases),'rounds_expected':3 if task['id'] in ['C03','A02','E01'] else 1,'accepted_rounds':sum(x['accepted'] is True for x in cases) if complete else None,'wall_median_s':median([x['elapsed_s'] for x in cases]),'prefill_median_s':median([x['native_prefill_s'] for x in cases if x['native_prefill_s'] is not None]),'decode_median_s':median([x['native_decode_s'] for x in cases if x['native_decode_s'] is not None]),'prompt_tokens_median':median([x['prompt_tokens'] for x in cases if x['prompt_tokens'] is not None]),'output_tokens_median':median([x['completion_tokens'] for x in cases if x['completion_tokens'] is not None]),'total_tokens_median':median([x['total_tokens'] for x in cases if x['total_tokens'] is not None]),'all_api_usage_complete':bool(cases) and all(x['usage_complete'] for x in cases),'outcomes':[x['outcome'] for x in cases],'records':[x['source'] for x in cases]})

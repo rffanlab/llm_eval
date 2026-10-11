@@ -1,0 +1,74 @@
+```python
+"""
+A library of 30 small pure functions for validating invoice dictionaries,
+sorting events, and summarizing amounts.
+"""
+
+import re
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+# --- Validation Functions ---
+
+def validate_invoice_id(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the invoice has a non-empty string 'id' field.
+    
+    Args:
+        invoice: The invoice dictionary to validate.
+        
+    Returns:
+        True if valid, False otherwise.
+    """
+    if not isinstance(invoice, dict):
+        return False
+    invoice_id = invoice.get('id')
+    return isinstance(invoice_id, str) and len(invoice_id) > 0
+
+def validate_invoice_date(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the invoice has a valid ISO 8601 date string in 'date' field.
+    
+    Args:
+        invoice: The invoice dictionary to validate.
+        
+    Returns:
+        True if valid, False otherwise.
+    """
+    if not isinstance(invoice, dict):
+        return False
+    date_str = invoice.get('date')
+    if not isinstance(date_str, str):
+        return False
+    # Simple regex for YYYY-MM-DD
+    pattern = r'^\d{4}-\d{2}-\d{2}$'
+    return bool(re.match(pattern, date_str))
+
+def validate_invoice_amount(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the invoice has a positive numeric 'amount' field.
+    
+    Args:
+        invoice: The invoice dictionary to validate.
+        
+    Returns:
+        True if valid, False otherwise.
+    """
+    if not isinstance(invoice, dict):
+        return False
+    amount = invoice.get('amount')
+    if not isinstance(amount, (int, float)):
+        return False
+    return amount > 0
+
+def validate_invoice_currency(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the invoice has a 3-letter uppercase string 'currency' field.
+    
+    Args:
+        invoice: The invoice dictionary to validate.
+        
+    Returns:
+        True if valid, False otherwise.
+    """
+    if not isinstance(invoice, dict):
+        return

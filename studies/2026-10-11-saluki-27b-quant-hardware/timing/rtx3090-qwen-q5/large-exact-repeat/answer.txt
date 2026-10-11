@@ -1,0 +1,77 @@
+```python
+"""
+A library of 30 small pure functions for validating invoice dictionaries,
+sorting events, and summarizing amounts.
+
+Each function is pure: it does not modify its inputs and has no side effects.
+"""
+
+from typing import Any, Dict, List, Optional, Tuple, Union
+import math
+from datetime import datetime, timezone
+
+
+# --- Validation Functions ---
+
+def validate_invoice_structure(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that an invoice dictionary contains the required top-level keys.
+    
+    Required keys: 'id', 'amount', 'currency', 'date', 'items'.
+    
+    Args:
+        invoice: The invoice dictionary to validate.
+        
+    Returns:
+        True if all required keys are present, False otherwise.
+    """
+    required_keys = {'id', 'amount', 'currency', 'date', 'items'}
+    return required_keys.issubset(invoice.keys())
+
+
+def validate_amount_positive(amount: Union[int, float]) -> bool:
+    """
+    Check if the amount is a positive number.
+    
+    Args:
+        amount: The amount to validate.
+        
+    Returns:
+        True if amount is a number and greater than 0, False otherwise.
+    """
+    if not isinstance(amount, (int, float)):
+        return False
+    if isinstance(amount, float) and math.isnan(amount):
+        return False
+    return amount > 0
+
+
+def validate_currency_code(currency: str) -> bool:
+    """
+    Validate that the currency code is a 3-letter uppercase string.
+    
+    Args:
+        currency: The currency code to validate.
+        
+    Returns:
+        True if currency is a 3-character uppercase alphabetic string, False otherwise.
+    """
+    if not isinstance(currency, str):
+        return False
+    if len(currency) != 3:
+        return False
+    return currency.isalpha() and currency.isupper()
+
+
+def validate_date_format(date_str: str) -> bool:
+    """
+    Validate that the date string is in ISO 8601 format (YYYY-MM-DD).
+    
+    Args:
+        date_str: The date string to validate.
+        
+    Returns:
+        True if the date string is valid ISO 8601, False otherwise.
+    """
+    if not isinstance(date_str, str):
+       
