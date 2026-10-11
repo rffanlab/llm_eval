@@ -97,8 +97,13 @@ def native_measurements(record: dict[str, Any]) -> dict[str, int | float | None]
     # API/generated counts remain the full counts, rather than decode steps.
     rate = None
     reported_rates = [number(t.get('predicted_per_second')) for t in timings]
-    if predicted_ms is not None and predicted_ms > 0 and all(v is not None for v in reported_rates):
-        rate = sum(v * t['predicted_ms'] for v,t in zip(reported_rates,timings)) / predicted_ms
+    if all(v is not None for v in reported_rates):
+        if len(reported_rates)==1:
+            rate=reported_rates[0]
+        elif predicted_ms is not None and predicted_ms > 0:
+            rate = sum(v * t['predicted_ms'] for v,t in zip(reported_rates,timings)) / predicted_ms
+        elif all(v==0 for v in reported_rates):
+            rate=0.0
     return {
         "native_timings_complete": True,
         "native_prompt_n": prompt_n,
