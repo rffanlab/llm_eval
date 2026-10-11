@@ -6,6 +6,8 @@ from agent_sim import Simulator,schemas
 p=argparse.ArgumentParser();p.add_argument('profile');p.add_argument('kind',choices=['main','thinking','probe','timing','preflight']);p.add_argument('case');p.add_argument('--round',type=int,default=1);p.add_argument('--thinking',choices=['on','off'],default='on');p.add_argument('--repeat',choices=['new-prefix','exact-repeat']);a=p.parse_args()
 frozen=json.loads((S/'freeze.json').read_text());assert a.profile in [h+'-'+m for h in frozen['hosts_order'] for m in frozen['profiles_order']]
 for name,digest in frozen['hashes'].items():assert hashlib.sha256((S/name).read_bytes()).hexdigest()==digest,'frozen source changed: '+name
+known_usage=sum(json.loads(f.read_text(encoding='utf-8')).get('usage',{}).get('total_tokens',0) for f in S.rglob('result.json'))
+assert known_usage<frozen['main_token_review_threshold'],'registered token review threshold reached'
 stamp=datetime.datetime.now(datetime.timezone.utc).isoformat();group='preflight' if a.kind=='preflight' else 'thinking-complex' if a.kind=='main' and a.thinking=='off' else a.kind
 name=a.case+'-'+a.thinking+'-r'+str(a.round) if a.kind=='thinking' else a.case+'-'+a.repeat if a.kind=='timing' else a.case+'-r'+str(a.round)
 folder=S/group/a.profile/name;target=folder/'result.json';assert not folder.exists(),'Preserve first attempt'
