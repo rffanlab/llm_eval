@@ -2,9 +2,9 @@
 
 | 时间 | 类型 | 旁白主题 | 确切画面 | 证据来源 | 动作 |
 |---|---|---|---|---|---|
-| 0.00—6.25s | DATA | Qwen3.8：27B能接住Next Flash的工作吗？ | frames/01-00.png | protocol.md + freeze.json / 待核验问题 | 源文件节选或结果面板切换 |
-| 6.25—12.50s | DATA | Qwen3.8：27B能接住Next Flash的工作吗？ | frames/01-01.png | protocol.md + freeze.json / 待核验问题 | 源文件节选或结果面板切换 |
-| 12.50—18.75s | DATA | Qwen3.8：27B能接住Next Flash的工作吗？ | frames/01-02.png | protocol.md + freeze.json / 待核验问题 | 源文件节选或结果面板切换 |
+| 0.00—6.25s | DATA | Qwen3.8：27B能接住Next Flash的工作吗？ | frames/01-00.png | protocol.md + freeze.json | 源文件节选或结果面板切换 |
+| 6.25—12.50s | DATA | Qwen3.8：27B能接住Next Flash的工作吗？ | frames/01-01.png | protocol.md + freeze.json | 源文件节选或结果面板切换 |
+| 12.50—18.75s | DATA | Qwen3.8：27B能接住Next Flash的工作吗？ | frames/01-02.png | protocol.md + freeze.json | 源文件节选或结果面板切换 |
 | 18.75—25.29s | DATA | 同一台395，把每段等待拆开 | frames/02-00.png | freeze.json / 冻结题面、参数与计时口径 | 源文件节选或结果面板切换 |
 | 25.29—31.83s | DATA | 同一台395，把每段等待拆开 | frames/02-01.png | freeze.json / 冻结题面、参数与计时口径 | 源文件节选或结果面板切换 |
 | 31.83—38.38s | DATA | 同一台395，把每段等待拆开 | frames/02-02.png | freeze.json / 冻结题面、参数与计时口径 | 源文件节选或结果面板切换 |
@@ -69,4 +69,4 @@
 | 401.75—408.71s | DATA | 综合这轮结果，推荐哪一个？ | frames/19-03.png | summary.json / main_totals | 源文件节选或结果面板切换 |
 
 总时长408.71秒，最长剪辑片段7.00秒。DATA画面100%；连续复用同一面板不算新的信息镜头。
-采用前期已接受的数据回放形式；没有硬件摄影或现场录屏。技术与代理审读不代表本人验收。
+画面为源文件节选和实测数据回放，没有硬件摄影或现场录屏。

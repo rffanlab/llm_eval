@@ -10,7 +10,7 @@
 
 十类代码、模拟工具调用、写作与长材料题，每端16次主测。Next Flash合格15/16，27B为14/16；完整等待累计360.33秒与828.36秒。27B权重小，但两道写作在预算耗尽后正文为空。我们还拆开了预填充、客户端首正文、解码、缓存、思考开关和27B的AR对照，最长实际输入258028token。
 
-本人授权AI配音：VoxCPM2。无背景音乐、无音效。画面为原始输出节选和实测数据回放。
+AI配音：VoxCPM2，使用作者音色。无背景音乐、无音效。画面为原始输出节选和实测数据回放。
 
 完整提示词、评分、功能测试、量化身份、所有轮次与计时CSV：
 https://github.com/rffanlab/llm_eval/tree/main/studies/2026-10-10-qwen27b-vs-next-flash
@@ -41,9 +41,3 @@ https://github.com/rffanlab/llm_eval/tree/main/studies/2026-10-10-qwen27b-vs-nex
 05:58 27B关闭DFlash2，差多少？
 06:20 综合这轮结果，推荐哪一个？
 
-## 文件
-
-成片：video/qwen27b-vs-next-flash-20261010-v2.mp4，06:48，1280×720 / 24fps。
-封面：cover-bilibili.png、cover-wechat.png。字幕：video/captions.srt。
-最终AAC：-15.02 LUFS，-2.49 dBTP。
-本人试听、公众号实际粘贴与社交平台发布尚未执行。

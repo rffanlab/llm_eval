@@ -61,7 +61,7 @@
 - [B站发布包与章节](publication/bilibili-release.md) · [成片镜头表](publication/director-plan.md) · [交付元数据](publication/delivery-metadata.json) · [证据绑定](publication/evidence-ledger.json)
 - [2026-10-11文章与视频修订记录](publication/revision-2026-10-11.md) · [逐题视频对比表](publication/paired-comparison-tables.json)
 
-成片使用新生成的本人授权VoxCPM2配音，降噪，无背景音乐与音效；画面为原始输出节选和实测数据回放。大视频与音频留在私有工作区，公开库只存元数据和小型资料。技术检查不代表本人试听批准，公众号实际粘贴和社交平台发布未执行。
+成片使用VoxCPM2 AI配音，降噪，无背景音乐与音效；画面为原始输出节选和实测数据回放。公开库存元数据和小型资料。配音完成ASR与音量检查，公众号复制功能做了静态检查。
 
 本轮同一启动环境，未发现新的OOM或GPU恢复错误；结束后已恢复Next Flash生产服务与网关，并检查认证就绪和健康状态。模型、音色原录音、API密钥与内网地址不进入公开库。
 
