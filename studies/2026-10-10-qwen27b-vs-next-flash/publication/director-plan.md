@@ -63,10 +63,10 @@
 | 364.00—369.62s | DATA | 27B关闭DFlash2，差多少？ | frames/18-01.png | ar-quality-controls/27b-ar/*/result.json | 源文件节选或结果面板切换 |
 | 369.62—375.25s | DATA | 27B关闭DFlash2，差多少？ | frames/18-02.png | speed-probes/27b-ar/* + 27b-dflash2/* + repetition-probes/* | 源文件节选或结果面板切换 |
 | 375.25—380.83s | DATA | 27B关闭DFlash2，差多少？ | frames/18-03.png | ar-quality-controls/27b-ar/*/result.json | 源文件节选或结果面板切换 |
-| 380.83—387.67s | DATA | 这台395继续用谁？ | frames/19-00.png | summary.json / main_totals | 源文件节选或结果面板切换 |
-| 387.67—394.50s | DATA | 这台395继续用谁？ | frames/19-01.png | results/* + editor-review.json | 源文件节选或结果面板切换 |
-| 394.50—401.29s | DATA | 这台395继续用谁？ | frames/19-02.png | audit.json / resources/* / environment/restore.json | 源文件节选或结果面板切换 |
-| 401.29—408.08s | DATA | 这台395继续用谁？ | frames/19-03.png | summary.json / main_totals | 源文件节选或结果面板切换 |
+| 380.83—387.83s | DATA | 综合这轮结果，推荐哪一个？ | frames/19-00.png | summary.json / main_totals | 源文件节选或结果面板切换 |
+| 387.83—394.79s | DATA | 综合这轮结果，推荐哪一个？ | frames/19-01.png | results/* + editor-review.json | 源文件节选或结果面板切换 |
+| 394.79—401.75s | DATA | 综合这轮结果，推荐哪一个？ | frames/19-02.png | audit.json / resources/* | 源文件节选或结果面板切换 |
+| 401.75—408.71s | DATA | 综合这轮结果，推荐哪一个？ | frames/19-03.png | summary.json / main_totals | 源文件节选或结果面板切换 |
 
-总时长408.08秒，最长剪辑片段6.96秒。DATA画面100%；连续复用同一面板不算新的信息镜头。
+总时长408.71秒，最长剪辑片段7.00秒。DATA画面100%；连续复用同一面板不算新的信息镜头。
 采用前期已接受的数据回放形式；没有硬件摄影或现场录屏。技术与代理审读不代表本人验收。

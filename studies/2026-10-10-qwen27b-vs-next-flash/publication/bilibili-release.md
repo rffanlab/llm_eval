@@ -39,11 +39,11 @@ https://github.com/rffanlab/llm_eval/tree/main/studies/2026-10-10-qwen27b-vs-nex
 05:08 同题同预算，关闭思考再看
 05:32 接近256K：能读完，还要等多久？
 05:58 27B关闭DFlash2，差多少？
-06:20 这台395继续用谁？
+06:20 综合这轮结果，推荐哪一个？
 
 ## 文件
 
-成片：video/qwen27b-vs-next-flash-20261010.mp4，06:48，1280×720 / 24fps。
+成片：video/qwen27b-vs-next-flash-20261010-v2.mp4，06:48，1280×720 / 24fps。
 封面：cover-bilibili.png、cover-wechat.png。字幕：video/captions.srt。
-最终AAC：-15.02 LUFS，-2.54 dBTP。
+最终AAC：-15.02 LUFS，-2.49 dBTP。
 本人试听、公众号实际粘贴与社交平台发布尚未执行。

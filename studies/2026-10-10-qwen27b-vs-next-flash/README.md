@@ -39,7 +39,7 @@
 
 两边13次非写作主测全部合格。27B短简讯与决策备忘录用尽2048/8192输出预算，最终正文为空；三段短评合格、编辑20/20，但等待152.78秒。Next Flash决策备忘录硬规则通过、编辑15/20，仍未达到交付线。
 
-**本机继续以Next Flash为默认。**27B省内存，适合规则明确、可自动验收的小函数、对账、调度和受控只读查询。本轮完整等待更长，长材料和连续写稿尤其明显。复杂决策备忘录两边都未交出可直接使用的稿件。
+**综合推荐：128GB内存的AI Max+395处理本轮工作，优先选Next Flash + MTP。**交付质量、累计等待与标准解码均更好。27B + DFlash2省内存，适合内存更紧、允许较长等待且可自动验收的小函数、对账、调度和受控只读查询。复杂决策备忘录两边都未交出可直接使用的稿件。
 
 ### 额外控制与诊断
 
@@ -59,6 +59,7 @@
 - [准备耗时与失败历史](preparation-history.md) · [环境与释放、恢复记录](environment) · [资源采样](resources)
 - [公众号可复制富文本](publication/wechat-richtext.html) · [独立富文本片段](publication/wechat-fragment.html) · [标题](publication/title.txt)
 - [B站发布包与章节](publication/bilibili-release.md) · [成片镜头表](publication/director-plan.md) · [交付元数据](publication/delivery-metadata.json) · [证据绑定](publication/evidence-ledger.json)
+- [2026-10-11文章与视频修订记录](publication/revision-2026-10-11.md) · [逐题视频对比表](publication/paired-comparison-tables.json)
 
 成片使用新生成的本人授权VoxCPM2配音，降噪，无背景音乐与音效；画面为原始输出节选和实测数据回放。大视频与音频留在私有工作区，公开库只存元数据和小型资料。技术检查不代表本人试听批准，公众号实际粘贴和社交平台发布未执行。
 
