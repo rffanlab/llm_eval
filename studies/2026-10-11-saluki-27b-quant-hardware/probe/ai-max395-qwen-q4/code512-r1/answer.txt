@@ -1,0 +1,79 @@
+```python
+"""
+A library of 30 small pure functions for validating invoice dictionaries,
+sorting events, and summarizing amounts.
+"""
+
+from typing import Any, Dict, List, Optional, Tuple, Union
+import re
+from datetime import datetime
+
+
+def validate_invoice_dict(invoice: Any) -> bool:
+    """
+    Validate that the input is a dictionary.
+    
+    Args:
+        invoice: The object to validate.
+        
+    Returns:
+        True if invoice is a dict, False otherwise.
+    """
+    return isinstance(invoice, dict)
+
+
+def has_required_keys(invoice: Dict[str, Any], required_keys: List[str]) -> bool:
+    """
+    Check if the invoice dictionary contains all required keys.
+    
+    Args:
+        invoice: The invoice dictionary.
+        required_keys: List of required key names.
+        
+    Returns:
+        True if all required keys are present, False otherwise.
+    """
+    if not isinstance(invoice, dict):
+        return False
+    return all(key in invoice for key in required_keys)
+
+
+def validate_invoice_id(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the invoice has a non-empty string 'id' field.
+    
+    Args:
+        invoice: The invoice dictionary.
+        
+    Returns:
+        True if 'id' exists and is a non-empty string, False otherwise.
+    """
+    if not isinstance(invoice, dict):
+        return False
+    invoice_id = invoice.get('id')
+    return isinstance(invoice_id, str) and len(invoice_id.strip()) > 0
+
+
+def validate_invoice_date(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the invoice has a valid 'date' field in YYYY-MM-DD format.
+    
+    Args:
+        invoice: The invoice dictionary.
+        
+    Returns:
+        True if 'date' exists and is a valid date string, False otherwise.
+    """
+    if not isinstance(invoice, dict):
+        return False
+    date_str = invoice.get('date')
+    if not isinstance(date_str, str):
+        return False
+    try:
+        datetime.strptime(date_str, "%Y-%m-%d")
+        return True
+    except ValueError:
+        return False
+
+
+def validate_invoice_amount(invoice: Dict[str, Any]) -> bool:

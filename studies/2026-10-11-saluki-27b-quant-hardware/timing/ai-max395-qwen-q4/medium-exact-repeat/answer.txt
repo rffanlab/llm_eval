@@ -1,0 +1,77 @@
+```python
+"""
+A library of 30 small pure functions for validating invoice dictionaries,
+sorting events, and summarizing amounts.
+
+All functions are pure: they do not modify their inputs and have no side effects.
+"""
+
+from typing import Any, Dict, List, Optional, Tuple, Union
+import math
+import re
+from datetime import datetime, timezone
+
+
+# =============================================================================
+# Section 1: Invoice Dictionary Validation (Functions 1-10)
+# =============================================================================
+
+def validate_invoice_structure(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that an invoice dictionary contains the required top-level keys.
+    
+    Required keys: 'invoice_id', 'customer_id', 'items', 'total_amount', 'currency'.
+    
+    Args:
+        invoice: The invoice dictionary to validate.
+        
+    Returns:
+        True if all required keys are present, False otherwise.
+    """
+    required_keys = {'invoice_id', 'customer_id', 'items', 'total_amount', 'currency'}
+    return required_keys.issubset(invoice.keys())
+
+
+def validate_invoice_id(invoice_id: Any) -> bool:
+    """
+    Validate that the invoice ID is a non-empty string.
+    
+    Args:
+        invoice_id: The invoice ID to validate.
+        
+    Returns:
+        True if valid, False otherwise.
+    """
+    return isinstance(invoice_id, str) and len(invoice_id.strip()) > 0
+
+
+def validate_customer_id(customer_id: Any) -> bool:
+    """
+    Validate that the customer ID is a non-empty string or positive integer.
+    
+    Args:
+        customer_id: The customer ID to validate.
+        
+    Returns:
+        True if valid, False otherwise.
+    """
+    if isinstance(customer_id, str):
+        return len(customer_id.strip()) > 0
+    if isinstance(customer_id, int):
+        return customer_id > 0
+    return False
+
+
+def validate_currency_code(currency: Any) -> bool:
+    """
+    Validate that the currency code is a 3-letter uppercase ISO 4217 code.
+    
+    Args:
+        currency: The currency code to validate.
+        
+    Returns:
+        True if valid, False otherwise.
+    """
+    if not isinstance(currency, str):
+        return False
+    return len(currency) == 3 and currency.is

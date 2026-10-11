@@ -1,0 +1,77 @@
+```python
+"""
+A library of 30 small pure functions for validating invoice dictionaries,
+sorting events, and summarizing amounts.
+
+All functions are pure: they do not modify their inputs and have no side effects.
+"""
+
+from typing import Any, Dict, List, Optional, Tuple, Union
+import math
+
+
+def validate_invoice_structure(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that an invoice dictionary contains the required top-level keys.
+    
+    Required keys: 'id', 'items', 'total'.
+    
+    Args:
+        invoice: The invoice dictionary to validate.
+        
+    Returns:
+        True if the structure is valid, False otherwise.
+    """
+    if not isinstance(invoice, dict):
+        return False
+    required_keys = {'id', 'items', 'total'}
+    return required_keys.issubset(invoice.keys())
+
+
+def validate_invoice_id(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the invoice ID is a non-empty string.
+    
+    Args:
+        invoice: The invoice dictionary to validate.
+        
+    Returns:
+        True if the ID is valid, False otherwise.
+    """
+    if not validate_invoice_structure(invoice):
+        return False
+    inv_id = invoice.get('id')
+    return isinstance(inv_id, str) and len(inv_id) > 0
+
+
+def validate_invoice_items(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the invoice items is a non-empty list of dictionaries.
+    
+    Args:
+        invoice: The invoice dictionary to validate.
+        
+    Returns:
+        True if the items are valid, False otherwise.
+    """
+    if not validate_invoice_structure(invoice):
+        return False
+    items = invoice.get('items')
+    if not isinstance(items, list) or len(items) == 0:
+        return False
+    return all(isinstance(item, dict) for item in items)
+
+
+def validate_invoice_total(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the invoice total is a non-negative number.
+    
+    Args:
+        invoice: The invoice dictionary to validate.
+        
+    Returns:
+        True if the total is valid, False otherwise.
+    """
+    if not validate_invoice_structure(invoice):
+        return False
+    total = invoice.get

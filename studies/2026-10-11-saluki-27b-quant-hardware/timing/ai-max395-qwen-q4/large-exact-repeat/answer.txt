@@ -1,0 +1,76 @@
+```python
+"""
+A library of 30 small pure functions for validating invoice dictionaries,
+sorting events, and summarizing amounts.
+
+All functions are pure: they do not modify their inputs and have no side effects.
+"""
+
+from typing import Any, Dict, List, Optional, Tuple, Union
+import math
+from datetime import datetime, timezone
+
+
+# =============================================================================
+# Section 1: Invoice Dictionary Validation (Functions 1-10)
+# =============================================================================
+
+def validate_invoice_structure(invoice: Any) -> bool:
+    """
+    Validate that the input is a dictionary with required top-level keys.
+    
+    Required keys: 'id', 'amount', 'currency', 'date', 'items'.
+    
+    Args:
+        invoice: The object to validate.
+        
+    Returns:
+        True if the structure is valid, False otherwise.
+    """
+    if not isinstance(invoice, dict):
+        return False
+    required_keys = {'id', 'amount', 'currency', 'date', 'items'}
+    return required_keys.issubset(invoice.keys())
+
+
+def validate_invoice_id(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the invoice ID is a non-empty string.
+    
+    Args:
+        invoice: The invoice dictionary.
+        
+    Returns:
+        True if the ID is valid, False otherwise.
+    """
+    if not isinstance(invoice, dict):
+        return False
+    inv_id = invoice.get('id')
+    return isinstance(inv_id, str) and len(inv_id) > 0
+
+
+def validate_invoice_amount(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the invoice amount is a positive number (int or float).
+    
+    Args:
+        invoice: The invoice dictionary.
+        
+    Returns:
+        True if the amount is valid, False otherwise.
+    """
+    if not isinstance(invoice, dict):
+        return False
+    amount = invoice.get('amount')
+    if not isinstance(amount, (int, float)):
+        return False
+    if isinstance(amount, bool):  # bool is subclass of int, exclude it
+        return False
+    return amount > 0
+
+
+def validate_invoice_currency(invoice: Dict[str, Any]) -> bool:
+    """
+    Validate that the currency is a 3-letter uppercase string.
+    
+    Args:
