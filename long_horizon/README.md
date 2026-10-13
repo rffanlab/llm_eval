@@ -1,6 +1,6 @@
 # LH01 v1.1.1 完整公开题面与工具
 
-本版明确阶段步数和字符计数、修复否定句误判，并移除纯函数子进程中的凭据环境。2026-10-12对照实际使用v1.0.1，原题与评分器见[冻结档案](../studies/2026-10-12-halogen-gufo-long-horizon/frozen-suite/README.md)。本版尚未调用模型，不能用来覆盖旧分。
+本版明确阶段步数和字符计数、修复否定句误判，并移除纯函数子进程中的凭据环境。2026-10-12对照实际使用v1.0.1，原题与评分器见[冻结档案](../studies/2026-10-12-halogen-gufo-long-horizon/frozen-suite/README.md)。本题面v1.1.1的[提供方原生适配冻结副本](../studies/2026-10-13-minimax-m31-vs-local-qwen/long-horizon/README.md)已于2026-10-13用于本地千问与MiniMax对照；不覆盖旧分。
 
 参考和隐藏断言不送被测模型。
 

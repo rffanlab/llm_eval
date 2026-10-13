@@ -1,0 +1,273 @@
+{
+  "task": "C03",
+  "provider": "minimax",
+  "round": 2,
+  "variant": "main",
+  "model_requested": "MiniMax-M3.1-Flash-Preview",
+  "fixture_sha256": "9220974a681fd645b7b8ec4a3aa53b91e0a45beba9cc2c066bf633053c7fdeb4",
+  "usage": {
+    "prompt_tokens": 417,
+    "completion_tokens": 5723,
+    "total_tokens": 6140
+  },
+  "usage_complete": true,
+  "turns": [
+    {
+      "index": 1,
+      "content": "```python\ndef schedule(tasks, capacity):\n    if not isinstance(capacity, int) or isinstance(capacity, bool) or capacity <= 0:\n        raise ValueError(\"capacity must be a positive integer\")\n\n    durations = {}\n    resources = {}\n    dependencies = {}\n    dependents = {}\n\n    for task in tasks:\n        task_id = task[\"id\"]\n        duration = task[\"duration\"]\n        units = task[\"units\"]\n\n        if not isinstance(task_id, str):\n            raise ValueError(\"id must be a string\")\n        if task_id in durations:\n            raise ValueError(\"duplicate task id\")\n        if (\n            not isinstance(duration, int)\n            or isinstance(duration, bool)\n            or duration <= 0\n        ):\n            raise ValueError(\"duration must be a positive integer\")\n        if (\n            not isinstance(units, int)\n            or isinstance(units, bool)\n            or units <= 0\n        ):\n            raise ValueError(\"units must be a positive integer\")\n        if units > capacity:\n            raise ValueError(\"units exceed capacity\")\n\n        durations[task_id] = duration\n        resources[task_id] = units\n        dependencies[task_id] = set(task[\"deps\"])\n        dependents[task_id] = []\n\n    for task_id, prerequisites in dependencies.items():\n        for prerequisite in prerequisites:\n            if prerequisite not in durations:\n                raise ValueError(\"unknown dependency\")\n            dependents[prerequisite].append(task_id)\n\n    dependency_counts = {\n        task_id: len(prerequisites)\n        for task_id, prerequisites in dependencies.items()\n    }\n\n    cycle_counts = dict(dependency_counts)\n    ready = [\n        task_id\n        for task_id in sorted(dependencies)\n        if cycle_counts[task_id] == 0\n    ]\n    visited = 0\n\n    while ready:\n        task_id = ready.pop()\n        visited += 1\n        for dependent_id in dependents[task_id]:\n            cycle_counts[dependent_id] -= 1\n            if cycle_counts[dependent_id] == 0:\n                ready.append(dependent_id)\n\n    if visited != len(dependencies):\n        raise ValueError(\"cyclic dependency\")\n\n    ordered_ids = sorted(dependencies)\n    remaining_dependencies = dict(dependency_counts)\n    unstarted = set(ordered_ids)\n    running = []\n    jobs = []\n    now = 0\n\n    while True:\n        still_running = []\n\n        for running_task in running:\n            task_id, end_time = running_task\n            if end_time == now:\n                unstarted.remove(task_id)\n                for dependent_id in dependents[task_id]:\n                    remaining_dependencies[dependent_id] -= 1\n            else:\n                still_running.append(running_task)\n\n        running = still_running\n        available = capacity\n\n        for task_id in ordered_ids:\n            if task_id not in unstarted:\n                continue\n            if remaining_dependencies[task_id] != 0:\n                continue\n\n            units = resources[task_id]\n            if units <= available:\n                end_time = now + durations[task_id]\n                running.append((task_id, end_time))\n                jobs.append({\n                    \"id\": task_id,\n                    \"start\": now,\n                    \"end\": end_time,\n                })\n                unstarted.remove(task_id)\n                available -= units\n\n        if not running:\n            if unstarted:\n                raise ValueError(\"cyclic dependency\")\n            break\n\n        now = min(running_task[1] for running_task in running)\n\n    jobs.sort(key=lambda job: job[\"id\"])\n    return {\"jobs\": jobs, \"makespan\": now}\n```",
+      "returned_model": "MiniMax-M3.1-Flash-Preview",
+      "reasoning_chars": 23129,
+      "tool_calls": [],
+      "usage": {
+        "total_tokens": 6140,
+        "total_characters": 0,
+        "prompt_tokens": 417,
+        "completion_tokens": 5723,
+        "completion_tokens_details": {
+          "reasoning_tokens": 4982
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 416
+        }
+      },
+      "finish_reason": "stop",
+      "timings": null,
+      "first_event_s": 1.0530320390244015,
+      "first_reasoning_s": 1.053287700022338,
+      "first_content_s": 30.032931016001385,
+      "first_tool_s": null,
+      "api_elapsed_s": 32.335201018024236
+    }
+  ],
+  "started_at_epoch": 1791892492.7630274,
+  "human_corrections": 0,
+  "content": "```python\ndef schedule(tasks, capacity):\n    if not isinstance(capacity, int) or isinstance(capacity, bool) or capacity <= 0:\n        raise ValueError(\"capacity must be a positive integer\")\n\n    durations = {}\n    resources = {}\n    dependencies = {}\n    dependents = {}\n\n    for task in tasks:\n        task_id = task[\"id\"]\n        duration = task[\"duration\"]\n        units = task[\"units\"]\n\n        if not isinstance(task_id, str):\n            raise ValueError(\"id must be a string\")\n        if task_id in durations:\n            raise ValueError(\"duplicate task id\")\n        if (\n            not isinstance(duration, int)\n            or isinstance(duration, bool)\n            or duration <= 0\n        ):\n            raise ValueError(\"duration must be a positive integer\")\n        if (\n            not isinstance(units, int)\n            or isinstance(units, bool)\n            or units <= 0\n        ):\n            raise ValueError(\"units must be a positive integer\")\n        if units > capacity:\n            raise ValueError(\"units exceed capacity\")\n\n        durations[task_id] = duration\n        resources[task_id] = units\n        dependencies[task_id] = set(task[\"deps\"])\n        dependents[task_id] = []\n\n    for task_id, prerequisites in dependencies.items():\n        for prerequisite in prerequisites:\n            if prerequisite not in durations:\n                raise ValueError(\"unknown dependency\")\n            dependents[prerequisite].append(task_id)\n\n    dependency_counts = {\n        task_id: len(prerequisites)\n        for task_id, prerequisites in dependencies.items()\n    }\n\n    cycle_counts = dict(dependency_counts)\n    ready = [\n        task_id\n        for task_id in sorted(dependencies)\n        if cycle_counts[task_id] == 0\n    ]\n    visited = 0\n\n    while ready:\n        task_id = ready.pop()\n        visited += 1\n        for dependent_id in dependents[task_id]:\n            cycle_counts[dependent_id] -= 1\n            if cycle_counts[dependent_id] == 0:\n                ready.append(dependent_id)\n\n    if visited != len(dependencies):\n        raise ValueError(\"cyclic dependency\")\n\n    ordered_ids = sorted(dependencies)\n    remaining_dependencies = dict(dependency_counts)\n    unstarted = set(ordered_ids)\n    running = []\n    jobs = []\n    now = 0\n\n    while True:\n        still_running = []\n\n        for running_task in running:\n            task_id, end_time = running_task\n            if end_time == now:\n                unstarted.remove(task_id)\n                for dependent_id in dependents[task_id]:\n                    remaining_dependencies[dependent_id] -= 1\n            else:\n                still_running.append(running_task)\n\n        running = still_running\n        available = capacity\n\n        for task_id in ordered_ids:\n            if task_id not in unstarted:\n                continue\n            if remaining_dependencies[task_id] != 0:\n                continue\n\n            units = resources[task_id]\n            if units <= available:\n                end_time = now + durations[task_id]\n                running.append((task_id, end_time))\n                jobs.append({\n                    \"id\": task_id,\n                    \"start\": now,\n                    \"end\": end_time,\n                })\n                unstarted.remove(task_id)\n                available -= units\n\n        if not running:\n            if unstarted:\n                raise ValueError(\"cyclic dependency\")\n            break\n\n        now = min(running_task[1] for running_task in running)\n\n    jobs.sort(key=lambda job: job[\"id\"])\n    return {\"jobs\": jobs, \"makespan\": now}\n```",
+  "elapsed_s": 32.336616298009176,
+  "reasoning_chars": 23129,
+  "grade": {
+    "score": 46.15,
+    "pass": false,
+    "tests": [
+      {
+        "test": 1,
+        "pass": true,
+        "actual": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "expected": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 2,
+        "pass": false,
+        "actual": {
+          "exception": "KeyError"
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 3,
+        "pass": false,
+        "actual": {
+          "exception": "KeyError"
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 4,
+        "pass": false,
+        "actual": {
+          "exception": "KeyError"
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 5,
+        "pass": false,
+        "actual": {
+          "exception": "KeyError"
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 6,
+        "pass": false,
+        "actual": {
+          "exception": "KeyError"
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 4
+            },
+            {
+              "id": "b",
+              "start": 4,
+              "end": 6
+            },
+            {
+              "id": "c",
+              "start": 0,
+              "end": 1
+            }
+          ],
+          "makespan": 6
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 7,
+        "pass": false,
+        "actual": {
+          "exception": "KeyError"
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "c",
+              "start": 2,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 8,
+        "pass": false,
+        "actual": {
+          "exception": "KeyError"
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 2,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 4
+            },
+            {
+              "id": "z",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 4
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 9,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 10,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 11,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 12,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 13,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      }
+    ]
+  },
+  "hidden_grading_s_excluded": 0.04971213999669999
+}

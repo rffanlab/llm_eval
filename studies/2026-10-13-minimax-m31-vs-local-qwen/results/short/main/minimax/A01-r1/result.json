@@ -1,0 +1,177 @@
+{
+  "task": "A01",
+  "provider": "minimax",
+  "round": 1,
+  "variant": "main",
+  "model_requested": "MiniMax-M3.1-Flash-Preview",
+  "fixture_sha256": "9220974a681fd645b7b8ec4a3aa53b91e0a45beba9cc2c066bf633053c7fdeb4",
+  "usage": {
+    "prompt_tokens": 2742,
+    "completion_tokens": 424,
+    "total_tokens": 3166
+  },
+  "usage_complete": true,
+  "turns": [
+    {
+      "index": 1,
+      "content": "I'll check the actual stock first before reserving.",
+      "returned_model": "MiniMax-M3.1-Flash-Preview",
+      "reasoning_chars": 0,
+      "tool_calls": [
+        {
+          "id": "call_01a135199e3c7720ab67a230",
+          "type": "function",
+          "function": {
+            "name": "search_stock",
+            "arguments": "{}"
+          }
+        }
+      ],
+      "usage": {
+        "total_tokens": 664,
+        "total_characters": 0,
+        "prompt_tokens": 636,
+        "completion_tokens": 28,
+        "prompt_tokens_details": {
+          "cached_tokens": 188
+        }
+      },
+      "finish_reason": "tool_calls",
+      "timings": null,
+      "first_event_s": 3.6011686569836456,
+      "first_reasoning_s": null,
+      "first_content_s": 3.6013714659784455,
+      "first_tool_s": 3.720082829997409,
+      "api_elapsed_s": 3.9184383139945567
+    },
+    {
+      "index": 2,
+      "content": "Stock checked. Analysis:\n\n- **D1** — fails (USB3, not USB4)\n- **D2** — USB4, 2 DP, 100W, stock 3 ✓, 2 × 69900 = **139800 ≤ 150000** ✓\n- **D3** — meets specs but stock 1 < 2 ✗\n- **D4** — meets specs but 2 × 79900 = 159800 > 150000 ✗\n\nD2 is the cheapest eligible SKU. Reserving 2 units now.",
+      "returned_model": "MiniMax-M3.1-Flash-Preview",
+      "reasoning_chars": 482,
+      "tool_calls": [
+        {
+          "id": "call_01a13519a54b734e9f47c2f0",
+          "type": "function",
+          "function": {
+            "name": "reserve",
+            "arguments": "{\"sku\":\"D2\",\"quantity\":2,\"idempotency_key\":\"eval-A01\"}"
+          }
+        }
+      ],
+      "usage": {
+        "total_tokens": 1211,
+        "total_characters": 0,
+        "prompt_tokens": 854,
+        "completion_tokens": 357,
+        "completion_tokens_details": {
+          "reasoning_tokens": 183
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 636
+        }
+      },
+      "finish_reason": "tool_calls",
+      "timings": null,
+      "first_event_s": 0.5412128760071937,
+      "first_reasoning_s": 0.5413578370062169,
+      "first_content_s": 1.1260641500120983,
+      "first_tool_s": 1.5990379780123476,
+      "api_elapsed_s": 1.7954434709972702
+    },
+    {
+      "index": 3,
+      "content": "```json\n{\"sku\": \"D2\", \"quantity\": 2, \"total_cents\": 139800, \"reservation_id\": \"R-A01-002\"}\n```",
+      "returned_model": "MiniMax-M3.1-Flash-Preview",
+      "reasoning_chars": 0,
+      "tool_calls": [],
+      "usage": {
+        "total_tokens": 1291,
+        "total_characters": 0,
+        "prompt_tokens": 1252,
+        "completion_tokens": 39,
+        "prompt_tokens_details": {
+          "cached_tokens": 854
+        }
+      },
+      "finish_reason": "stop",
+      "timings": null,
+      "first_event_s": 0.5091233010170981,
+      "first_reasoning_s": null,
+      "first_content_s": 0.5198797130142339,
+      "first_tool_s": null,
+      "api_elapsed_s": 0.776476969011128
+    }
+  ],
+  "started_at_epoch": 1791892230.2342463,
+  "human_corrections": 0,
+  "content": "```json\n{\"sku\": \"D2\", \"quantity\": 2, \"total_cents\": 139800, \"reservation_id\": \"R-A01-002\"}\n```",
+  "elapsed_s": 6.493231958011165,
+  "reasoning_chars": 482,
+  "tool_trace": [
+    {
+      "name": "search_stock",
+      "arguments": {},
+      "result": {
+        "items": [
+          {
+            "sku": "D1",
+            "price_cents": 49900,
+            "stock": 5,
+            "usb": "USB3",
+            "display_ports": 2,
+            "pd_w": 100
+          },
+          {
+            "sku": "D2",
+            "price_cents": 69900,
+            "stock": 3,
+            "usb": "USB4",
+            "display_ports": 2,
+            "pd_w": 100
+          },
+          {
+            "sku": "D3",
+            "price_cents": 65000,
+            "stock": 1,
+            "usb": "USB4",
+            "display_ports": 2,
+            "pd_w": 100
+          },
+          {
+            "sku": "D4",
+            "price_cents": 79900,
+            "stock": 5,
+            "usb": "USB4",
+            "display_ports": 3,
+            "pd_w": 100
+          }
+        ]
+      }
+    },
+    {
+      "name": "reserve",
+      "arguments": {
+        "sku": "D2",
+        "quantity": 2,
+        "idempotency_key": "eval-A01"
+      },
+      "result": {
+        "reservation_id": "R-A01-002",
+        "total_cents": 139800,
+        "status": "reserved"
+      }
+    }
+  ],
+  "grade": {
+    "score": 75.0,
+    "pass": false,
+    "checks": {
+      "searched": true,
+      "reserved": true,
+      "one_write": true,
+      "final": false
+    }
+  },
+  "hidden_grading_s_excluded": 8.300502668134868e-05
+}

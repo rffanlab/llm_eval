@@ -1,5 +1,9 @@
 # llm_eval
 
+## 2026-10-13：本地千问与MiniMax M3.1 Preview
+
+[本期公开档案](studies/2026-10-13-minimax-m31-vs-local-qwen/README.md)。短题完整交付10/14与9/14（仅硬要求10/14与11/14）；长程最终文件2/2与1/2，严格完整均0/2。共204次正式API调用，完整题面、工具、原始SSE、计时/token、代理编辑分和逐题文章视频资料公开。本期优先本地带测试开发，MiniMax小函数与短简讯更快。
+
 ## 后续必测：长程任务
 
 [LH01完整题面、文件、工具及验收](long_horizon/README.md)已加入统一方法。每次后续能力比较至少包含一个同会话、同工作区的多阶段任务；本期补测[Halogen与Gufo](studies/2026-10-12-halogen-gufo-long-horizon/protocol.md)。阶段产物持续传递，包含需求变更、一次受控工具失败、最终发布与旧功能回归。长材料检索或重复单题不能替代。
@@ -16,7 +20,7 @@ python long_horizon/runner.py --profile YOUR_PROFILE --round 1 --output ./privat
 
 guard须每请求返回JSON快照并在其他模型/内存不足/繁忙时非零退出。原始输出不覆盖；每次使用新工作区与会话。本题冻结按文件字节校验，克隆时保持LF（`core.autocrlf=false`）。输出中的credentials从环境读取，不写入记录。个人Token Plan不得拿来无人值守批量跑套件。
 
-最新已完成：[本地 AI Max+395：Halogen与Gufo长程任务补测](studies/2026-10-12-halogen-gufo-long-horizon/README.md)。同一会话与工作区连续四阶段，每端两轮，共164次正式API请求。两端最终文件2/2正确，严格完整交付均0/2；完整等待中位Halogen521.73秒、Gufo445.73秒。Gufo适合作为带测试的开发助手，Halogen报告更准确、内存余量更大。完整题面、工具、阶段快照、原始调用、语义复核及文章视频资料分别存档，未来题库修订不覆盖本期原分。
+此前：[本地 AI Max+395：Halogen与Gufo长程任务补测](studies/2026-10-12-halogen-gufo-long-horizon/README.md)。同一会话与工作区连续四阶段，每端两轮，共164次正式API请求。两端最终文件2/2正确，严格完整交付均0/2；完整等待中位Halogen521.73秒、Gufo445.73秒。Gufo适合作为带测试的开发助手，Halogen报告更准确、内存余量更大。完整题面、工具、阶段快照、原始调用、语义复核及文章视频资料分别存档，未来题库修订不覆盖本期原分。
 
 此前：[本地 AI Max+395：Qwen3.8 27B与Next Flash实测](studies/2026-10-10-qwen27b-vs-next-flash/README.md)。同一Gufo0.11.0，两边Q4_K_XL，分别配DFlash2与MTP；主测合格14/16对15/16，完整等待828.36秒对360.33秒。107个记录包含首正文、预填充、解码、缓存、思考开关与最长258028token实际输入，附逐题文章及视频发布资料。
 

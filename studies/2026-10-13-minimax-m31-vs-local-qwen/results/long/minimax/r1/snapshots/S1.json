@@ -1,0 +1,73 @@
+{
+  "files": {
+    "README.md": "# 对账项目\n修复并持续维护workflow.py。输入为UTF-8 CSV字符串，输出使用整数分。工具可读取文件、修改workflow.py或delivery.md、运行公开测试、发布、查看当前发布。\n不提供终端，不允许依赖第三方包。参考答案与独立验收不会显示给模型。\n",
+    "spec-v1.md": "# v1契约\nreconcile(orders_csv, refunds_csv, policy=\"v1\", cutoff=None)返回对象：\n{\"orders\":[{\"order_id\":str,\"customer\":str,\"paid_cents\":int,\"refund_cents\":int,\"net_cents\":int}],\"customers\":[{\"customer\":str,\"net_cents\":int}],\"totals\":{\"paid_cents\":int,\"refund_cents\":int,\"net_cents\":int}}\norders按order_id字典序，customers按customer字典序。只包含paid订单，cancelled订单不入结果。金额非负，v1最多两位小数，拒绝NaN/Infinity/负数/超过两位小数；使用十进制定点，不使用float乘100。\norder_id和refund_id用于去重：相同id完全相同行只算一次；相同id但任何字段不同必须ValueError。未知订单退款、cancelled订单退款或单笔订单累计退款超过已付必须ValueError。退款均有效；零金额允许。所有输出整数分，paid-refund=net。只对paid订单所属客户出汇总，包括净额为零的客户。\n空CSV有表头时返回空列表及三个零。不能修改输入内容。\n",
+    "workflow.py": "\"\"\"订单对账工作流（v1 契约）。\n\n纯函数实现：只依赖标准库 csv / io / json / decimal，\n不访问文件、网络或进程，不使用双下划线属性。\n\"\"\"\n\nimport csv\nimport io\nimport json\nfrom decimal import Decimal, InvalidOperation\n\nPAID = \"paid\"\nCANCELLED = \"cancelled\"\n\nORDER_COLUMNS = (\"order_id\", \"customer\", \"amount\", \"status\")\nREFUND_COLUMNS = (\"refund_id\", \"order_id\", \"amount\")\n\nZERO_TOTALS = {\"paid_cents\": 0, \"refund_cents\": 0, \"net_cents\": 0}\n\n\ndef _fail(message):\n    raise ValueError(message)\n\n\ndef _to_cents(raw, field, row_no):\n    \"\"\"把十进制字符串金额转换为整数分，严格拒绝 NaN/Infinity/负数/超过两位小数。\"\"\"\n    if raw is None:\n        _fail(\"row %d: missing field %s\" % (row_no, field))\n    text = raw.strip()\n    if text == \"\":\n        _fail(\"row %d: empty amount for %s\" % (row_no, field))\n    try:\n        value = Decimal(text)\n    except (InvalidOperation, ValueError, ArithmeticError):\n        _fail(\"row %d: invalid amount %r for %s\" % (row_no, text, field))\n    if not value.is_finite():\n        _fail(\"row %d: non-finite amount %r for %s\" % (row_no, text, field))\n    if value < 0:\n        _fail(\"row %d: negative amount %r for %s\" % (row_no, text, field))\n    exponent = value.as_tuple().exponent\n    if not isinstance(exponent, int):\n        _fail(\"row %d: non-finite amount %r for %s\" % (row_no, text, field))\n    if exponent < -2:\n        _fail(\"row %d: more than two decimals %r for %s\" % (row_no, text, field))\n    return int(value.scaleb(2))\n\n\ndef _read_rows(text, required, kind):\n    \"\"\"解析CSV字符串，返回 (行记录列表)。输入字符串不被修改。\"\"\"\n    if text is None:\n        _fail(\"%s csv must be a string\" % kind)\n    if not isinstance(text, str):\n        _fail(\"%s csv must be a string\" % kind)\n    body = text\n    if body.startswith(\"﻿\"):\n        body = body[1:]\n    try:\n        parsed = [row for row in csv.reader(io.StringIO(body, newline=\"\"))]\n    except csv.Error as exc:\n        _fail(\"%s csv is not parseable: %s\" % (kind, exc))\n    parsed = [row for row in parsed if any(field.strip() for field in row)]\n    if not parsed:\n        return []\n\n    header = [field.strip().lower() for field in parsed[0]]\n    if len(set(header)) != len(header):\n        _fail(\"%s csv has duplicated header columns\" % kind)\n    missing = [name for name in required if name not in header]\n    if missing:\n        _fail(\"%s csv missing columns: %s\" % (kind, \", \".join(missing)))\n\n    records = []\n    for offset, raw_row in enumerate(parsed[1:], start=2):\n        if len(raw_row) != len(header):\n            _fail(\"%s csv row %d has %d fields, expected %d\"\n                  % (kind, offset, len(raw_row), len(header)))\n        records.append((offset, dict(zip(header, raw_row)), tuple(raw_row)))\n    return records\n\n\ndef _collect(records, id_field, kind, build):\n    \"\"\"按 id 去重：完全相同的行只算一次，相同 id 但内容不同抛 ValueError。\"\"\"\n    values = {}\n    raws = {}\n    order = []\n    for row_no, fields, raw_row in records:\n        key = fields[id_field].strip()\n        if key == \"\":\n            _fail(\"%s row %d: empty %s\" % (kind, row_no, id_field))\n        if key in raws:\n            if raws[key] != raw_row:\n                _fail(\"%s row %d: duplicate %s %r with conflicting fields\"\n                      % (kind, row_no, id_field, key))\n            continue\n        values[key] = build(row_no, fields)\n        raws[key] = raw_row\n        order.append(key)\n    return values, order\n\n\ndef reconcile(orders_csv, refunds_csv, policy=\"v1\", cutoff=None):\n    \"\"\"按 v1 契约对账，返回 orders / customers / totals 三部分结果。\"\"\"\n    if policy != \"v1\":\n        _fail(\"unsupported policy: %r\" % (policy,))\n\n    order_records = _read_rows(orders_csv, ORDER_COLUMNS, \"orders\")\n    refund_records = _read_rows(refunds_csv, REFUND_COLUMNS, \"refunds\")\n\n    orders, _ = _collect(order_records, \"order_id\", \"orders\",\n                         lambda row_no, fields: {\n                             \"order_id\": fields[\"order_id\"].strip(),\n                             \"customer\": fields[\"customer\"].strip(),\n                             \"status\": fields[\"status\"].strip().lower(),\n                             \"paid_cents\": _to_cents(fields[\"amount\"], \"amount\", row_no),\n                         })\n    refunds, refund_ids = _collect(refund_records, \"refund_id\", \"refunds\",\n                                   lambda row_no, fields: {\n                                       \"refund_id\": fields[\"refund_id\"].strip(),\n                                       \"order_id\": fields[\"order_id\"].strip(),\n                                       \"refund_cents\": _to_cents(fields[\"amount\"],\n                                                                  \"amount\", row_no),\n                                   })\n\n    # 退款必须指向已存在的 paid 订单；未知订单或非 paid 订单退款抛 ValueError。\n    refund_by_order = {}\n    for refund_id in refund_ids:\n        refund = refunds[refund_id]\n        order = orders.get(refund[\"order_id\"])\n        if order is None:\n            _fail(\"refund %r references unknown order %r\"\n                  % (refund[\"refund_id\"], refund[\"order_id\"]))\n        if order[\"status\"] != PAID:\n            _fail(\"refund %r references order %r with status %s\"\n                  % (refund[\"refund_id\"], order[\"order_id\"], order[\"status\"]))\n        refund_by_order[refund[\"order_id\"]] = (\n            refund_by_order.get(refund[\"order_id\"], 0) + refund[\"refund_cents\"])\n\n    order_rows = []\n    customer_net = {}\n    total_paid = 0\n    total_refund = 0\n    for order_id in sorted(orders):\n        order = orders[order_id]\n        if order[\"status\"] != PAID:\n            continue\n        refund_cents = refund_by_order.get(order_id, 0)\n        if refund_cents > order[\"paid_cents\"]:\n            _fail(\"order %r refunds %d exceed paid %d\"\n                  % (order_id, refund_cents, order[\"paid_cents\"]))\n        net_cents = order[\"paid_cents\"] - refund_cents\n        order_rows.append({\n            \"order_id\": order_id,\n            \"customer\": order[\"customer\"],\n            \"paid_cents\": order[\"paid_cents\"],\n            \"refund_cents\": refund_cents,\n            \"net_cents\": net_cents,\n        })\n        customer = order[\"customer\"]\n        customer_net[customer] = customer_net.get(customer, 0) + net_cents\n        total_paid += order[\"paid_cents\"]\n        total_refund += refund_cents\n\n    customer_rows = [{\"customer\": name, \"net_cents\": customer_net[name]}\n                     for name in sorted(customer_net)]\n\n    return {\n        \"orders\": order_rows,\n        \"customers\": customer_rows,\n        \"totals\": {\n            \"paid_cents\": total_paid,\n            \"refund_cents\": total_refund,\n            \"net_cents\": total_paid - total_refund,\n        },\n    }\n\n\ndef empty_result():\n    return {\"orders\": [], \"customers\": [], \"totals\": dict(ZERO_TOTALS)}\n\n\ndef export_bundle(result):\n    \"\"\"把对账结果导出为纯文本产物映射（纯函数，不写盘）。\"\"\"\n    if not isinstance(result, dict):\n        _fail(\"result must be a dict\")\n    totals = result.get(\"totals\") or ZERO_TOTALS\n    orders = result.get(\"orders\") or []\n    customers = result.get(\"customers\") or []\n\n    order_lines = [\"order_id,customer,paid_cents,refund_cents,net_cents\"]\n    for row in orders:\n        order_lines.append(\"%s,%s,%d,%d,%d\" % (\n            row[\"order_id\"], row[\"customer\"], row[\"paid_cents\"],\n            row[\"refund_cents\"], row[\"net_cents\"]))\n    customer_lines = [\"customer,net_cents\"]\n    for row in customers:\n        customer_lines.append(\"%s,%d\" % (row[\"customer\"], row[\"net_cents\"]))\n\n    summary = {\n        \"totals\": {\n            \"paid_cents\": int(totals.get(\"paid_cents\", 0)),\n            \"refund_cents\": int(totals.get(\"refund_cents\", 0)),\n            \"net_cents\": int(totals.get(\"net_cents\", 0)),\n        },\n        \"order_count\": len(orders),\n        \"customer_count\": len(customers),\n    }\n    return {\n        \"summary.json\": json.dumps(summary, ensure_ascii=False, sort_keys=True, indent=2),\n        \"orders.csv\": \"\\n\".join(order_lines) + \"\\n\",\n        \"customers.csv\": \"\\n\".join(customer_lines) + \"\\n\",\n    }",
+    "data/base/orders.csv": "order_id,customer,amount,status,created_at\nO01,A,10.10,paid,2026-10-01T10:00:00Z\nO02,A,20.20,paid,2026-10-02T10:00:00Z\nO03,B,8.00,cancelled,2026-10-02T12:00:00Z\nO04,B,9.90,paid,2026-10-03T10:00:00Z\nO01,A,10.10,paid,2026-10-01T10:00:00Z\n",
+    "data/base/refunds.csv": "refund_id,order_id,amount\nR01,O01,2.10\nR01,O01,2.10\nR02,O02,1.20\n"
+  },
+  "grade": {
+    "checks": [
+      {
+        "name": "base_exact",
+        "pass": true
+      },
+      {
+        "name": "base_row_order",
+        "pass": true
+      },
+      {
+        "name": "empty",
+        "pass": true
+      },
+      {
+        "name": "v1_negative",
+        "pass": true
+      },
+      {
+        "name": "v1_precision",
+        "pass": true
+      },
+      {
+        "name": "v1_nan",
+        "pass": true
+      },
+      {
+        "name": "v1_infinity",
+        "pass": true
+      },
+      {
+        "name": "order_duplicate_conflict",
+        "pass": true
+      },
+      {
+        "name": "refund_duplicate_conflict",
+        "pass": true
+      },
+      {
+        "name": "unknown_refund",
+        "pass": true
+      },
+      {
+        "name": "cancelled_refund",
+        "pass": true
+      },
+      {
+        "name": "excess_refund",
+        "pass": true
+      },
+      {
+        "name": "zero_customer_decimal",
+        "pass": true
+      },
+      {
+        "name": "policy_invalid",
+        "pass": true
+      }
+    ],
+    "pass": true,
+    "passed": 14,
+    "total": 14
+  },
+  "publication": {}
+}
