@@ -1,5 +1,7 @@
 # Evaluation rules
 
+- Model naming (2026-10-14): titles, covers, article introductions/configuration/conclusions, video introductions/configuration/conclusions and every comparison-table header identify the exact family version and model variant/size. Never label a standalone result only "Qwen", "千问" or "MiniMax". Keep version and variant in two-line video headers when space is limited. Record actual service/API IDs, quantization and engine separately. Contextual local/cloud pronouns are allowed after explicit identification.
+
 - Every future capability comparison includes at least one frozen long-horizon episode from `long_horizon/`: persistent workspace/history, multiple dependent stages, requirement changes, an observed recoverable tool failure, final artifacts and regression checks. Long input, long output or repeated independent single questions do not qualify. Preserve stage snapshots, complete tool traces, time/token totals and failures; report end-to-end delivery before speed.
 
 - Present every study in three stages: why evaluate, how evaluate (hardware, environment, prompts, settings, scoring), then results.

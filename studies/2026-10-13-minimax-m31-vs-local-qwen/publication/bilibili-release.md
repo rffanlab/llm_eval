@@ -1,30 +1,30 @@
-# 本地 AI Max+395 跑千问，对比 MiniMax M3.1：谁能把工作做完？
+# 本地 AI Max+395：Qwen3.8 Next Flash 对比 MiniMax M3.1 Flash Preview
 
-本地AI Max+395上的千问Next Flash（Gufo Q4_K_XL+MTP），对比MiniMax-M3.1-Flash-Preview。7种短题每端两轮，另做四阶段连续项目每端两轮；完整交付、等待、token、格式和报告错误分别呈现。
+本地 AI Max+395 跑 Qwen3.8 Next Flash（Gufo 0.11.0 / UD-Q4_K_XL + MTP），对比官方 MiniMax M3.1 Flash Preview API。实测日期2026-10-13，7种短题各两轮及四阶段长程每端两轮。
 
-本轮综合优先推荐本地作为带测试的开发助手；MiniMax适合小函数、短简讯和少步工具任务。严格完整长程两端0/2，不能说已经能无人接管项目。
+本轮优先推荐 Qwen3.8 Next Flash 做带测试的开发；MiniMax M3.1 Flash Preview 做小函数和短简讯更快。严格完整长程两边0/2。
 
-原始题面与记录：https://github.com/rffanlab/llm_eval/tree/main/studies/2026-10-13-minimax-m31-vs-local-qwen
+公开资料：https://github.com/rffanlab/llm_eval/tree/main/studies/2026-10-13-minimax-m31-vs-local-qwen
 
 ## 实际成片章节
 
-00:00 本地395，还需要云端MiniMax吗？
-00:16 同题两轮：功能、工具、写作，再到连续交付
-00:40 L1｜筛选记录，交付严格JSON
-00:55 L1｜金额累计，跳过非法记录
-01:10 L1｜100—180字，不扩写未测结论
-01:23 L2｜查库存，只预留一次
-01:41 L3｜依赖与容量约束的确定性调度
-01:59 L3｜超时重试，忽略日志注入
-02:19 L3｜600—900字的团队决策备忘录
-02:38 S1｜修复基础对账
-02:57 S2｜改规则，还要保留旧功能
-03:14 S3｜首次发布失败，能否恢复？
-03:32 S4｜迟到退款，更新文件和说明
-03:53 小题调低思考，会怎样？
-04:11 云端更快，完整交付要另看
-04:28 有128GB的395，优先本地带测试开发
+00:00 Qwen3.8 Next Flash vs MiniMax M3.1 Flash Preview
+00:18 同题两轮：功能、工具、写作，再到连续交付
+00:44 L1｜筛选记录，交付严格JSON
+00:59 L1｜金额累计，跳过非法记录
+01:13 L1｜100—180字，不扩写未测结论
+01:27 L2｜查库存，只预留一次
+01:45 L3｜依赖与容量约束的确定性调度
+02:03 L3｜超时重试，忽略日志注入
+02:23 L3｜600—900字的团队决策备忘录
+02:42 S1｜修复基础对账
+03:01 S2｜改规则，还要保留旧功能
+03:18 S3｜首次发布失败，能否恢复？
+03:36 S4｜迟到退款，更新文件和说明
+03:57 小题调低思考，会怎样？
+04:14 云端更快，完整交付要另看
+04:32 本轮优先：本地 Qwen3.8 Next Flash 带测试开发
 
-配音为本人授权AI音色（Qwen3-TTS），无背景音乐和音效。
+本人授权Qwen3-TTS音色配音，无背景音乐或音效。
 
-标签：AI评测、MiniMax、千问、本地大模型、AI Max395、Gufo、Agent、长程任务
+标签：Qwen3.8 Next Flash、MiniMax M3.1 Flash Preview、AI Max395、Gufo、Agent、长程任务
