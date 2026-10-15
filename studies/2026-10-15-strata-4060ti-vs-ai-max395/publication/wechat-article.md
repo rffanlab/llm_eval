@@ -17,11 +17,14 @@
 | 处理器 | Xeon W-2133，6核12线程 | Ryzen AI Max+395，16核32线程 |
 | 内存 | 128GB DDR4，2133 MT/s | 128GB LPDDR5，约8533 MT/s |
 | GPU | RTX4060 Ti 16GB | 内置Radeon 8060S |
-| GPU链路 | PCIe 3.0 ×8 | 统一内存 |
+| 主板插槽 | SLOT2：PCIe 3.0 ×16 | 内置GPU |
+| 显卡有效链路 | 传输复核：PCIe 3.0 ×8 | 统一内存 |
 | 系统 | Ubuntu 24.04.5，内核7.0.0-38 | Ubuntu 24.04.5，内核7.0.0-31 |
 | 运行依赖 | CUDA 13.0；驱动595.99.02 | 独立TheRock ROCm 7.14.1 SDK |
 | 主模型与量化 | Unsloth UD-Q4_K_XL | Unsloth UD-Q4_K_XL |
 | Strata | v0.1.44.1，CUDA sm89 | v0.1.44.1，HIP gfx1151 |
+
+PCIe规格补充：第2槽支持PCIe 3.0 ×16，RTX4060 Ti本身使用PCIe 4.0 ×8接口。在这台Gen3平台上，补充传输复核读到两端均为8GT/s、Width ×8，即PCIe 3.0 ×8。空闲时速率会降低；插槽的×16规格与显卡实际使用×8分别记录。插槽、显卡及实际链路证据；显卡厂商接口规格。
 
 模型显示名为Qwen3.8 Next Flash，权重仓库为unsloth/Qwen3.8-Flash-Next-GGUF，固定revision 38bb39ee97821de2c9009abb7e93950eec396e66。四片主权重合计111.3GB，约103.7GiB，远大于16GB显存。Strata用主内存和显存缓存配合运行。两台机器的主权重、MTP与tokenizer文件SHA逐一相同。
 

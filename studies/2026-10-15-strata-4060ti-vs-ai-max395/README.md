@@ -66,3 +66,7 @@ python long-horizon/runner.py --provider local --profile rtx4060ti --round 1 --o
 同一模型在不同后端上的两轮差异是本组交付观察，不证明硬件改变模型智能。代理编辑不是盲审或真人批准。历史Gufo的63.5 token/s来自10月10日同512提示三次中位；框架、MTP、上下文及传输设置不同，作为历史部署参考。
 
 [公众号逐题文章](publication/wechat-article.md) · [可复制富文本](publication/wechat-richtext.html) · [B站旁白脚本](publication/bilibili-script.md)。
+
+## PCIe规格澄清（同日补充）
+
+第2槽为PCIe3.0 ×16，显卡确在SLOT2。RTX4060 Ti本身最多×8；3秒小内存传输时，两端均读到8GT/s、Width ×8，确认有效链路为PCIe3.0 ×8。空闲读到2.5GT/s是另一状态。[完整能力与状态证据](environment/rtx4060ti-pcie-clarification.json)与原始开测环境分别保留；本补充不计入模型测速，也不改变原成绩。
