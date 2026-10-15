@@ -104,6 +104,18 @@ def build(partial=False):
   out['main_short_delivery_count']=sum(t['delivery_pass_count'] for t in out['short'].values())
   out['main_short_rounds_recorded']=sum(len(t['rounds']) for t in out['short'].values())
   out['main_short_editorial_pending']=sum(t['delivery_pending'] for t in out['short'].values())
+  battery=[]
+  for round_ in [1,2]:
+   rows=[r for task in out['short'].values() for r in task['rounds'] if r['round']==round_]
+   if len(rows)!=len(TASKS):continue
+   turns=[]
+   for row in rows:
+    record=read(S/row['source']);turns.extend(record.get('turns',[]))
+    if record.get('error') and record['error'] not in {'output_truncated','total_output_budget_exhausted','task_wall_budget','agent_reply_budget_exhausted'}:turns.append({})
+   summed={k:sum(r['usage'][k] for r in rows) for k in ['prompt_tokens','completion_tokens','total_tokens']} if all(r.get('usage') for r in rows) else None
+   pending=any(r.get('delivery_pass') is None for r in rows)
+   battery.append({'round':round_,'source_cases':[r['source'] for r in rows],'task_count':len(rows),'delivered_tasks':sum(r.get('delivery_pass') is True for r in rows),'elapsed_s':sum(r['elapsed_s'] for r in rows),'api_wait_s':sum(r['api_wait_s'] for r in rows),'usage':summed,'native_speed':speed(turns),'hard_pass':all(r['hard_pass'] for r in rows),'delivery_pass':None if pending else all(r['delivery_pass'] for r in rows)})
+  out['main_short_overall']=summarize(battery)
  result['results_complete']=not missing
  result['all_editorial_complete']=not any(o['main_short_editorial_pending'] or o['long']['episode']['delivery_pending'] for o in result['profiles'].values())
  if not partial:assert result['results_complete'] and result['all_editorial_complete'],'Missing cases or required editorial reviews; use --partial for a progress snapshot'

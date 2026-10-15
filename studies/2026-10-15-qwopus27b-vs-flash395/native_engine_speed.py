@@ -9,6 +9,7 @@ def aggregate_native_rates(turns):
   for turn in turns:
    t=turn.get('timings') or {};rate,ms=t.get(rate_key),t.get(time_key)
    if number(rate) and rate>=0 and number(ms) and ms>0:rows.append((rate,ms))
+   elif name=='prefill' and number(rate) and number(ms) and rate==0 and ms==0 and isinstance(t.get('prompt_n'),int) and not isinstance(t.get('prompt_n'),bool) and t['prompt_n']==0:rows.append((0,0))
   complete=bool(turns) and len(rows)==len(turns);duration=sum(ms for _,ms in rows)
   out[name+'_calls_measured']=len(rows);out[name+'_timing_complete']=complete
   out[name+'_ms_measured']=duration
