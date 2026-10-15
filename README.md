@@ -1,5 +1,11 @@
 # llm_eval
 
+## 2026-10-16：AI Max+395上的Qwen3.8 Next Flash，Strata参数调优
+
+[逐题结果、公众号文章与视频](studies/2026-10-16-flash395-parameter-tuning/RESULTS.md)。固定Unsloth UD-IQ4_XS、Strata0.1.44.1与64K上下文，比较4组运行参数、medium/low思考档位，再以7类短题和四阶段长程各2轮确认。60个正式案例、16个派生长程阶段；每题每阶段公开Prefill、Decode、完整等待、token、缓存和交付情况。
+
+原参数与加速参数短题均10/14，七题合计等待中位248.8与169.2秒；32K固定512输出探针等待56.7与35.5秒。长程最终文件四次均正确，严格完整交付均0/2；整项等待527.0与514.3秒，加速参数首阶段新增功能错误。通用配置优先原参数与medium；加速配置适用于有独立验收的短代码与受控工具任务。本轮未找到速度和质量全面胜出的通用设置。
+
 ## 2026-10-15：AI Max+395上的Qwen3.8 Next Flash，GSQ与Unsloth三档量化
 
 [逐题结果、公众号文章与视频](studies/2026-10-15-gsq-vs-unsloth-flash395/RESULTS.md)。同一台128GB Ryzen AI Max+395、Strata 0.1.44.1，比较GSQ-RCO IQ3_S、Unsloth UD-IQ4_XS与UD-Q4_K_XL。81个独立案例，另列24个长程阶段，共105行测量记录；逐题和阶段提供Prefill、Decode、完整等待、token、交付与编辑审读。

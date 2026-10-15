@@ -1,0 +1,86 @@
+{
+  "files": {
+    "README.md": "# 对账项目\n修复并持续维护workflow.py。输入为UTF-8 CSV字符串，输出使用整数分。工具可读取文件、修改workflow.py或delivery.md、运行公开测试、发布、查看当前发布。\n不提供终端，不允许依赖第三方包。参考答案与独立验收不会显示给模型。\n",
+    "spec-v1.md": "# v1契约\nreconcile(orders_csv, refunds_csv, policy=\"v1\", cutoff=None)返回对象：\n{\"orders\":[{\"order_id\":str,\"customer\":str,\"paid_cents\":int,\"refund_cents\":int,\"net_cents\":int}],\"customers\":[{\"customer\":str,\"net_cents\":int}],\"totals\":{\"paid_cents\":int,\"refund_cents\":int,\"net_cents\":int}}\norders按order_id字典序，customers按customer字典序。只包含paid订单，cancelled订单不入结果。金额非负，v1最多两位小数，拒绝NaN/Infinity/负数/超过两位小数；使用十进制定点，不使用float乘100。\norder_id和refund_id用于去重：相同id完全相同行只算一次；相同id但任何字段不同必须ValueError。未知订单退款、cancelled订单退款或单笔订单累计退款超过已付必须ValueError。退款均有效；零金额允许。所有输出整数分，paid-refund=net。只对paid订单所属客户出汇总，包括净额为零的客户。\n空CSV有表头时返回空列表及三个零。不能修改输入内容。\n",
+    "workflow.py": "\"\"\"Order reconciliation per spec-v1.\n\nreconcile(orders_csv, refunds_csv, policy=\"v1\", cutoff=None) -> dict\nAll money handled as integer cents via decimal fixed-point (no float math).\n\"\"\"\n\nimport csv\nimport io\nimport json\nfrom decimal import Decimal, InvalidOperation\n\n_HUNDRED = Decimal(100)\n\n_ORDER_FIELDS = [\"order_id\", \"customer\", \"amount\", \"status\", \"created_at\"]\n_REFUND_FIELDS = [\"refund_id\", \"order_id\", \"amount\"]\n\n\ndef _is_valid_amount_text(text):\n    \"\"\"Strict fixed-point check: optional integer digits, up to 2 decimals.\"\"\"\n    if not text:\n        return False\n    digits = \"0123456789\"\n    if \".\" in text:\n        head, sep, tail = text.partition(\".\")\n        if text.count(\".\") != 1:\n            return False\n        if head == \"\" and tail == \"\":\n            return False\n        if any(c not in digits for c in head) or any(c not in digits for c in tail):\n            return False\n        if len(tail) > 2:\n            return False\n    else:\n        if any(c not in digits for c in text):\n            return False\n    return True\n\n\ndef _parse_amount_cents(raw, context):\n    \"\"\"Parse a non-negative fixed-point amount (<=2 decimals) to integer cents.\n\n    Rejects negatives, NaN/Infinity, >2 decimals and any non-numeric text.\n    Uses Decimal only; never float multiplication.\n    \"\"\"\n    if raw is None:\n        raise ValueError(\"%s: missing amount\" % context)\n    text = raw.strip()\n    if not _is_valid_amount_text(text):\n        # Determine a precise rejection reason for a helpful message.\n        try:\n            d = Decimal(text)\n        except (InvalidOperation, ValueError):\n            raise ValueError(\"%s: invalid amount %r\" % (context, raw))\n        if d.is_nan() or d.is_infinite():\n            raise ValueError(\"%s: NaN/Infinity amount\" % context)\n        if d < 0:\n            raise ValueError(\"%s: negative amount\" % context)\n        raise ValueError(\"%s: amount exceeds 2 decimal places %r\" % (context, raw))\n    d = Decimal(text)\n    scaled = d * _HUNDRED\n    if scaled != scaled.to_integral_value():\n        raise ValueError(\"%s: amount exceeds 2 decimal places\" % context)\n    return int(scaled)\n\n\ndef _read_rows(csv_text, expected_fields, kind):\n    if csv_text is None:\n        raise ValueError(\"%s csv is None\" % kind)\n    reader = csv.DictReader(io.StringReader(csv_text))\n    header = reader.fieldnames\n    if header is None:\n        raise ValueError(\"%s csv: missing header\" % kind)\n    header = [h.strip() for h in header]\n    if header != expected_fields:\n        raise ValueError(\n            \"%s csv: expected header %s, got %s\" % (kind, expected_fields, header)\n        )\n    rows = []\n    for row in reader:\n        if None in row or any(v is None for v in row.values()):\n            raise ValueError(\"%s csv: malformed row %r\" % (kind, row))\n        rows.append({k: (v.strip() if isinstance(v, str) else v) for k, v in row.items()})\n    return rows\n\n\ndef reconcile(orders_csv, refunds_csv, policy=\"v1\", cutoff=None):\n    if policy != \"v1\":\n        raise ValueError(\"unsupported policy %r\" % (policy,))\n    # cutoff is not part of the v1 contract; reserved for future policies.\n    if cutoff is not None:\n        raise ValueError(\"cutoff is not supported by policy v1\")\n\n    order_rows = _read_rows(orders_csv, _ORDER_FIELDS, \"orders\")\n    refund_rows = _read_rows(refunds_csv, _REFUND_FIELDS, \"refunds\")\n\n    # ---- Orders: dedupe by order_id -------------------------------------\n    orders = {}  # order_id -> record dict\n    for row in order_rows:\n        oid = row[\"order_id\"]\n        if not oid:\n            raise ValueError(\"orders: empty order_id\")\n        cents = _parse_amount_cents(row[\"amount\"], \"order %s\" % oid)\n        status = row[\"status\"]\n        if status not in (\"paid\", \"cancelled\"):\n            raise ValueError(\"order %s: unknown status %r\" % (oid, status))\n        record = {\n            \"order_id\": oid,\n            \"customer\": row[\"customer\"],\n            \"paid_cents\": cents,\n            \"status\": status,\n            \"created_at\": row[\"created_at\"],\n        }\n        if oid in orders:\n            if orders[oid] == record:\n                continue  # exact duplicate row: count once\n            raise ValueError(\"order %s: duplicate id with different fields\" % oid)\n        orders[oid] = record\n\n    # ---- Refunds: dedupe by refund_id ------------------------------------\n    refunds = {}  # refund_id -> record dict\n    for row in refund_rows:\n        rid = row[\"refund_id\"]\n        if not rid:\n            raise ValueError(\"refunds: empty refund_id\")\n        cents = _parse_amount_cents(row[\"amount\"], \"refund %s\" % rid)\n        record = {\"refund_id\": rid, \"order_id\": row[\"order_id\"], \"refund_cents\": cents}\n        if rid in refunds:\n            if refunds[rid] == record:\n                continue  # exact duplicate row: count once\n            raise ValueError(\"refund %s: duplicate id with different fields\" % rid)\n        refunds[rid] = record\n\n    # ---- Validate refunds against orders ---------------------------------\n    refund_by_order = {}\n    for rid in sorted(refunds):\n        rec = refunds[rid]\n        oid = rec[\"order_id\"]\n        order = orders.get(oid)\n        if order is None:\n            raise ValueError(\"refund %s: unknown order %s\" % (rid, oid))\n        if order[\"status\"] != \"paid\":\n            raise ValueError(\"refund %s: order %s is not paid\" % (rid, oid))\n        refund_by_order[oid] = refund_by_order.get(oid, 0) + rec[\"refund_cents\"]\n    for oid, total in refund_by_order.items():\n        if total > orders[oid][\"paid_cents\"]:\n            raise ValueError(\n                \"order %s: refunds %d exceed paid %d\" % (oid, total, orders[oid][\"paid_cents\"])\n            )\n\n    # ---- Build result ------------------------------------------------------\n    result_orders = []\n    customers_net = {}\n    totals = {\"paid_cents\": 0, \"refund_cents\": 0, \"net_cents\": 0}\n    for oid in sorted(orders):\n        order = orders[oid]\n        if order[\"status\"] != \"paid\":\n            continue  # cancelled orders are excluded from results\n        paid = order[\"paid_cents\"]\n        refund = refund_by_order.get(oid, 0)\n        net = paid - refund\n        result_orders.append(\n            {\n                \"order_id\": oid,\n                \"customer\": order[\"customer\"],\n                \"paid_cents\": paid,\n                \"refund_cents\": refund,\n                \"net_cents\": net,\n            }\n        )\n        customers_net[order[\"customer\"]] = customers_net.get(order[\"customer\"], 0) + net\n        totals[\"paid_cents\"] += paid\n        totals[\"refund_cents\"] += refund\n        totals[\"net_cents\"] += net\n\n    result_customers = [\n        {\"customer\": name, \"net_cents\": customers_net[name]}\n        for name in sorted(customers_net)\n    ]\n    return {\"orders\": result_orders, \"customers\": result_customers, \"totals\": totals}\n\n\ndef export_bundle(result):\n    \"\"\"Return a small bundle of text artifacts for a reconcile result.\"\"\"\n    totals = result.get(\"totals\", {\"paid_cents\": 0, \"refund_cents\": 0, \"net_cents\": 0})\n    return {\"summary.json\": json.dumps(totals, sort_keys=True)}\n",
+    "data/base/orders.csv": "order_id,customer,amount,status,created_at\nO01,A,10.10,paid,2026-10-01T10:00:00Z\nO02,A,20.20,paid,2026-10-02T10:00:00Z\nO03,B,8.00,cancelled,2026-10-02T12:00:00Z\nO04,B,9.90,paid,2026-10-03T10:00:00Z\nO01,A,10.10,paid,2026-10-01T10:00:00Z\n",
+    "data/base/refunds.csv": "refund_id,order_id,amount\nR01,O01,2.10\nR01,O01,2.10\nR02,O02,1.20\n"
+  },
+  "grade": {
+    "checks": [
+      {
+        "name": "base_exact",
+        "pass": false,
+        "detail": "'types.SimpleNamespace' object has no attribute 'StringReader'"
+      },
+      {
+        "name": "base_row_order",
+        "pass": false,
+        "detail": "'types.SimpleNamespace' object has no attribute 'StringReader'"
+      },
+      {
+        "name": "empty",
+        "pass": false,
+        "detail": "'types.SimpleNamespace' object has no attribute 'StringReader'"
+      },
+      {
+        "name": "v1_negative",
+        "pass": false,
+        "detail": "'types.SimpleNamespace' object has no attribute 'StringReader'"
+      },
+      {
+        "name": "v1_precision",
+        "pass": false,
+        "detail": "'types.SimpleNamespace' object has no attribute 'StringReader'"
+      },
+      {
+        "name": "v1_nan",
+        "pass": false,
+        "detail": "'types.SimpleNamespace' object has no attribute 'StringReader'"
+      },
+      {
+        "name": "v1_infinity",
+        "pass": false,
+        "detail": "'types.SimpleNamespace' object has no attribute 'StringReader'"
+      },
+      {
+        "name": "order_duplicate_conflict",
+        "pass": false,
+        "detail": "'types.SimpleNamespace' object has no attribute 'StringReader'"
+      },
+      {
+        "name": "refund_duplicate_conflict",
+        "pass": false,
+        "detail": "'types.SimpleNamespace' object has no attribute 'StringReader'"
+      },
+      {
+        "name": "unknown_refund",
+        "pass": false,
+        "detail": "'types.SimpleNamespace' object has no attribute 'StringReader'"
+      },
+      {
+        "name": "cancelled_refund",
+        "pass": false,
+        "detail": "'types.SimpleNamespace' object has no attribute 'StringReader'"
+      },
+      {
+        "name": "excess_refund",
+        "pass": false,
+        "detail": "'types.SimpleNamespace' object has no attribute 'StringReader'"
+      },
+      {
+        "name": "zero_customer_decimal",
+        "pass": false,
+        "detail": "'types.SimpleNamespace' object has no attribute 'StringReader'"
+      },
+      {
+        "name": "policy_invalid",
+        "pass": true
+      }
+    ],
+    "pass": false,
+    "passed": 1,
+    "total": 14
+  },
+  "publication": {}
+}
