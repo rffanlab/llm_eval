@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-15",
+  "registered_relative_to_execution": "After Gufo ability cases and Qwopus unscored preflight; before the first Qwopus scored request.",
+  "reason": "The unscored stream/tool preflight confirmed a known engine timing convention: predicted_n includes the first generated token but this llama.cpp decode timer/rate excludes its step. Gufo's returned rate uses its full generated counter. This is a measurement interpretation supplement; no frozen task, score, budget, original token count or original timing is changed.",
+  "frozen_counter_series": "Keep native_speed.py and the registered predicted_n*1000/predicted_ms view exactly as frozen. This remains native_speed in offline records.",
+  "additional_native_rate_series": "native_engine_speed.py aggregates sum(engine_reported_rate_i * native_ms_i) / sum(native_ms_i) per round, then median across rounds. The published engine-native Prefill/Decode view uses this additional series; raw counter/time rates remain beside it in JSON.",
+  "llama_cpp_commit": "23b0202a189c44a54625aadcb37a946dd1d6278d",
+  "llama_cpp_source": "https://github.com/ggml-org/llama.cpp/blob/23b0202a189c44a54625aadcb37a946dd1d6278d/tools/server/server-common.h#L450",
+  "existing_source_verification": "../2026-10-11-saluki-27b-quant-hardware/native-timing-definition.json",
+  "qwopus_unscored_example": {"predicted_n": 20, "predicted_ms": 310.608, "engine_predicted_per_second": 61.170349765620976, "effective_decode_steps": 19},
+  "gufo_unscored_example": {"predicted_n": 24, "predicted_ms": 448.8231, "engine_predicted_per_second": 53.473183532665765, "effective_decode_steps": 24},
+  "generated_tokens": "Full API completion_tokens and native predicted_n are retained, including reasoning, answer and tool arguments. They are not replaced with effective decode steps.",
+  "cache": "Prefill covers new computed input only. Full prefix reuse with zero compute time has no measured Prefill rate; cached tokens are shown separately.",
+  "failure": "Timing coverage is independent from delivery success. Fully timed truncated responses and fully observed stage-call-budget failures retain measured native rates. A partial stream without final timings remains unknown.",
+  "wait": "Short and long-horizon wall times include admission/API/tools and exclude hidden grading. Single-call speed probes report complete HTTP/SSE wait, excluding admission. Download, model loading and health-check polling are outside task timing.",
+  "loading_note": "launch-ready.json load_and_ready_s is time until first observed healthy poll, including polling gaps; it is not a controlled cold-loading benchmark. No cross-host loading-speed conclusion is made."
+}
