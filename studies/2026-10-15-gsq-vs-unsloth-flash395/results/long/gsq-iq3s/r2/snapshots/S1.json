@@ -1,0 +1,73 @@
+{
+  "files": {
+    "README.md": "# 对账项目\n修复并持续维护workflow.py。输入为UTF-8 CSV字符串，输出使用整数分。工具可读取文件、修改workflow.py或delivery.md、运行公开测试、发布、查看当前发布。\n不提供终端，不允许依赖第三方包。参考答案与独立验收不会显示给模型。\n",
+    "spec-v1.md": "# v1契约\nreconcile(orders_csv, refunds_csv, policy=\"v1\", cutoff=None)返回对象：\n{\"orders\":[{\"order_id\":str,\"customer\":str,\"paid_cents\":int,\"refund_cents\":int,\"net_cents\":int}],\"customers\":[{\"customer\":str,\"net_cents\":int}],\"totals\":{\"paid_cents\":int,\"refund_cents\":int,\"net_cents\":int}}\norders按order_id字典序，customers按customer字典序。只包含paid订单，cancelled订单不入结果。金额非负，v1最多两位小数，拒绝NaN/Infinity/负数/超过两位小数；使用十进制定点，不使用float乘100。\norder_id和refund_id用于去重：相同id完全相同行只算一次；相同id但任何字段不同必须ValueError。未知订单退款、cancelled订单退款或单笔订单累计退款超过已付必须ValueError。退款均有效；零金额允许。所有输出整数分，paid-refund=net。只对paid订单所属客户出汇总，包括净额为零的客户。\n空CSV有表头时返回空列表及三个零。不能修改输入内容。\n",
+    "workflow.py": "import csv\nimport io\nimport json\nfrom decimal import Decimal, InvalidOperation\n\n\ndef _parse_amount_cents(raw, field):\n    \"\"\"Parse a non-negative decimal string with at most 2 decimal places\n    into integer cents using fixed-point Decimal (no float math).\"\"\"\n    if raw is None:\n        raise ValueError(\"%s missing\" % field)\n    s = raw.strip()\n    if s == \"\":\n        raise ValueError(\"%s empty\" % field)\n    try:\n        d = Decimal(s)\n    except InvalidOperation:\n        raise ValueError(\"%s invalid amount: %r\" % (field, raw))\n    if not d.is_finite():\n        raise ValueError(\"%s non-finite amount: %r\" % (field, raw))\n    if d < 0:\n        raise ValueError(\"%s negative amount: %r\" % (field, raw))\n    exponent = d.as_tuple().exponent\n    if isinstance(exponent, int) and exponent < -2:\n        raise ValueError(\"%s more than 2 decimals: %r\" % (field, raw))\n    cents = d * 100\n    if cents != cents.to_integral_value():\n        raise ValueError(\"%s more than 2 decimals: %r\" % (field, raw))\n    return int(cents.to_integral_value())\n\n\ndef _read_rows(csv_text, required_fields):\n    if csv_text is None:\n        raise ValueError(\"csv input missing\")\n    reader = csv.DictReader(io.StringIO(csv_text))\n    if reader.fieldnames is None:\n        raise ValueError(\"csv header missing\")\n    for f in required_fields:\n        if f not in reader.fieldnames:\n            raise ValueError(\"csv column missing: %s\" % f)\n    rows = []\n    for row in reader:\n        # DictReader yields []-rows for blank lines; skip them.\n        if all(v in (None, \"\") for v in row.values()):\n            continue\n        rows.append(row)\n    return rows\n\n\ndef reconcile(orders_csv, refunds_csv, policy=\"v1\", cutoff=None):\n    if policy != \"v1\":\n        raise ValueError(\"unsupported policy: %r\" % (policy,))\n\n    # ---- Orders: parse, validate, dedup by order_id ----\n    order_rows = _read_rows(orders_csv, [\"order_id\", \"customer\", \"amount\", \"status\"])\n    orders = {}  # order_id -> (customer, status, amount_cents)\n    for row in order_rows:\n        order_id = (row.get(\"order_id\") or \"\").strip()\n        customer = (row.get(\"customer\") or \"\").strip()\n        status = (row.get(\"status\") or \"\").strip()\n        if order_id == \"\":\n            raise ValueError(\"order_id empty\")\n        if customer == \"\":\n            raise ValueError(\"customer empty for order %s\" % order_id)\n        if status == \"\":\n            raise ValueError(\"status empty for order %s\" % order_id)\n        amount_cents = _parse_amount_cents(row.get(\"amount\"), \"amount of %s\" % order_id)\n        signature = (customer, status, amount_cents)\n        prev = orders.get(order_id)\n        if prev is not None:\n            if prev != signature:\n                raise ValueError(\n                    \"conflicting duplicate order_id %s\" % order_id\n                )\n            continue  # exact duplicate row: count once\n        orders[order_id] = signature\n\n    # ---- Refunds: parse, validate, dedup by refund_id ----\n    refund_rows = _read_rows(refunds_csv, [\"refund_id\", \"order_id\", \"amount\"])\n    refunds_seen = {}  # refund_id -> signature\n    refund_by_order = {}\n    for row in refund_rows:\n        refund_id = (row.get(\"refund_id\") or \"\").strip()\n        order_id = (row.get(\"order_id\") or \"\").strip()\n        if refund_id == \"\":\n            raise ValueError(\"refund_id empty\")\n        if order_id == \"\":\n            raise ValueError(\"order_id empty for refund %s\" % refund_id)\n        amount_cents = _parse_amount_cents(row.get(\"amount\"), \"amount of %s\" % refund_id)\n        signature = (order_id, amount_cents)\n        prev = refunds_seen.get(refund_id)\n        if prev is not None:\n            if prev != signature:\n                raise ValueError(\n                    \"conflicting duplicate refund_id %s\" % refund_id\n                )\n            continue  # exact duplicate row: count once\n        refunds_seen[refund_id] = signature\n        if order_id not in orders:\n            raise ValueError(\"refund %s targets unknown order %s\" % (refund_id, order_id))\n        if orders[order_id][1] != \"paid\":\n            raise ValueError(\"refund %s targets non-paid order %s\" % (refund_id, order_id))\n        refund_by_order[order_id] = refund_by_order.get(order_id, 0) + amount_cents\n\n    for order_id, total in refund_by_order.items():\n        if total > orders[order_id][2]:\n            raise ValueError(\n                \"refunds exceed paid amount for order %s\" % order_id\n            )\n\n    # ---- Build result ----\n    order_entries = []\n    customer_net = {}\n    totals = {\"paid_cents\": 0, \"refund_cents\": 0, \"net_cents\": 0}\n    for order_id in sorted(orders):\n        customer, status, amount_cents = orders[order_id]\n        if status != \"paid\":\n            continue\n        refund_cents = refund_by_order.get(order_id, 0)\n        net_cents = amount_cents - refund_cents\n        order_entries.append({\n            \"order_id\": order_id,\n            \"customer\": customer,\n            \"paid_cents\": amount_cents,\n            \"refund_cents\": refund_cents,\n            \"net_cents\": net_cents,\n        })\n        customer_net[customer] = customer_net.get(customer, 0) + net_cents\n        totals[\"paid_cents\"] += amount_cents\n        totals[\"refund_cents\"] += refund_cents\n        totals[\"net_cents\"] += net_cents\n\n    customers = [\n        {\"customer\": c, \"net_cents\": customer_net[c]}\n        for c in sorted(customer_net)\n    ]\n    return {\"orders\": order_entries, \"customers\": customers, \"totals\": totals}\n\n\ndef export_bundle(result):\n    return {\"summary.json\": json.dumps(result, sort_keys=True)}\n",
+    "data/base/orders.csv": "order_id,customer,amount,status,created_at\nO01,A,10.10,paid,2026-10-01T10:00:00Z\nO02,A,20.20,paid,2026-10-02T10:00:00Z\nO03,B,8.00,cancelled,2026-10-02T12:00:00Z\nO04,B,9.90,paid,2026-10-03T10:00:00Z\nO01,A,10.10,paid,2026-10-01T10:00:00Z\n",
+    "data/base/refunds.csv": "refund_id,order_id,amount\nR01,O01,2.10\nR01,O01,2.10\nR02,O02,1.20\n"
+  },
+  "grade": {
+    "checks": [
+      {
+        "name": "base_exact",
+        "pass": true
+      },
+      {
+        "name": "base_row_order",
+        "pass": true
+      },
+      {
+        "name": "empty",
+        "pass": true
+      },
+      {
+        "name": "v1_negative",
+        "pass": true
+      },
+      {
+        "name": "v1_precision",
+        "pass": true
+      },
+      {
+        "name": "v1_nan",
+        "pass": true
+      },
+      {
+        "name": "v1_infinity",
+        "pass": true
+      },
+      {
+        "name": "order_duplicate_conflict",
+        "pass": true
+      },
+      {
+        "name": "refund_duplicate_conflict",
+        "pass": true
+      },
+      {
+        "name": "unknown_refund",
+        "pass": true
+      },
+      {
+        "name": "cancelled_refund",
+        "pass": true
+      },
+      {
+        "name": "excess_refund",
+        "pass": true
+      },
+      {
+        "name": "zero_customer_decimal",
+        "pass": true
+      },
+      {
+        "name": "policy_invalid",
+        "pass": true
+      }
+    ],
+    "pass": true,
+    "passed": 14,
+    "total": 14
+  },
+  "publication": {}
+}
