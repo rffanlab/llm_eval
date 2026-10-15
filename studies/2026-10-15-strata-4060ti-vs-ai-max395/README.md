@@ -63,9 +63,13 @@ python long-horizon/runner.py --provider local --profile rtx4060ti --round 1 --o
 
 [全部API轮次计时](all-turn-timings.csv)包含首事件、首思考、首正文/工具、完整API等待、原生预填充/解码、缓存和token。[最终文件复核](final-artifact-audit.json)核对四份最终发布金额及各三项manifest SHA。[计时与评分口径](reporting-clarifications.md)披露套接字超时和冻结评分的关键词漏判；本期原始记录不覆盖。395的S4漏判不改变独立存在的S1预算失败。
 
+[逐题、逐阶段Prefill/Decode对照](native-speeds.md)补齐七道工作题、D01关闭思考、长程S1–S4及整项、三类速度探针。每轮先求全部调用的原生token总量除以对应原生计算总秒数，再跨轮取中位；缓存复用另列。[70条聚合明细CSV](native-speeds.csv)与[原始来源SHA及完整口径JSON](native-speeds.json)可核对，离线执行`python aggregate_native_speeds.py`重建。长程整项与阶段组重叠，不能相加为调用总数。本次仅补报告，仍为223次正式调用、18个冻结文件，未增加推理或重评分。
+
 同一模型在不同后端上的两轮差异是本组交付观察，不证明硬件改变模型智能。代理编辑不是盲审或真人批准。历史Gufo的63.5 token/s来自10月10日同512提示三次中位；框架、MTP、上下文及传输设置不同，作为历史部署参考。
 
 [公众号逐题文章](publication/wechat-article.md) · [可复制富文本](publication/wechat-richtext.html) · [B站旁白脚本](publication/bilibili-script.md)。
+
+[B站逐阶段速度表及实际时间轴](publication/bilibili-native-speed-panels.json)与文章使用同一份速度数据。视频对应任务加入独立Prefill/Decode表，完整交付与等待另表保留。
 
 ## PCIe规格澄清（同日补充）
 

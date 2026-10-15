@@ -10,3 +10,11 @@
 - LH01的功能检查、预算内结束说明、最终文件与报告编辑分分别记录。395两轮S4的关键词漏判见 `grader-false-negative-audit.json`；真实恢复存在，但S1各自耗尽阶段回复额度，严格完整交付仍未通过。原始评分不覆盖。
 - 代理编辑审读非盲审、非真人批准。两轮样本只能描述本组观察，不证明统计等效、全天稳定或任意生产仓库能力。
 - 公开环境描述的是整机：Xeon/DDR4/PCIe/CUDA与AI Max+395统一内存/HIP均不同。各架构默认缓存和优化不同，同主量化不等于仅更换一张GPU的实验。
+
+## 逐题、逐阶段原生速度补充
+
+原始223次正式调用均包含可用原生计时。[native-speeds.json](native-speeds.json)按七道短题、D01关闭思考、长程S1–S4及整项、三类速度探针汇总；[native-speeds.csv](native-speeds.csv)保留70条工作轮/阶段/探针聚合及原始来源SHA。长程整项和各阶段重复覆盖相同调用，不能把这些组的调用数相加。
+
+每个工作轮的Prefill为`Σprompt_n×1000/Σprompt_ms`，Decode为`Σpredicted_n×1000/Σpredicted_ms`，再跨两轮取中位；速度探针各三次取中位。不是平均单次调用或各阶段的token/s。`cache_n`单列，未加入Prefill分子；这些原生计算计时不代替API/工具/整项完整等待。短输入受固定开销和缓存状态影响，不把其Prefill与无缓存4K/32K探针直接混比。
+
+这是已有记录的报告补充，没有新增推理、改变题目预算或重评分。`aggregate_native_speeds.py`可离线重建，聚合实现位于`../../metrics/native_speed.py`；冻结的18个文件及全部原始结果保持不变。

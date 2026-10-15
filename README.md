@@ -6,6 +6,8 @@
 
 后续LH01题库v1.1.2修复ENOSPC恢复说明的关键词漏判；当前及历史研究继续使用各自冻结脚本和原分。
 
+同日补充：[逐题、长程各阶段和整项的Prefill/Decode](studies/2026-10-15-strata-4060ti-vs-ai-max395/native-speeds.md)，附逐轮token/原生耗时、缓存与原始记录SHA。文章和视频对应画面已补齐；后续每期均按此口径展示。
+
 ## 2026-10-13：本地Qwen3.8 Next Flash与MiniMax M3.1 Flash Preview
 
 [本期公开档案](studies/2026-10-13-minimax-m31-vs-local-qwen/README.md)。短题完整交付10/14与9/14（仅硬要求10/14与11/14）；长程最终文件2/2与1/2，严格完整均0/2。共204次正式API调用，完整题面、工具、原始SSE、计时/token、代理编辑分和逐题文章视频资料公开。本期优先本地带测试开发，MiniMax小函数与短简讯更快。
