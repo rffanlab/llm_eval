@@ -8,26 +8,27 @@ Qwopus的Q5_K_M量化已经完整放进单张3090。它写事实短讯更快，�
 
 Qwopus3.8 27B Flash V2的主打方向是代码和Agent。本期先确认它是否能完整放进单张3090，再看实际交付是否可靠、每道任务要等多久。对照端使用AI Max+395上已经跑通的Gufo＋Qwen3.8 Next Flash，重新执行本期全部样本。
 
-已找到的发布是Jackrong/Qwopus3.8-27B-Flash-V2。作者说明它经过混合教师轨迹和Agent相关后训练，V2针对无效思考与Python缩进作过调整；公开说明没有完整披露具体Opus版本和全部训练配方，因此本期不把它称为“本地Opus”，也不把作者公布的成绩当成实测。原模型说明。
+找到的发布是Jackrong/Qwopus3.8-27B-Flash-V2。作者说明它经过混合教师轨迹和Agent相关后训练，V2针对无效思考与Python缩进作过调整；公开说明尚未完整披露具体Opus版本和全部训练配方。下面记录这份权重在本地的实际表现。原模型说明。
 
 ## 二、怎么测：两套部署，统一任务与验收
 
-| 指标 | Qwopus3.8 27B Flash V2RTX 3090 | Qwen3.8 Next FlashAI Max+395 |
+| 指标 | Qwopus3.8 27B Flash V2 RTX 3090 | Qwen3.8 Next Flash AI Max+395 |
 | --- | --- | --- |
-| CPU | Xeon E5-2673 v440逻辑线程 | Ryzen AI Max+39516核32线程 |
+| CPU | Xeon E5-2673 v4 40逻辑线程 | Ryzen AI Max+395 16核32线程 |
 | 主内存 | 64GB | 128GB统一内存 |
 | GPU | RTX 3090 24GB | 内置Radeon 8060S |
 | 模型 | Qwopus3.8-27B-Flash-V2 | Qwen3.8 Next Flash |
 | 量化 | Q5_K_M，含MTP | UD-Q4_K_XL＋Q8 MTP |
-| 权重文件 | 19.54GB，约18.2GiB | 主权重111.33GB另有2.79GB MTP |
-| 引擎 | llama.cpp CUDAcommit 23b0202a | Gufo 0.11.0 ROCmcommit 2a3b09e1 |
-| 后端 | CUDA 12.8.1驱动595.84 | ROCm HIP 7.2.1 |
+| 权重文件 | 19.54GB，约18.2GiB | 主权重111.33GB 另有2.79GB MTP |
+| 引擎 | llama.cpp CUDA commit 23b0202a | Gufo 0.11.0 ROCm commit 2a3b09e1 |
+| 后端 | CUDA 12.8.1 驱动595.84 | ROCm HIP 7.2.1 |
+| 系统环境 | Ubuntu 24.04容器 主机内核7.0.0-31 | Ubuntu 24.04.5 内核7.0.0-31 |
 | 上下文上限 | 65536 | 262144 |
 | 主KV / MTP | q8_0 / draft-mtp 2 | KV类型未单独核实 / MTP |
 | RAM提示缓存 | 8GiB | 1GiB |
 | 主测思考 | xhigh | medium |
 
-Qwopus加载66/66层到3090，启动就绪时观测占用约20.9GiB显存，没有用CPU卸载来凑24GB。Qwopus使用含MTP的Q5_K_M文件，权重仓库为Jackrong/Qwopus3.8-27B-Flash-V2-GGUF；对照权重仓库为unsloth/Qwen3.8-Flash-Next-GGUF。逐文件SHA、固定revision与实际环境；395配置。
+Qwopus的66/66层全部加载到3090，启动就绪时观测占用约20.9GiB显存。使用的是含MTP的Q5_K_M文件，权重仓库为Jackrong/Qwopus3.8-27B-Flash-V2-GGUF；对照权重仓库为unsloth/Qwen3.8-Flash-Next-GGUF。逐文件SHA、固定revision与实际环境；395配置。
 
 两边均串行执行、温度0.3、top-p 0.95、top-k 20，思考历史不回传。Qwopus采用作者面向代码与Agent的xhigh推荐档位，395沿用medium。模型规模、硬件、量化、引擎、缓存和思考档位都有差异；成绩回答的是这两套配置如何交活，无法把差异单独归因于Opus后训练或某块GPU。
 
@@ -41,7 +42,7 @@ Qwopus加载66/66层到3090，启动就绪时观测占用约20.9GiB显存，没�
 
 L1—L3是本套受控合成任务的相对层级。代码要通过全部独立功能测试；Agent要同时满足动作、权限与最终格式；写作还要通过事实、完整、清楚、可用四项代理编辑审读，每项5分，总分至少16且事实至少3。编辑审读由主评测代理完成，非盲审。
 
-短题每次输出上限4096或8192 token，包含思考、正文与工具参数；每调用240秒、每题480秒，Agent最多6次回复。长程每阶段最多12次回复，必须给结束说明；整项上限65536输出token、2400秒。题面、工具、预算与评分先冻结。失败保留原样，不去掉围栏补分，不挑最好一轮。完整提示词、长程全部题面与夹具、冻结协议和评分口径。
+短题每次输出上限4096或8192 token，包含思考、正文与工具参数；每调用240秒、每题480秒，Agent最多6次回复。长程每阶段最多12次回复，必须给结束说明；整项上限65536输出token、2400秒。题面、工具、预算与评分先冻结，失败记录原样保留，两轮样本统一统计。完整提示词、长程全部题面与夹具、冻结协议和评分口径。
 
 速度表用引擎原生计时。Prefill只计新计算输入，复用缓存另列；Decode包括思考、正文和工具参数。多次调用先按原生计算时长加权，再取注册轮次的中位数。固定llama.cpp版本的Decode分子不含首个生成步，Gufo原生速率按全部生成数计算；原始计数与“计数÷时间”也完整保留。计算定义。完整等待包含准入检查、API、工具和失败尝试，API等待另列，均不含下载、模型加载和隐藏评分。
 
@@ -53,7 +54,7 @@ L1—L3是本套受控合成任务的相对层级。代码要通过全部独立�
 
 任务：从4条相似记录中选出指定公众号、已发布、标题完全匹配的唯一记录，只返回3个字段。
 
-| 指标 | Qwopus3.8 27B Flash V2RTX 3090 | Qwen3.8 Next FlashAI Max+395 |
+| 指标 | Qwopus3.8 27B Flash V2 RTX 3090 | Qwen3.8 Next Flash AI Max+395 |
 | --- | --- | --- |
 | 完整交付 | 0/2 | 2/2 |
 | 完整等待中位（秒） | 3.7 | 3.5 |
@@ -70,7 +71,7 @@ L1—L3是本套受控合成任务的相对层级。代码要通过全部独立�
 
 任务：写纯函数，只累计已付款记录，跳过布尔值、负数和非法类型，不修改输入。
 
-| 指标 | Qwopus3.8 27B Flash V2RTX 3090 | Qwen3.8 Next FlashAI Max+395 |
+| 指标 | Qwopus3.8 27B Flash V2 RTX 3090 | Qwen3.8 Next Flash AI Max+395 |
 | --- | --- | --- |
 | 完整交付 | 2/2 | 2/2 |
 | 完整等待中位（秒） | 16.6 | 8.3 |
@@ -88,7 +89,7 @@ L1—L3是本套受控合成任务的相对层级。代码要通过全部独立�
 
 任务：把各6题、12秒和18秒的虚构结果写成100—180字短讯，说明价格、长任务和长期稳定性未测。
 
-| 指标 | Qwopus3.8 27B Flash V2RTX 3090 | Qwen3.8 Next FlashAI Max+395 |
+| 指标 | Qwopus3.8 27B Flash V2 RTX 3090 | Qwen3.8 Next Flash AI Max+395 |
 | --- | --- | --- |
 | 完整交付 | 2/2 | 2/2 |
 | 完整等待中位（秒） | 27.0 | 34.5 |
@@ -106,7 +107,7 @@ L1—L3是本套受控合成任务的相对层级。代码要通过全部独立�
 
 任务：买2个满足USB4、双显示输出、100W PD和预算条件的扩展坞，先查库存，再选最低价有货SKU。
 
-| 指标 | Qwopus3.8 27B Flash V2RTX 3090 | Qwen3.8 Next FlashAI Max+395 |
+| 指标 | Qwopus3.8 27B Flash V2 RTX 3090 | Qwen3.8 Next Flash AI Max+395 |
 | --- | --- | --- |
 | 完整交付 | 0/2 | 2/2 |
 | 完整等待中位（秒） | 17.2 | 6.1 |
@@ -123,7 +124,7 @@ L1—L3是本套受控合成任务的相对层级。代码要通过全部独立�
 
 任务：实现题面规定的按ID贪心调度，兼顾容量、前置依赖与异常；不是求全局最优排程。
 
-| 指标 | Qwopus3.8 27B Flash V2RTX 3090 | Qwen3.8 Next FlashAI Max+395 |
+| 指标 | Qwopus3.8 27B Flash V2 RTX 3090 | Qwen3.8 Next Flash AI Max+395 |
 | --- | --- | --- |
 | 完整交付 | 1/2 | 2/2 |
 | 完整等待中位（秒） | 72.7 | 55.2 |
@@ -141,7 +142,7 @@ L1—L3是本套受控合成任务的相对层级。代码要通过全部独立�
 
 任务：先查运行列表，读日志遇临时超时后重试，忽略伪装指令，返回严格JSON，不修改生产。
 
-| 指标 | Qwopus3.8 27B Flash V2RTX 3090 | Qwen3.8 Next FlashAI Max+395 |
+| 指标 | Qwopus3.8 27B Flash V2 RTX 3090 | Qwen3.8 Next Flash AI Max+395 |
 | --- | --- | --- |
 | 完整交付 | 0/2 | 0/2 |
 | 完整等待中位（秒） | 9.0 | 7.9 |
@@ -158,7 +159,7 @@ L1—L3是本套受控合成任务的相对层级。代码要通过全部独立�
 
 任务：根据4组事实，明确采用与禁用范围、人工责任和量化退出条件；每篇核验最多5分钟，内网资料禁止上云。
 
-| 指标 | Qwopus3.8 27B Flash V2RTX 3090 | Qwen3.8 Next FlashAI Max+395 |
+| 指标 | Qwopus3.8 27B Flash V2 RTX 3090 | Qwen3.8 Next Flash AI Max+395 |
 | --- | --- | --- |
 | 完整交付 | 0/2 | 0/2 |
 | 完整等待中位（秒） | 107.3 | 90.3 |
@@ -180,7 +181,7 @@ LH01沿用同一会话、同一份workflow.py和工作区：先修老功能，�
 
 任务：读取契约，处理重复记录、非法金额和旧接口。
 
-| 指标 | Qwopus3.8 27B Flash V2RTX 3090 | Qwen3.8 Next FlashAI Max+395 |
+| 指标 | Qwopus3.8 27B Flash V2 RTX 3090 | Qwen3.8 Next Flash AI Max+395 |
 | --- | --- | --- |
 | 功能验收（第1/2轮） | 13/14 / 14/14 | 14/14 / 14/14 |
 | 预算内完整阶段 | 1/2 | 1/2 |
@@ -198,7 +199,7 @@ LH01沿用同一会话、同一份workflow.py和工作区：先修老功能，�
 
 任务：加入截止时间、退款状态和逐条四舍五入，仍须兼容v1。
 
-| 指标 | Qwopus3.8 27B Flash V2RTX 3090 | Qwen3.8 Next FlashAI Max+395 |
+| 指标 | Qwopus3.8 27B Flash V2 RTX 3090 | Qwen3.8 Next Flash AI Max+395 |
 | --- | --- | --- |
 | 功能验收（第1/2轮） | 25/25 / 25/25 | 25/25 / 25/25 |
 | 预算内完整阶段 | 2/2 | 2/2 |
@@ -216,7 +217,7 @@ LH01沿用同一会话、同一份workflow.py和工作区：先修老功能，�
 
 任务：补齐发布格式，遇ENOSPC后保住旧发布并恢复。
 
-| 指标 | Qwopus3.8 27B Flash V2RTX 3090 | Qwen3.8 Next FlashAI Max+395 |
+| 指标 | Qwopus3.8 27B Flash V2 RTX 3090 | Qwen3.8 Next Flash AI Max+395 |
 | --- | --- | --- |
 | 功能验收（第1/2轮） | 35/35 / 35/35 | 35/35 / 35/35 |
 | 预算内完整阶段 | 1/2 | 2/2 |
@@ -234,7 +235,7 @@ LH01沿用同一会话、同一份workflow.py和工作区：先修老功能，�
 
 任务：读取最终输入，更新发布与金额，回归测试，写出准确报告。
 
-| 指标 | Qwopus3.8 27B Flash V2RTX 3090 | Qwen3.8 Next FlashAI Max+395 |
+| 指标 | Qwopus3.8 27B Flash V2 RTX 3090 | Qwen3.8 Next Flash AI Max+395 |
 | --- | --- | --- |
 | 功能验收（第1/2轮） | 48/49 / 49/49 | 49/49 / 49/49 |
 | 预算内完整阶段 | 0/2 | 2/2 |
@@ -248,7 +249,7 @@ LH01沿用同一会话、同一份workflow.py和工作区：先修老功能，�
 
 阶段结论：四份最终发布的金额、CSV和manifest均正确：已付40.21元、退款5.51元、净额34.70元，客户A/B净额24.80/9.90元。Qwopus第一轮报告346字低于400字，收尾回复还被截断；第二轮报告454字、49项验收全过，却用满回复额度而未结束。395两轮报告与结束说明都合格，本阶段完整交付2/2，Qwopus0/2。
 
-| 指标 | Qwopus3.8 27B Flash V2RTX 3090 | Qwen3.8 Next FlashAI Max+395 |
+| 指标 | Qwopus3.8 27B Flash V2 RTX 3090 | Qwen3.8 Next Flash AI Max+395 |
 | --- | --- | --- |
 | 长程严格完整交付 | 0/2 | 1/2 |
 | 整项等待中位（秒） | 398.3 | 434.4 |
@@ -265,7 +266,7 @@ LH01沿用同一会话、同一份workflow.py和工作区：先修老功能，�
 
 短输入
 
-| 指标 | Qwopus3.8 27B Flash V2RTX 3090 | Qwen3.8 Next FlashAI Max+395 |
+| 指标 | Qwopus3.8 27B Flash V2 RTX 3090 | Qwen3.8 Next Flash AI Max+395 |
 | --- | --- | --- |
 | 实际输入token中位 | 67 | 67 |
 | 新计算输入token中位 | 4 | 0 |
@@ -276,7 +277,7 @@ LH01沿用同一会话、同一份workflow.py和工作区：先修老功能，�
 
 约4K输入
 
-| 指标 | Qwopus3.8 27B Flash V2RTX 3090 | Qwen3.8 Next FlashAI Max+395 |
+| 指标 | Qwopus3.8 27B Flash V2 RTX 3090 | Qwen3.8 Next Flash AI Max+395 |
 | --- | --- | --- |
 | 实际输入token中位 | 4,057 | 4,057 |
 | 新计算输入token中位 | 4,057 | 4,057 |
@@ -287,7 +288,7 @@ LH01沿用同一会话、同一份workflow.py和工作区：先修老功能，�
 
 约32K输入
 
-| 指标 | Qwopus3.8 27B Flash V2RTX 3090 | Qwen3.8 Next FlashAI Max+395 |
+| 指标 | Qwopus3.8 27B Flash V2 RTX 3090 | Qwen3.8 Next Flash AI Max+395 |
 | --- | --- | --- |
 | 实际输入token中位 | 32,713 | 32,713 |
 | 新计算输入token中位 | 28,916 | 32,713 |
@@ -300,7 +301,7 @@ LH01沿用同一会话、同一份workflow.py和工作区：先修老功能，�
 
 ### 过度思考：关闭以后，简单题好多少？
 
-| 指标 | Qwopus3.8 27B Flash V2RTX 3090 | Qwen3.8 Next FlashAI Max+395 |
+| 指标 | Qwopus3.8 27B Flash V2 RTX 3090 | Qwen3.8 Next Flash AI Max+395 |
 | --- | --- | --- |
 | 主测思考等待中位（秒） | 3.71 | 3.49 |
 | 关闭思考等待中位（秒） | 1.43 | 0.65 |
@@ -314,7 +315,7 @@ Qwopus关闭思考后两轮均只生成35 token，但仍保留代码围栏，格
 
 ## 综合推荐：本轮优先选395的Qwen3.8 Next Flash
 
-| 指标 | Qwopus3.8 27B Flash V2RTX 3090 | Qwen3.8 Next FlashAI Max+395 |
+| 指标 | Qwopus3.8 27B Flash V2 RTX 3090 | Qwen3.8 Next Flash AI Max+395 |
 | --- | --- | --- |
 | 短题完整交付 | 5/14 | 10/14 |
 | 7题累计等待中位（秒） | 253.5 | 205.8 |
@@ -328,7 +329,7 @@ Qwopus3.8 27B Flash V2的价值在于能完整放进24GB显卡：本次Q5_K_M方
 
 复杂决策写作本轮两边都没有交出合格稿，长程也都出现过额度内未收尾的问题。这组结果支持把它们用于有人检查结果、能跑功能测试的工作；还不足以推荐无人照看的整项目交付。Qwopus采用xhigh、395采用medium，这不是同档思考的消融测试；27B后训练相对原版27B的单项收益，也未在本轮隔离测量。
 
-| 指标 | Qwopus3.8 27B Flash V2RTX 3090 | Qwen3.8 Next FlashAI Max+395 |
+| 指标 | Qwopus3.8 27B Flash V2 RTX 3090 | Qwen3.8 Next Flash AI Max+395 |
 | --- | --- | --- |
 | 长程最低可用主内存（GiB） | 42.0 | 30.8 |
 | 显存采样峰值（GiB） | 21.4 | 0.4 |
