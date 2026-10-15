@@ -1,5 +1,11 @@
 # llm_eval
 
+## 2026-10-15：AI Max+395上的Qwen3.8 Next Flash，GSQ与Unsloth三档量化
+
+[逐题结果、公众号文章与视频](studies/2026-10-15-gsq-vs-unsloth-flash395/RESULTS.md)。同一台128GB Ryzen AI Max+395、Strata 0.1.44.1，比较GSQ-RCO IQ3_S、Unsloth UD-IQ4_XS与UD-Q4_K_XL。81个独立案例，另列24个长程阶段，共105行测量记录；逐题和阶段提供Prefill、Decode、完整等待、token、交付与编辑审读。
+
+短题完整交付分别为8/14、10/14、10/14，整套等待中位449.5、221.0、294.9秒；六次长程最终文件均正确，严格完整交付均0/2。综合优先UD-IQ4_XS，保留GSQ短输入Decode和长程整项等待优势。三档文件大小、实际专家缓存和主存arena策略不同，属于实际部署比较；冻结协议中expert-cache参数的单位错误另有[更正](studies/2026-10-15-gsq-vs-unsloth-flash395/reporting-clarifications.md)，原始参数与分数未改。
+
 ## 2026-10-15：Strata / Qwen3.8 Next Flash，4060 Ti与AI Max+395
 
 [完整公开档案](studies/2026-10-15-strata-4060ti-vs-ai-max395/README.md)。同一UD-Q4_K_XL与Strata0.1.44.1，两台128GB整机。短题完整交付10/14与12/14；长程最终文件均2/2正确，严格均0/2。固定512解码中位31.9与44.8 token/s；32K输入时4060 Ti预填充620.2 token/s、完整等待69.0秒，优于395的499.1 token/s与77.6秒。综合推荐395处理本轮工作题，保留4060 Ti长输入测速优势。54个案例、223次正式调用，完整题面、环境SHA、原始轨迹、时间/token、评分漏判与编辑复核公开。
