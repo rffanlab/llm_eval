@@ -1,0 +1,376 @@
+{
+  "task": "C03",
+  "provider": "local",
+  "profile": "c6-medium",
+  "round": 2,
+  "variant": "main",
+  "model_requested": "Qwen/Qwen3.8-Flash-Next",
+  "fixture_sha256": "a1d5a1830ba603382ba4ece07ab149e50ead5d112543aa6067cd71d0d1df8fe3",
+  "usage": {
+    "prompt_tokens": 236,
+    "completion_tokens": 4677,
+    "total_tokens": 4913
+  },
+  "usage_complete": true,
+  "turns": [
+    {
+      "index": 1,
+      "content": "```python\ndef schedule(tasks, capacity):\n    if not tasks:\n        return {\"jobs\": [], \"makespan\": 0}\n\n    task_map = {}\n    for t in tasks:\n        task_map[t[\"id\"]] = t\n\n    for t in tasks:\n        if t[\"units\"] > capacity:\n            raise ValueError(\"units exceeds capacity\")\n\n    for t in tasks:\n        for d in t[\"deps\"]:\n            if d not in task_map:\n                raise ValueError(\"unknown dependency\")\n\n    WHITE, GRAY, BLACK = 0, 1, 2\n    color = {tid: WHITE for tid in task_map}\n    for start in task_map:\n        if color[start] != WHITE:\n            continue\n        stack = [(start, 0)]\n        color[start] = GRAY\n        while stack:\n            node, idx = stack[-1]\n            deps = task_map[node][\"deps\"]\n            if idx < len(deps):\n                stack[-1] = (node, idx + 1)\n                dep = deps[idx]\n                if color[dep] == GRAY:\n                    raise ValueError(\"circular dependency\")\n                if color[dep] == WHITE:\n                    color[dep] = GRAY\n                    stack.append((dep, 0))\n            else:\n                color[node] = BLACK\n                stack.pop()\n\n    pending = set(task_map.keys())\n    running = {}\n    completed = set()\n    used_units = 0\n    t = 0\n    result = {}\n\n    while pending or running:\n        to_release = [tid for tid, end in running.items() if end <= t]\n        for tid in to_release:\n            used_units -= task_map[tid][\"units\"]\n            completed.add(tid)\n            del running[tid]\n\n        for tid in sorted(pending):\n            task = task_map[tid]\n            if all(d in completed for d in task[\"deps\"]):\n                if used_units + task[\"units\"] <= capacity:\n                    result[tid] = (t, t + task[\"duration\"])\n                    running[tid] = t + task[\"duration\"]\n                    used_units += task[\"units\"]\n                    pending.discard(tid)\n\n        if running:\n            t = min(running.values())\n        elif pending:\n            break\n\n    jobs = sorted(\n        [{\"id\": tid, \"start\": s, \"end\": e} for tid, (s, e) in result.items()],\n        key=lambda x: x[\"id\"]\n    )\n    makespan = max(e for _, (_, e) in result.items()) if result else 0\n\n    return {\"jobs\": jobs, \"makespan\": makespan}\n```",
+      "returned_model": "Qwen/Qwen3.8-Flash-Next",
+      "reasoning_chars": 16294,
+      "tool_calls": [],
+      "usage": {
+        "prompt_tokens": 236,
+        "completion_tokens": 4677,
+        "total_tokens": 4913,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "finish_reason": "stop",
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 236,
+        "prompt_ms": 1077.8,
+        "prompt_per_token_ms": 4.567,
+        "prompt_per_second": 219.0,
+        "predicted_n": 4677,
+        "predicted_ms": 85779.1,
+        "predicted_per_token_ms": 18.341,
+        "predicted_per_second": 54.5,
+        "draft_n": 4173,
+        "draft_n_accepted": 3226
+      },
+      "first_event_s": 0.019998995994683355,
+      "first_reasoning_s": 1.1353045140276663,
+      "first_content_s": 78.15883137600031,
+      "first_tool_s": null,
+      "api_elapsed_s": 86.8790344989975
+    }
+  ],
+  "started_at_epoch": 1792115274.6646593,
+  "human_corrections": 0,
+  "content": "```python\ndef schedule(tasks, capacity):\n    if not tasks:\n        return {\"jobs\": [], \"makespan\": 0}\n\n    task_map = {}\n    for t in tasks:\n        task_map[t[\"id\"]] = t\n\n    for t in tasks:\n        if t[\"units\"] > capacity:\n            raise ValueError(\"units exceeds capacity\")\n\n    for t in tasks:\n        for d in t[\"deps\"]:\n            if d not in task_map:\n                raise ValueError(\"unknown dependency\")\n\n    WHITE, GRAY, BLACK = 0, 1, 2\n    color = {tid: WHITE for tid in task_map}\n    for start in task_map:\n        if color[start] != WHITE:\n            continue\n        stack = [(start, 0)]\n        color[start] = GRAY\n        while stack:\n            node, idx = stack[-1]\n            deps = task_map[node][\"deps\"]\n            if idx < len(deps):\n                stack[-1] = (node, idx + 1)\n                dep = deps[idx]\n                if color[dep] == GRAY:\n                    raise ValueError(\"circular dependency\")\n                if color[dep] == WHITE:\n                    color[dep] = GRAY\n                    stack.append((dep, 0))\n            else:\n                color[node] = BLACK\n                stack.pop()\n\n    pending = set(task_map.keys())\n    running = {}\n    completed = set()\n    used_units = 0\n    t = 0\n    result = {}\n\n    while pending or running:\n        to_release = [tid for tid, end in running.items() if end <= t]\n        for tid in to_release:\n            used_units -= task_map[tid][\"units\"]\n            completed.add(tid)\n            del running[tid]\n\n        for tid in sorted(pending):\n            task = task_map[tid]\n            if all(d in completed for d in task[\"deps\"]):\n                if used_units + task[\"units\"] <= capacity:\n                    result[tid] = (t, t + task[\"duration\"])\n                    running[tid] = t + task[\"duration\"]\n                    used_units += task[\"units\"]\n                    pending.discard(tid)\n\n        if running:\n            t = min(running.values())\n        elif pending:\n            break\n\n    jobs = sorted(\n        [{\"id\": tid, \"start\": s, \"end\": e} for tid, (s, e) in result.items()],\n        key=lambda x: x[\"id\"]\n    )\n    makespan = max(e for _, (_, e) in result.items()) if result else 0\n\n    return {\"jobs\": jobs, \"makespan\": makespan}\n```",
+  "elapsed_s": 86.97255780897103,
+  "reasoning_chars": 16294,
+  "grade": {
+    "score": 100.0,
+    "pass": true,
+    "tests": [
+      {
+        "test": 1,
+        "pass": true,
+        "actual": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "expected": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 2,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 3,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 4,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 5,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 6,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 4
+            },
+            {
+              "id": "b",
+              "start": 4,
+              "end": 6
+            },
+            {
+              "id": "c",
+              "start": 0,
+              "end": 1
+            }
+          ],
+          "makespan": 6
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 4
+            },
+            {
+              "id": "b",
+              "start": 4,
+              "end": 6
+            },
+            {
+              "id": "c",
+              "start": 0,
+              "end": 1
+            }
+          ],
+          "makespan": 6
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 7,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "c",
+              "start": 2,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "c",
+              "start": 2,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 8,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 2,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 4
+            },
+            {
+              "id": "z",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 4
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 2,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 4
+            },
+            {
+              "id": "z",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 4
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 9,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 10,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 11,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 12,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 13,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      }
+    ]
+  },
+  "hidden_grading_s_excluded": 0.019705341022927314
+}

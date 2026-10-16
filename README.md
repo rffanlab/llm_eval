@@ -1,5 +1,11 @@
 # llm_eval
 
+## 2026-10-16：AI Max+395上的Qwen3.8 Next Flash，社区Prefill参数追测
+
+[逐题结果与公开材料](studies/2026-10-16-flash395-prefill-followup/RESULTS.md)。固定Unsloth UD-IQ4_XS、Strata0.1.44.1与64K上下文，拆分专家缓存、auto分块、F16、WMMA与I/O线程；36次速度探针，再以7道短题与四阶段长程各2轮确认。68个正式案例、16个派生阶段，完整提示词、原始回复与84行测量记录公开。
+
+32K Prefill由718.5升至942.2token/s，但短题交付均10/14，长程严格交付均0/2。七短题加一长程的事后合计等待中位为688.1与699.6秒、生成29121与34996token；两轮不足以证明稳定的整体等待优势。通用配置优先原参数；c6无F16配置适用于大输入、金额函数和事实短讯等本轮确有收益的任务。F16三组12次请求均在答案首token前失败。
+
 ## 2026-10-16：AI Max+395上的Qwen3.8 Next Flash，Strata参数调优
 
 [逐题结果、公众号文章与视频](studies/2026-10-16-flash395-parameter-tuning/RESULTS.md)。固定Unsloth UD-IQ4_XS、Strata0.1.44.1与64K上下文，比较4组运行参数、medium/low思考档位，再以7类短题和四阶段长程各2轮确认。60个正式案例、16个派生长程阶段；每题每阶段公开Prefill、Decode、完整等待、token、缓存和交付情况。
