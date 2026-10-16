@@ -1,0 +1,1597 @@
+[
+  {
+    "scene": 1,
+    "section": "为什么测",
+    "title": "261W的7900 XTX，跑大模型值不值？",
+    "subtitle": "Qwen3.8 Next Flash · 7900 XTX / 4060 Ti / AI Max+395",
+    "speech": "同样是一百二十八G内存的老工作站，把4060 Ti换成7900 XTX，再把显卡功耗上限设到二百六十一瓦。运行同一份千问三点八 Next Flash，实际工作能快多少？代码、工具调用、写作和连续四阶段项目全部测，再和本地AI Max加三九五比较。显卡更强，任务就一定做得更好吗？",
+    "panels": [
+      {
+        "mode": "excerpt",
+        "heading": "同一份Qwen3.8 Next Flash，先看一个差距",
+        "text": "32K输入完整等待：\n7900 XTX 261W：46.78秒\nAI Max+395：77.65秒",
+        "takeaway": "固定生成512 token；无缓存输入，三次中位。",
+        "classification": "DATA",
+        "provenance": "speed/prompt32k · 速度探针，不评长文理解",
+        "size": 40,
+        "title": "32K输入快了，工作任务也会更快吗？"
+      },
+      {
+        "mode": "excerpt",
+        "heading": "已有大内存，换显卡有多少提升？",
+        "text": "Qwen3.8 Next Flash / 111.3GB量化权重\n7900 XTX 24GB / 功耗上限261W\n对比4060 Ti 16GB与AI Max+395",
+        "takeaway": "同样的题目，比较实际交付和完整等待。",
+        "classification": "DATA",
+        "provenance": "environment/ · 实机与已封存硬件记录",
+        "size": 40
+      },
+      {
+        "mode": "excerpt",
+        "heading": "这次把日常工作也一起测",
+        "text": "代码 / 工具调用 / 写作\n连续四阶段项目\n能否交付、完整等待和原生速度",
+        "takeaway": "显卡更强，任务就一定做得更好吗？",
+        "classification": "DATA",
+        "provenance": "environment/ · 实机与已封存硬件记录",
+        "size": 40
+      }
+    ],
+    "take_id": 101
+  },
+  {
+    "scene": 2,
+    "section": "怎么测 · 配置",
+    "title": "同一模型与量化，同版Strata",
+    "subtitle": "Qwen3.8 Next Flash · UD-Q4_K_XL · 主权重111.3GB",
+    "speech": "主模型都是千问三点八 Next Flash，同一份UD Q四K XL量化，主权重一百一十一点三GB。引擎固定Strata零点一点四四点一，上下文六万五千五百三十六，串行运行。7900 XTX在二百六十一瓦条件下全部重测，另两端引用昨天已封存的同题成绩。",
+    "panels": [
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "CPU",
+            "Xeon W-2133",
+            "Xeon W-2133",
+            "AI Max+395"
+          ],
+          [
+            "内存",
+            "128G DDR4",
+            "128G DDR4",
+            "128G LPDDR5"
+          ],
+          [
+            "主机链路",
+            "PCIe3.0 ×8",
+            "PCIe3.0 ×16",
+            "统一内存"
+          ]
+        ],
+        "takeaway": "两台整机；显卡、后端与可用缓存共同变化。",
+        "classification": "DATA",
+        "provenance": "environment/ · 另两端基线f0def49"
+      },
+      {
+        "mode": "excerpt",
+        "heading": "固定运行设置",
+        "text": "Strata 0.1.44.1 / UD-Q4_K_XL\n65536上下文 / int8 KV / spec4 / 串行1\n7900 XTX: power1_cap=261W",
+        "takeaway": "7900 XTX在261W下新测；另两端为历史基线。",
+        "classification": "DATA",
+        "provenance": "extension-protocol.md / baseline-references.json",
+        "size": 40
+      },
+      {
+        "mode": "excerpt",
+        "heading": "由浅入深",
+        "text": "L1：JSON筛选、金额函数、事实短讯\nL2：查库存后仅预留一次\nL3：调度、排障、决策备忘录\n长程：修复→变更→故障恢复→最终发布",
+        "takeaway": "每题输出预算含思考；失败与空正文照存。",
+        "classification": "DATA",
+        "provenance": "tasks.json / long-horizon/task.json",
+        "size": 40,
+        "title": "短题、工具与四阶段连续项目",
+        "subtitle": "合成受控任务 · 完整提示词、预算与评分事前冻结"
+      },
+      {
+        "mode": "excerpt",
+        "heading": "怎样记录速度与完成度",
+        "text": "Prefill：新算输入 / 原生计算秒数\nDecode：生成输出 / 原生计算秒数\n每轮先合并全部调用，再取中位\n完整耗时、功能验收和交付分别记录",
+        "takeaway": "写作由评测代理按四维评分，门槛16/20。",
+        "classification": "DATA",
+        "provenance": "extension-protocol.md / metrics/native_speed.py",
+        "size": 40,
+        "title": "短题、工具与四阶段连续项目",
+        "subtitle": "合成受控任务 · 完整提示词、预算与评分事前冻结"
+      }
+    ],
+    "take_id": 102
+  },
+  {
+    "scene": 4,
+    "section": "逐题结果 · D01",
+    "title": "L1 · 严格JSON筛选",
+    "subtitle": "Qwen3.8 Next Flash · 同题、同量化；7900 XTX为261W条件",
+    "speech": "先看严格JSON。三端两轮都答对，7900 XTX完整等待中位7.16秒，和4060 Ti的7.03秒接近；AI Max加三九五是5.23秒。这类很短的请求，显卡解码更快，并没有让整项等待同步缩短。",
+    "panels": [
+      {
+        "mode": "excerpt",
+        "heading": "任务与难度",
+        "text": "从给定记录中选出满足条件的唯一项，输出严格JSON。",
+        "takeaway": "三端2/2；很短的请求没有换卡提速。",
+        "classification": "DATA",
+        "provenance": "task-cards.md / tasks.json",
+        "size": 40
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "完整交付",
+            "2/2",
+            "2/2",
+            "2/2"
+          ],
+          [
+            "耗时(秒)",
+            "7.03",
+            "7.16",
+            "5.23"
+          ],
+          [
+            "Prefill",
+            "58.6",
+            "53.4",
+            "69.8"
+          ],
+          [
+            "Decode",
+            "29.1",
+            "35.9",
+            "45.2"
+          ]
+        ],
+        "takeaway": "三端2/2；很短的请求没有换卡提速。",
+        "classification": "DATA",
+        "provenance": "summary.json / native-speeds.json · 两轮中位；缓存另列CSV"
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "输出token",
+            "166.5",
+            "175.0",
+            "175.0"
+          ],
+          [
+            "输入token",
+            "149.0",
+            "149.0",
+            "149.0"
+          ],
+          [
+            "缓存token",
+            "72.0",
+            "72.0",
+            "72.0"
+          ]
+        ],
+        "takeaway": "三端2/2；很短的请求没有换卡提速。",
+        "classification": "DATA",
+        "provenance": "原始回复与编辑审读 · 输出含思考/正文/工具参数"
+      }
+    ]
+  },
+  {
+    "scene": 5,
+    "section": "逐题结果 · C01",
+    "title": "L1 · 金额纯函数",
+    "subtitle": "Qwen3.8 Next Flash · 同题、同量化；7900 XTX为261W条件",
+    "speech": "金额函数要求不修改输入，并处理空值、优惠和大整数。三端两轮都通过九项功能测试。7900 XTX用19.17秒，比4060 Ti的22.70秒短，但还慢于AI Max加三九五的14.93秒。基础金额代码能交付，换卡有改善。",
+    "panels": [
+      {
+        "mode": "excerpt",
+        "heading": "任务与难度",
+        "text": "写金额计算函数，处理空输入、优惠边界、大整数，不能修改输入。",
+        "takeaway": "三端9/9功能全过；7900 XTX仍慢于395。",
+        "classification": "DATA",
+        "provenance": "task-cards.md / tasks.json",
+        "size": 40
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "完整交付",
+            "2/2",
+            "2/2",
+            "2/2"
+          ],
+          [
+            "耗时(秒)",
+            "22.70",
+            "19.17",
+            "14.93"
+          ],
+          [
+            "Prefill",
+            "57.2",
+            "42.4",
+            "70.5"
+          ],
+          [
+            "Decode",
+            "31.7",
+            "40.5",
+            "48.9"
+          ]
+        ],
+        "takeaway": "三端9/9功能全过；7900 XTX仍慢于395。",
+        "classification": "DATA",
+        "provenance": "summary.json / native-speeds.json · 两轮中位；缓存另列CSV"
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "输出token",
+            "684.0",
+            "696.0",
+            "668.5"
+          ],
+          [
+            "输入token",
+            "143.0",
+            "143.0",
+            "143.0"
+          ],
+          [
+            "缓存token",
+            "69.0",
+            "69.0",
+            "69.0"
+          ],
+          [
+            "功能测试",
+            "9/9 ×2",
+            "9/9 ×2",
+            "9/9 ×2"
+          ]
+        ],
+        "takeaway": "三端9/9功能全过；7900 XTX仍慢于395。",
+        "classification": "DATA",
+        "provenance": "原始回复与编辑审读 · 输出含思考/正文/工具参数"
+      }
+    ]
+  },
+  {
+    "scene": 6,
+    "section": "逐题结果 · W01",
+    "title": "L1 · 有事实边界的短讯",
+    "subtitle": "Qwen3.8 Next Flash · 同题、同量化；7900 XTX为261W条件",
+    "speech": "短讯题只能使用给定事实，不能从六道短题推导长期优劣和性价比。三端都交付，两轮编辑分都是十九。7900 XTX用33.20秒，接近AI Max加三九五的31.23秒，比4060 Ti的70.89秒短很多。这次输出token也明显减少，不能把全部收益算成显卡加速。",
+    "panels": [
+      {
+        "mode": "excerpt",
+        "heading": "任务与难度",
+        "text": "只据6题、12秒和18秒写短讯，不能扩成长期优劣或性价比结论。",
+        "takeaway": "短讯可用；等待下降也包含输出长度变化。",
+        "classification": "DATA",
+        "provenance": "task-cards.md / tasks.json",
+        "size": 40
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "完整交付",
+            "2/2",
+            "2/2",
+            "2/2"
+          ],
+          [
+            "耗时(秒)",
+            "70.89",
+            "33.20",
+            "31.23"
+          ],
+          [
+            "Prefill",
+            "53.9",
+            "40.4",
+            "70.6"
+          ],
+          [
+            "Decode",
+            "35.3",
+            "42.8",
+            "49.8"
+          ]
+        ],
+        "takeaway": "短讯可用；等待下降也包含输出长度变化。",
+        "classification": "DATA",
+        "provenance": "summary.json / native-speeds.json · 两轮中位；缓存另列CSV"
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "输出token",
+            "2,457.5",
+            "1,338.5",
+            "1,500.0"
+          ],
+          [
+            "输入token",
+            "166.0",
+            "166.0",
+            "166.0"
+          ],
+          [
+            "缓存token",
+            "80.5",
+            "80.5",
+            "80.5"
+          ],
+          [
+            "编辑(1/2)",
+            "19 / 19",
+            "19 / 19",
+            "19 / 19"
+          ]
+        ],
+        "takeaway": "短讯可用；等待下降也包含输出长度变化。",
+        "classification": "DATA",
+        "provenance": "原始回复与编辑审读 · 输出含思考/正文/工具参数"
+      }
+    ]
+  },
+  {
+    "scene": 7,
+    "section": "逐题结果 · A01",
+    "title": "L2 · 查库存，只预留一次",
+    "subtitle": "Qwen3.8 Next Flash · 同题、同量化；7900 XTX为261W条件",
+    "speech": "库存题要先查询，再且只预留一次。三端都完成了正确操作。7900 XTX用19.09秒，反而比4060 Ti的16.47秒更久，AI Max加三九五是12.66秒。工具任务包含输入处理和周转，Decode更高并不保证工作更快。",
+    "panels": [
+      {
+        "mode": "excerpt",
+        "heading": "任务与难度",
+        "text": "查到指定规格与库存后，只预留一次，最后按要求返回结果。",
+        "takeaway": "三端动作正确；7900 XTX本题等待更长。",
+        "classification": "DATA",
+        "provenance": "task-cards.md / tasks.json",
+        "size": 40
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "完整交付",
+            "2/2",
+            "2/2",
+            "2/2"
+          ],
+          [
+            "耗时(秒)",
+            "16.47",
+            "19.09",
+            "12.66"
+          ],
+          [
+            "Prefill",
+            "98.9",
+            "67.2",
+            "85.5"
+          ],
+          [
+            "Decode",
+            "27.2",
+            "36.2",
+            "43.7"
+          ]
+        ],
+        "takeaway": "三端动作正确；7900 XTX本题等待更长。",
+        "classification": "DATA",
+        "provenance": "summary.json / native-speeds.json · 两轮中位；缓存另列CSV"
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "输出token",
+            "273.0",
+            "335.5",
+            "254.5"
+          ],
+          [
+            "输入token",
+            "1,998.0",
+            "1,998.0",
+            "1,998.0"
+          ],
+          [
+            "缓存token",
+            "1,412.0",
+            "1,412.0",
+            "1,412.0"
+          ]
+        ],
+        "takeaway": "三端动作正确；7900 XTX本题等待更长。",
+        "classification": "DATA",
+        "provenance": "原始回复与编辑审读 · 输出含思考/正文/工具参数"
+      }
+    ]
+  },
+  {
+    "scene": 8,
+    "section": "逐题结果 · C03",
+    "title": "L3 · 资源约束调度",
+    "subtitle": "Qwen3.8 Next Flash · 同题、同量化；7900 XTX为261W条件",
+    "speech": "资源调度加入依赖、容量和确定性顺序，难度高一些。三端两轮均通过十三项功能测试。7900 XTX完整等待71.56秒，4060 Ti是78.69秒，AI Max加三九五是70.36秒。这个代码任务里，7900 XTX已经接近395，但这只是本题表现。",
+    "panels": [
+      {
+        "mode": "excerpt",
+        "heading": "任务与难度",
+        "text": "实现带依赖、容量与确定性顺序的调度器，覆盖非法输入和回归。",
+        "takeaway": "13/13功能全过；7900 XTX与395等待接近。",
+        "classification": "DATA",
+        "provenance": "task-cards.md / tasks.json",
+        "size": 40
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "完整交付",
+            "2/2",
+            "2/2",
+            "2/2"
+          ],
+          [
+            "耗时(秒)",
+            "78.69",
+            "71.56",
+            "70.36"
+          ],
+          [
+            "Prefill",
+            "67.0",
+            "57.0",
+            "83.6"
+          ],
+          [
+            "Decode",
+            "31.3",
+            "40.9",
+            "42.8"
+          ]
+        ],
+        "takeaway": "13/13功能全过；7900 XTX与395等待接近。",
+        "classification": "DATA",
+        "provenance": "summary.json / native-speeds.json · 两轮中位；缓存另列CSV"
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "输出token",
+            "2,421.0",
+            "2,844.5",
+            "2,951.5"
+          ],
+          [
+            "输入token",
+            "236.0",
+            "236.0",
+            "236.0"
+          ],
+          [
+            "缓存token",
+            "115.5",
+            "115.5",
+            "115.5"
+          ],
+          [
+            "功能测试",
+            "13/13 ×2",
+            "13/13 ×2",
+            "13/13 ×2"
+          ]
+        ],
+        "takeaway": "13/13功能全过；7900 XTX与395等待接近。",
+        "classification": "DATA",
+        "provenance": "原始回复与编辑审读 · 输出含思考/正文/工具参数"
+      }
+    ]
+  },
+  {
+    "scene": 9,
+    "section": "逐题结果 · A02",
+    "title": "L3 · 排障与权限边界",
+    "subtitle": "Qwen3.8 Next Flash · 同题、同量化；7900 XTX为261W条件",
+    "speech": "排障题包含一次工具失败，还要忽略日志里的越权指令，最后返回纯JSON。7900 XTX和AI Max加三九五两轮都通过，4060 Ti两轮都因最终格式未交付。7900 XTX等待18.36秒，395是12.81秒。本题先看能否按约定交付，再比较速度。",
+    "panels": [
+      {
+        "mode": "excerpt",
+        "heading": "任务与难度",
+        "text": "工具临时失败后重试，找出磁盘满证据，不执行越权动作，返回纯JSON。",
+        "takeaway": "7900 XTX和395通过；4060 Ti最终格式失败。",
+        "classification": "DATA",
+        "provenance": "task-cards.md / tasks.json",
+        "size": 40
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "完整交付",
+            "0/2",
+            "2/2",
+            "2/2"
+          ],
+          [
+            "耗时(秒)",
+            "19.14",
+            "18.36",
+            "12.81"
+          ],
+          [
+            "Prefill",
+            "69.8",
+            "55.9",
+            "66.8"
+          ],
+          [
+            "Decode",
+            "25.2",
+            "28.5",
+            "39.7"
+          ]
+        ],
+        "takeaway": "7900 XTX和395通过；4060 Ti最终格式失败。",
+        "classification": "DATA",
+        "provenance": "summary.json / native-speeds.json · 两轮中位；缓存另列CSV"
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "输出token",
+            "298.0",
+            "248.5",
+            "226.0"
+          ],
+          [
+            "输入token",
+            "2,386.0",
+            "2,386.0",
+            "2,386.0"
+          ],
+          [
+            "缓存token",
+            "1,898.5",
+            "1,898.5",
+            "1,898.5"
+          ]
+        ],
+        "takeaway": "7900 XTX和395通过；4060 Ti最终格式失败。",
+        "classification": "DATA",
+        "provenance": "原始回复与编辑审读 · 输出含思考/正文/工具参数"
+      }
+    ]
+  },
+  {
+    "scene": 10,
+    "section": "逐题结果 · W03",
+    "title": "L3 · 多约束决策备忘录",
+    "subtitle": "Qwen3.8 Next Flash · 同题、同量化；7900 XTX为261W条件",
+    "speech": "决策备忘录要求六百到九百字，还要分清新旧记录、保密范围和每篇五分钟的核验上限。三端都没有完整交付。7900 XTX一轮只输出思考，没有正文；另一轮虽然格式通过，仍混用新旧记录，编辑分十一。它的107.45秒更短，却没有产出可用稿件。这题不能把更快失败算成优势。",
+    "panels": [
+      {
+        "mode": "excerpt",
+        "heading": "任务与难度",
+        "text": "600—900字，区分新旧事实、保密边界、人工核验与可执行退出条件。",
+        "takeaway": "三端均0/2；更快结束不等于完成写作。",
+        "classification": "DATA",
+        "provenance": "task-cards.md / tasks.json",
+        "size": 40
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "完整交付",
+            "0/2",
+            "0/2",
+            "0/2"
+          ],
+          [
+            "耗时(秒)",
+            "207.50",
+            "107.45",
+            "163.88"
+          ],
+          [
+            "Prefill",
+            "68.7",
+            "56.6",
+            "83.6"
+          ],
+          [
+            "Decode",
+            "34.8",
+            "44.1",
+            "47.2"
+          ]
+        ],
+        "takeaway": "三端均0/2；更快结束不等于完成写作。",
+        "classification": "DATA",
+        "provenance": "summary.json / native-speeds.json · 两轮中位；缓存另列CSV"
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "输出token",
+            "7,180.0",
+            "4,666.5",
+            "7,670.5"
+          ],
+          [
+            "输入token",
+            "254.0",
+            "254.0",
+            "254.0"
+          ],
+          [
+            "缓存token",
+            "124.5",
+            "124.5",
+            "124.5"
+          ],
+          [
+            "编辑(1/2)",
+            "12 / 0",
+            "0 / 11",
+            "0 / 15"
+          ]
+        ],
+        "takeaway": "三端均0/2；更快结束不等于完成写作。",
+        "classification": "DATA",
+        "provenance": "原始回复与编辑审读 · 输出含思考/正文/工具参数"
+      }
+    ]
+  },
+  {
+    "scene": 11,
+    "section": "长程逐阶段 · S1",
+    "title": "S1 · 修复基础对账",
+    "subtitle": "Qwen3.8 Next Flash · 每阶段最多12次回复，含最终说明",
+    "speech": "长程先修基础对账，功能测试三端都是十四项全过。7900 XTX两轮都在预算内收尾，4060 Ti只有一轮，395两轮都用尽了回复额度。7900 XTX完整等待134.97秒，395虽然更快，也不能在本阶段按完整交付计。",
+    "panels": [
+      {
+        "mode": "excerpt",
+        "heading": "同一会话、同一工作区继续",
+        "text": "修复金额、重复记录和非法输入，保留旧接口，并说明实际测试结果。",
+        "takeaway": "功能全过；7900 XTX本阶段完整交付2/2。",
+        "classification": "DATA",
+        "provenance": "long-horizon/ · LH01 v1.1.1 / 每阶段12次回复含收尾",
+        "size": 40
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "阶段交付",
+            "1/2",
+            "2/2",
+            "0/2"
+          ],
+          [
+            "耗时(秒)",
+            "179.69",
+            "134.97",
+            "119.67"
+          ],
+          [
+            "Prefill",
+            "112.1",
+            "105.9",
+            "126.4"
+          ],
+          [
+            "Decode",
+            "29.6",
+            "38.0",
+            "42.1"
+          ]
+        ],
+        "takeaway": "功能全过；7900 XTX本阶段完整交付2/2。",
+        "classification": "DATA",
+        "provenance": "summary.json / native-speeds.csv · 两轮中位"
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "功能(1/2)",
+            "14/14 ×2",
+            "14/14 ×2",
+            "14/14 ×2"
+          ],
+          [
+            "生成token",
+            "4,125.0",
+            "3,726.0",
+            "3,609.0"
+          ],
+          [
+            "新算token",
+            "4,330.0",
+            "3,658.5",
+            "4,297.0"
+          ],
+          [
+            "缓存token",
+            "20,460.5",
+            "19,307.0",
+            "19,262.5"
+          ]
+        ],
+        "takeaway": "功能全过；7900 XTX本阶段完整交付2/2。",
+        "classification": "DATA",
+        "provenance": "原生计算计时 / 真实工具轨迹 / 阶段快照"
+      }
+    ]
+  },
+  {
+    "scene": 12,
+    "section": "长程逐阶段 · S2",
+    "title": "S2 · 兼容变更与历史回归",
+    "subtitle": "Qwen3.8 Next Flash · 每阶段最多12次回复，含最终说明",
+    "speech": "第二阶段加入日期截止、退款状态和逐条取整，还要保留老接口。三端两轮都通过二十五项验收并收尾。7900 XTX用202.89秒，4060 Ti是197.37秒，395是185.46秒。这个阶段，大显卡没有带来更短的整项等待。",
+    "panels": [
+      {
+        "mode": "excerpt",
+        "heading": "同一会话、同一工作区继续",
+        "text": "加入日期截止、退款状态与逐条取整，保留v1规则并进行回归。",
+        "takeaway": "三端2/2；7900 XTX本阶段没有缩短等待。",
+        "classification": "DATA",
+        "provenance": "long-horizon/ · LH01 v1.1.1 / 每阶段12次回复含收尾",
+        "size": 40
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "阶段交付",
+            "2/2",
+            "2/2",
+            "2/2"
+          ],
+          [
+            "耗时(秒)",
+            "197.37",
+            "202.89",
+            "185.46"
+          ],
+          [
+            "Prefill",
+            "144.7",
+            "158.7",
+            "189.4"
+          ],
+          [
+            "Decode",
+            "29.3",
+            "37.3",
+            "45.1"
+          ]
+        ],
+        "takeaway": "三端2/2；7900 XTX本阶段没有缩短等待。",
+        "classification": "DATA",
+        "provenance": "summary.json / native-speeds.csv · 两轮中位"
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "功能(1/2)",
+            "25/25 ×2",
+            "25/25 ×2",
+            "25/25 ×2"
+          ],
+          [
+            "生成token",
+            "4,893.0",
+            "6,069.0",
+            "6,826.0"
+          ],
+          [
+            "新算token",
+            "4,138.0",
+            "5,997.5",
+            "6,353.0"
+          ],
+          [
+            "缓存token",
+            "48,954.0",
+            "62,878.0",
+            "61,542.5"
+          ]
+        ],
+        "takeaway": "三端2/2；7900 XTX本阶段没有缩短等待。",
+        "classification": "DATA",
+        "provenance": "原生计算计时 / 真实工具轨迹 / 阶段快照"
+      }
+    ]
+  },
+  {
+    "scene": 13,
+    "section": "长程逐阶段 · S3",
+    "title": "S3 · 发布与故障恢复",
+    "subtitle": "Qwen3.8 Next Flash · 每阶段最多12次回复，含最终说明",
+    "speech": "第三阶段给发布工具注入一次临时磁盘满故障。三端都恢复成功，三十五项功能验收全过。但7900 XTX两轮都把十二次回复用完，没有结束说明；4060 Ti一轮按时收尾，395两轮都收尾。发布文件正确和流程完整，要分开看。",
+    "panels": [
+      {
+        "mode": "excerpt",
+        "heading": "同一会话、同一工作区继续",
+        "text": "发布时注入一次ENOSPC，恢复后重试，旧发布不能受损。",
+        "takeaway": "功能35/35；7900 XTX两轮均未预算内收尾。",
+        "classification": "DATA",
+        "provenance": "long-horizon/ · LH01 v1.1.1 / 每阶段12次回复含收尾",
+        "size": 40
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "阶段交付",
+            "1/2",
+            "0/2",
+            "2/2"
+          ],
+          [
+            "耗时(秒)",
+            "161.76",
+            "138.89",
+            "118.56"
+          ],
+          [
+            "Prefill",
+            "151.9",
+            "130.6",
+            "158.4"
+          ],
+          [
+            "Decode",
+            "31.3",
+            "35.8",
+            "45.9"
+          ]
+        ],
+        "takeaway": "功能35/35；7900 XTX两轮均未预算内收尾。",
+        "classification": "DATA",
+        "provenance": "summary.json / native-speeds.csv · 两轮中位"
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "功能(1/2)",
+            "35/35 ×2",
+            "35/35 ×2",
+            "35/35 ×2"
+          ],
+          [
+            "生成token",
+            "3,935.0",
+            "3,497.0",
+            "4,001.0"
+          ],
+          [
+            "新算token",
+            "5,096.5",
+            "5,005.5",
+            "4,712.0"
+          ],
+          [
+            "缓存token",
+            "118,881.0",
+            "156,198.0",
+            "127,283.5"
+          ]
+        ],
+        "takeaway": "功能35/35；7900 XTX两轮均未预算内收尾。",
+        "classification": "DATA",
+        "provenance": "原生计算计时 / 真实工具轨迹 / 阶段快照"
+      }
+    ]
+  },
+  {
+    "scene": 14,
+    "section": "长程逐阶段 · S4",
+    "title": "S4 · 迟到退款与最终交付",
+    "subtitle": "Qwen3.8 Next Flash · 每阶段最多12次回复，含最终说明",
+    "speech": "最后接入迟到退款，更新文件并写交付报告。三端最终文件都正确，报告编辑分都是二十。7900 XTX用168.21秒，接近395的162.31秒，比4060 Ti的332.91秒短。395原评分的一个失败项是恢复关键词漏判，实际故障已经恢复，不能据此说它的报告更差。",
+    "panels": [
+      {
+        "mode": "excerpt",
+        "heading": "同一会话、同一工作区继续",
+        "text": "计入R04，更新CSV、汇总和manifest。\n报告须与最终发布一致。",
+        "takeaway": "最终文件均正确；395的关键词漏判单独说明。",
+        "classification": "DATA",
+        "provenance": "long-horizon/ · LH01 v1.1.1 / 每阶段12次回复含收尾",
+        "size": 40
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "阶段交付",
+            "2/2",
+            "2/2",
+            "0/2*"
+          ],
+          [
+            "耗时(秒)",
+            "332.91",
+            "168.21",
+            "162.31"
+          ],
+          [
+            "Prefill",
+            "102.4",
+            "71.8",
+            "97.7"
+          ],
+          [
+            "Decode",
+            "31.7",
+            "40.7",
+            "43.6"
+          ]
+        ],
+        "takeaway": "最终文件均正确；395的关键词漏判单独说明。",
+        "classification": "DATA",
+        "provenance": "summary.json / native-speeds.csv · 两轮中位"
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "功能(1/2)",
+            "49/49 ×2",
+            "49/49 ×2",
+            "48/49 ×2"
+          ],
+          [
+            "生成token",
+            "9,864.5",
+            "5,500.0",
+            "6,037.5"
+          ],
+          [
+            "新算token",
+            "1,987.0",
+            "2,182.0",
+            "2,260.5"
+          ],
+          [
+            "缓存token",
+            "124,572.0",
+            "156,190.0",
+            "124,639.5"
+          ]
+        ],
+        "takeaway": "最终文件均正确；395的关键词漏判单独说明。",
+        "classification": "DATA",
+        "provenance": "原生计算计时 / 真实工具轨迹 / 阶段快照"
+      }
+    ]
+  },
+  {
+    "scene": 15,
+    "section": "长程整项结论",
+    "title": "文件做对了，流程仍没完整过关",
+    "subtitle": "Qwen3.8 Next Flash · 同一连续项目，两轮独立episode",
+    "speech": "把四阶段合起来，三端严格完整交付都是零比二，但最终文件都做对了。7900 XTX完整等待645秒，4060 Ti约872秒，395约586秒。7900 XTX比4060 Ti少等约四分之一，仍慢于395。这个受控小项目还暴露了阶段收尾额度问题，不能直接据此认定能长期无人值守。",
+    "panels": [
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "严格交付",
+            "0/2",
+            "0/2",
+            "0/2"
+          ],
+          [
+            "耗时(秒)",
+            "871.77",
+            "645.00",
+            "586.01"
+          ],
+          [
+            "Prefill",
+            "129.2",
+            "119.6",
+            "146.1"
+          ],
+          [
+            "Decode",
+            "30.7",
+            "38.1",
+            "44.3"
+          ]
+        ],
+        "takeaway": "7900 XTX少等约26%，仍未达到完整交付门槛。",
+        "classification": "DATA",
+        "provenance": "long/ALL · 全部调用加总后算速度，不平均阶段速度"
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "最终文件",
+            "2/2正确",
+            "2/2正确",
+            "2/2正确"
+          ],
+          [
+            "累计token",
+            "702,473",
+            "860,417",
+            "741,648"
+          ],
+          [
+            "生成token",
+            "45,635",
+            "37,584",
+            "40,947"
+          ],
+          [
+            "缓存token",
+            "625,735",
+            "789,146",
+            "665,456"
+          ]
+        ],
+        "takeaway": "累计token含反复传入的会话历史；缓存另计。",
+        "classification": "DATA",
+        "provenance": "两轮累计 / final-artifact-audit.json / editorial-review.json"
+      }
+    ]
+  },
+  {
+    "scene": 16,
+    "section": "速度探针 · 短输入",
+    "title": "固定生成512 token，解码有多快？",
+    "subtitle": "Qwen3.8 Next Flash · 关闭思考，三次中位；仅评速度",
+    "speech": "先把回答长度固定到512个token。7900 XTX解码约每秒46个，4060 Ti约32个，395约45个。完整等待，7900 XTX是11.38秒，与395接近。这一项更换显卡的解码收益很明显，但它只是速度探针，不给内容质量打分。",
+    "panels": [
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "Prefill",
+            "32.6",
+            "45.9",
+            "74.8"
+          ],
+          [
+            "Decode",
+            "31.9",
+            "45.8",
+            "44.8"
+          ],
+          [
+            "耗时(秒)",
+            "16.29",
+            "11.38",
+            "11.54"
+          ],
+          [
+            "实际输出",
+            "512 token",
+            "512 token",
+            "512 token"
+          ]
+        ],
+        "takeaway": "7900 XTX解码接近395，明显快于4060 Ti。",
+        "classification": "DATA",
+        "provenance": "speed/short512 · 三次中位 / 原生计算与API耗时分列"
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "输入token",
+            "67",
+            "67",
+            "67"
+          ],
+          [
+            "缓存中位",
+            "60",
+            "60",
+            "60"
+          ]
+        ],
+        "takeaway": "短输入有缓存；不与长输入Prefill直接横比。",
+        "classification": "DATA",
+        "provenance": "native-speeds.json · speed/short512"
+      }
+    ]
+  },
+  {
+    "scene": 17,
+    "section": "速度探针 · 无缓存长输入",
+    "title": "32K输入：7900 XTX这次最快",
+    "subtitle": "Qwen3.8 Next Flash · 4K实际4057输入；32K实际32713输入",
+    "speech": "输入加到四K，且没有缓存复用，7900 XTX的Prefill约每秒五百九十八个token，完整等待十八点四七秒。加到三十二K，Prefill约九百三十四，395约四百九十九，4060 Ti约六百二十。7900 XTX完整等待四十六点七八秒，比395少约四成。大段输入处理是它本轮最明显的优势，但这组没有考长文理解，不能只看速度就说质量更好。",
+    "panels": [
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "Prefill",
+            "321.8",
+            "598.4",
+            "438.3"
+          ],
+          [
+            "Decode",
+            "32.5",
+            "44.1",
+            "44.5"
+          ],
+          [
+            "耗时(秒)",
+            "28.40",
+            "18.47",
+            "20.77"
+          ],
+          [
+            "实际输出",
+            "512 token",
+            "512 token",
+            "512 token"
+          ]
+        ],
+        "takeaway": "4K无缓存：7900 XTX输入计算与完整等待均领先。",
+        "classification": "DATA",
+        "provenance": "speed/prompt4k · 三次中位 / 原生计算与API耗时分列",
+        "title": "4K输入：7900 XTX Prefill 598 token/s"
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "Prefill",
+            "620.2",
+            "933.9",
+            "499.1"
+          ],
+          [
+            "Decode",
+            "31.7",
+            "44.0",
+            "42.0"
+          ],
+          [
+            "耗时(秒)",
+            "69.01",
+            "46.78",
+            "77.65"
+          ],
+          [
+            "实际输出",
+            "512 token",
+            "512 token",
+            "512 token"
+          ]
+        ],
+        "takeaway": "32K无缓存：比395少等约40%，仅是速度结果。",
+        "classification": "DATA",
+        "provenance": "speed/prompt32k · 三次中位 / 原生计算与API耗时分列",
+        "title": "32K输入：7900 XTX Prefill 934 token/s"
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "4K输入",
+            "4,057",
+            "4,057",
+            "4,057"
+          ],
+          [
+            "32K输入",
+            "32,713",
+            "32,713",
+            "32,713"
+          ],
+          [
+            "两档缓存",
+            "0",
+            "0",
+            "0"
+          ],
+          [
+            "内容评分",
+            "未评分",
+            "未评分",
+            "未评分"
+          ]
+        ],
+        "takeaway": "各档三次，均实际输出512 token。",
+        "classification": "DATA",
+        "provenance": "native-speeds.json / results/speed · cache_n=0"
+      }
+    ],
+    "take_id": 117
+  },
+  {
+    "scene": 18,
+    "section": "过度思考 · D01",
+    "title": "简单筛选题，关闭思考少等多少？",
+    "subtitle": "Qwen3.8 Next Flash · 同一D01，各两轮；开启/关闭均2/2答对",
+    "speech": "再看过度思考。同一道简单筛选题，7900 XTX关闭思考后，生成从175降到21个token，等待从7.16秒降到2.69秒。三端都答对，而且关闭思考后都更快。这里能确认简单题的思考开销可以省，复杂备忘录没有这样重测，不能说那些写作问题也解决了。",
+    "panels": [
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "开启(秒)",
+            "7.03",
+            "7.16",
+            "5.23"
+          ],
+          [
+            "关闭(秒)",
+            "2.20",
+            "2.69",
+            "1.95"
+          ],
+          [
+            "开启生成",
+            "166.5",
+            "175",
+            "175"
+          ],
+          [
+            "关闭生成",
+            "21",
+            "21",
+            "21"
+          ]
+        ],
+        "takeaway": "三端两轮均正确；生成token含思考与正文。",
+        "classification": "DATA",
+        "provenance": "main/D01 与 depth/D01 · 两轮中位"
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "Prefill",
+            "58.6",
+            "53.4",
+            "69.8"
+          ],
+          [
+            "Decode",
+            "29.1",
+            "35.9",
+            "45.2"
+          ]
+        ],
+        "takeaway": "两轮中位；Prefill只计新计算输入。",
+        "classification": "DATA",
+        "provenance": "native-speeds.json · main/D01",
+        "title": "D01开启medium思考：原生计算速度"
+      },
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "Prefill",
+            "54.5",
+            "46.1",
+            "65.3"
+          ],
+          [
+            "Decode",
+            "23.6",
+            "23.8",
+            "42.5"
+          ]
+        ],
+        "takeaway": "只重测D01，不证明复杂写作也能改善。",
+        "classification": "DATA",
+        "provenance": "native-speeds.json · depth/D01",
+        "title": "D01关闭思考：原生计算速度"
+      }
+    ]
+  },
+  {
+    "scene": 19,
+    "section": "硬件记录",
+    "title": "设置261W，实测最高270W",
+    "subtitle": "RX7900 XTX · 约47.2分钟任务窗口，1415条采样，约2秒一次",
+    "speech": "功耗这里要说准确。控制值始终回读261瓦，但传感器有七条高于它，最高270瓦。边缘温度最高59度，热点78度，没有新增ECC错误、GPU驱动故障或重启。这轮没有复现黑屏，任务窗口也包含间隔，不能把它说成持续满载压力测试，更不能据此认定之前就是电源带不动。",
+    "panels": [
+      {
+        "mode": "excerpt",
+        "heading": "设置值与采样值分开",
+        "text": "功耗控制回读：261W\n采样最高：270W，7条高于261W\n边缘温度最高59℃；热点78℃",
+        "size": 39,
+        "takeaway": "没有测整机插座功耗或未采到的瞬时峰值。",
+        "classification": "DATA",
+        "provenance": "hardware-observation.json / hardware-telemetry.jsonl"
+      },
+      {
+        "mode": "excerpt",
+        "heading": "这一轮没有复现黑屏",
+        "text": "新增ECC：0\n新GPU驱动故障：0；重启：0\n任务窗口47.2分钟，含工具与任务间隔",
+        "size": 39,
+        "takeaway": "本轮记录不能确定此前黑屏的原因。",
+        "classification": "DATA",
+        "provenance": "boot ID连续 / ECC前后回读 / 内核日志 / 1415条采样"
+      }
+    ]
+  },
+  {
+    "scene": 20,
+    "section": "综合结论",
+    "title": "这套工作题，综合推荐AI Max+395",
+    "subtitle": "Qwen3.8 Next Flash · Strata 0.1.44.1 / UD-Q4_K_XL / 串行任务",
+    "speech": "综合这套工作题，我推荐AI Max加395。它和7900 XTX都完成了14项短题中的12项，但六类成功题的完整等待都更短，连续项目也更快。7900 XTX的强项是无缓存大段输入，比4060 Ti也能省下不少任务等待。金额函数、调度代码、短讯和受控工具操作有通过记录；复杂备忘录三端都没交付，长程也都有阶段收尾失守。选硬件要同时看交付和等待，这轮日常工作选395，输入吞吐看7900 XTX。",
+    "panels": [
+      {
+        "mode": "table",
+        "headers": [
+          "指标",
+          "Qwen3.8\nNext Flash\n4060 Ti 16G",
+          "Qwen3.8\nNext Flash\n7900 XTX 261W",
+          "Qwen3.8\nNext Flash\nAI Max+395"
+        ],
+        "rows": [
+          [
+            "短题交付",
+            "10/14",
+            "12/14",
+            "12/14"
+          ],
+          [
+            "长程严格",
+            "0/2",
+            "0/2",
+            "0/2"
+          ],
+          [
+            "长程文件",
+            "2/2正确",
+            "2/2正确",
+            "2/2正确"
+          ],
+          [
+            "长程秒数",
+            "871.77",
+            "645.00",
+            "586.01"
+          ]
+        ],
+        "takeaway": "395综合等待更短；三端均未通过严格长程门槛。",
+        "classification": "DATA",
+        "provenance": "summary.json / final-artifact-audit.json"
+      },
+      {
+        "mode": "excerpt",
+        "heading": "已通过的工作与仍有的问题",
+        "text": "可做：金额函数、调度代码、事实短讯\n受控库存操作与排障：7900 XTX、395通过\n复杂备忘录：均失败；长程：阶段收尾失守",
+        "size": 37,
+        "takeaway": "无缓存长输入速度最优：7900 XTX。",
+        "classification": "DATA",
+        "provenance": "公开题面、完整提示词、原始回复与评分：github.com/rffanlab/llm_eval"
+      }
+    ]
+  }
+]
