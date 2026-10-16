@@ -1,0 +1,75 @@
+{
+  "profile": "rx7900xtx",
+  "kind": "short512",
+  "round": 2,
+  "quality_scored": false,
+  "payload": {
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a Python programmer. Output code only."
+      },
+      {
+        "role": "user",
+        "content": "Write a Python library of 30 small pure functions for validating invoice dictionaries, sorting events, and summarizing amounts. Include docstrings and continue writing until the output budget ends. Do not summarize."
+      }
+    ],
+    "temperature": 0,
+    "max_tokens": 512,
+    "model": "Qwen/Qwen3.8-Flash-Next",
+    "stream": true,
+    "stream_options": {
+      "include_usage": true
+    },
+    "reasoning_effort": "none",
+    "enable_thinking": false,
+    "chat_template_kwargs": {
+      "enable_thinking": false,
+      "reasoning_effort": "none",
+      "preserve_thinking": false
+    },
+    "presence_penalty": 0
+  },
+  "started_at_epoch": 1792130790.2514277,
+  "response": {
+    "model": "Qwen/Qwen3.8-Flash-Next",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```python\n\"\"\"\nInvoice and Event Validation, Sorting, and Summarization Library.\n\nThis module provides a collection of pure functions for:\n1. Validating invoice dictionaries.\n2. Sorting events based on various criteria.\n3. Summarizing amounts from collections of invoices or events.\n\"\"\"\n\nfrom typing import List, Dict, Any, Union, Optional, Callable\nimport datetime\n\n\n# --- Invoice Validation Functions ---\n\ndef is_valid_invoice_structure(invoice: Dict[str, Any]) -> bool:\n    \"\"\"\n    Check if the invoice dictionary has the required top-level keys.\n    \n    Args:\n        invoice: A dictionary representing an invoice.\n        \n    Returns:\n        True if the structure is valid, False otherwise.\n    \"\"\"\n    required_keys = {'invoice_id', 'date', 'amount', 'currency', 'vendor'}\n    return isinstance(invoice, dict) and required_keys.issubset(invoice.keys())\n\n\ndef is_valid_invoice_id(invoice: Dict[str, Any]) -> bool:\n    \"\"\"\n    Check if the invoice_id is a non-empty string.\n    \n    Args:\n        invoice: A dictionary representing an invoice.\n        \n    Returns:\n        True if invoice_id is valid, False otherwise.\n    \"\"\"\n    if not isinstance(invoice, dict):\n        return False\n    inv_id = invoice.get('invoice_id')\n    return isinstance(inv_id, str) and len(inv_id.strip()) > 0\n\n\ndef is_valid_invoice_date(invoice: Dict[str, Any]) -> bool:\n    \"\"\"\n    Check if the invoice date is a valid ISO format string or datetime object.\n    \n    Args:\n        invoice: A dictionary representing an invoice.\n        \n    Returns:\n        True if date is valid, False otherwise.\n    \"\"\"\n    if not isinstance(invoice, dict):\n        return False\n    date_val = invoice.get('date')\n    if isinstance(date_val, datetime.datetime):\n        return True\n    if isinstance(date_val, str):\n        try:\n            datetime.datetime.fromisoformat(date_val)\n            return True\n        except ValueError:\n            return False\n    return False\n\n\ndef is_valid_invoice_amount(invoice: Dict[str, Any]) -> bool:\n    \"\"\"\n    Check if the invoice amount is a positive number.\n    \n    Args:\n        invoice: A dictionary representing an invoice.\n        \n    Returns:\n       "
+        },
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 67,
+      "completion_tokens": 512,
+      "total_tokens": 579,
+      "prompt_tokens_details": {
+        "cached_tokens": 60
+      }
+    },
+    "timings": {
+      "cache_n": 60,
+      "prompt_n": 7,
+      "prompt_ms": 141.6,
+      "prompt_per_token_ms": 20.229,
+      "prompt_per_second": 49.4,
+      "predicted_n": 512,
+      "predicted_ms": 11017.0,
+      "predicted_per_token_ms": 21.518,
+      "predicted_per_second": 46.5,
+      "draft_n": 415,
+      "draft_n_accepted": 355
+    }
+  },
+  "latency": {
+    "first_event_s": 0.052542682999956014,
+    "first_reasoning_s": null,
+    "first_content_s": 0.23296030399978918,
+    "first_tool_s": null,
+    "api_elapsed_s": 11.212817663999886
+  }
+}
