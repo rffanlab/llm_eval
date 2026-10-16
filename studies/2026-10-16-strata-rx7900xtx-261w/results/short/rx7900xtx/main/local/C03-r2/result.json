@@ -1,0 +1,376 @@
+{
+  "task": "C03",
+  "provider": "local",
+  "profile": "rx7900xtx",
+  "round": 2,
+  "variant": "main",
+  "model_requested": "Qwen/Qwen3.8-Flash-Next",
+  "fixture_sha256": "9220974a681fd645b7b8ec4a3aa53b91e0a45beba9cc2c066bf633053c7fdeb4",
+  "usage": {
+    "prompt_tokens": 236,
+    "completion_tokens": 3066,
+    "total_tokens": 3302
+  },
+  "usage_complete": true,
+  "turns": [
+    {
+      "index": 1,
+      "content": "```python\ndef schedule(tasks, capacity):\n    if not tasks:\n        return {\"jobs\": [], \"makespan\": 0}\n\n    task_map = {}\n    for t in tasks:\n        task_map[t[\"id\"]] = t\n\n    for t in tasks:\n        if t[\"units\"] > capacity:\n            raise ValueError(\"units exceeds capacity\")\n        for d in t[\"deps\"]:\n            if d not in task_map:\n                raise ValueError(\"unknown dependency\")\n\n    in_degree = {t[\"id\"]: 0 for t in tasks}\n    adj = {t[\"id\"]: [] for t in tasks}\n    for t in tasks:\n        for d in t[\"deps\"]:\n            adj[d].append(t[\"id\"])\n            in_degree[t[\"id\"]] += 1\n\n    queue = [tid for tid in in_degree if in_degree[tid] == 0]\n    count = 0\n    while queue:\n        node = queue.pop(0)\n        count += 1\n        for neighbor in adj[node]:\n            in_degree[neighbor] -= 1\n            if in_degree[neighbor] == 0:\n                queue.append(neighbor)\n\n    if count != len(tasks):\n        raise ValueError(\"circular dependency\")\n\n    current_time = 0\n    available = capacity\n    running = []\n    completed = set()\n    started = set()\n    job_records = {}\n    all_ids = sorted(task_map.keys())\n\n    while len(completed) < len(tasks):\n        new_running = []\n        for (end_time, tid, units) in running:\n            if end_time <= current_time:\n                completed.add(tid)\n                available += units\n            else:\n                new_running.append((end_time, tid, units))\n        running = new_running\n\n        for tid in all_ids:\n            if tid in started:\n                continue\n            t = task_map[tid]\n            if all(d in completed for d in t[\"deps\"]):\n                if t[\"units\"] <= available:\n                    started.add(tid)\n                    end_time = current_time + t[\"duration\"]\n                    running.append((end_time, tid, t[\"units\"]))\n                    available -= t[\"units\"]\n                    job_records[tid] = (current_time, end_time)\n\n        if running:\n            current_time = min(et for (et, _, _) in running)\n        elif len(completed) < len(tasks):\n            break\n\n    jobs = sorted(\n        [{\"id\": tid, \"start\": s, \"end\": e} for tid, (s, e) in job_records.items()],\n        key=lambda x: x[\"id\"],\n    )\n    makespan = max((e for (_, e) in job_records.values()), default=0)\n\n    return {\"jobs\": jobs, \"makespan\": makespan}\n```",
+      "returned_model": "Qwen/Qwen3.8-Flash-Next",
+      "reasoning_chars": 9344,
+      "tool_calls": [],
+      "usage": {
+        "prompt_tokens": 236,
+        "completion_tokens": 3066,
+        "total_tokens": 3302,
+        "prompt_tokens_details": {
+          "cached_tokens": 231
+        }
+      },
+      "finish_reason": "stop",
+      "timings": {
+        "cache_n": 231,
+        "prompt_n": 5,
+        "prompt_ms": 142.8,
+        "prompt_per_token_ms": 28.56,
+        "prompt_per_second": 35.0,
+        "predicted_n": 3066,
+        "predicted_ms": 76744.5,
+        "predicted_per_token_ms": 25.031,
+        "predicted_per_second": 40.0,
+        "draft_n": 2661,
+        "draft_n_accepted": 2073
+      },
+      "first_event_s": 0.05294494999998278,
+      "first_reasoning_s": 0.2523962349996509,
+      "first_content_s": 59.99434319099964,
+      "first_tool_s": null,
+      "api_elapsed_s": 76.94237520299976
+    }
+  ],
+  "started_at_epoch": 1792128871.5481615,
+  "human_corrections": 0,
+  "content": "```python\ndef schedule(tasks, capacity):\n    if not tasks:\n        return {\"jobs\": [], \"makespan\": 0}\n\n    task_map = {}\n    for t in tasks:\n        task_map[t[\"id\"]] = t\n\n    for t in tasks:\n        if t[\"units\"] > capacity:\n            raise ValueError(\"units exceeds capacity\")\n        for d in t[\"deps\"]:\n            if d not in task_map:\n                raise ValueError(\"unknown dependency\")\n\n    in_degree = {t[\"id\"]: 0 for t in tasks}\n    adj = {t[\"id\"]: [] for t in tasks}\n    for t in tasks:\n        for d in t[\"deps\"]:\n            adj[d].append(t[\"id\"])\n            in_degree[t[\"id\"]] += 1\n\n    queue = [tid for tid in in_degree if in_degree[tid] == 0]\n    count = 0\n    while queue:\n        node = queue.pop(0)\n        count += 1\n        for neighbor in adj[node]:\n            in_degree[neighbor] -= 1\n            if in_degree[neighbor] == 0:\n                queue.append(neighbor)\n\n    if count != len(tasks):\n        raise ValueError(\"circular dependency\")\n\n    current_time = 0\n    available = capacity\n    running = []\n    completed = set()\n    started = set()\n    job_records = {}\n    all_ids = sorted(task_map.keys())\n\n    while len(completed) < len(tasks):\n        new_running = []\n        for (end_time, tid, units) in running:\n            if end_time <= current_time:\n                completed.add(tid)\n                available += units\n            else:\n                new_running.append((end_time, tid, units))\n        running = new_running\n\n        for tid in all_ids:\n            if tid in started:\n                continue\n            t = task_map[tid]\n            if all(d in completed for d in t[\"deps\"]):\n                if t[\"units\"] <= available:\n                    started.add(tid)\n                    end_time = current_time + t[\"duration\"]\n                    running.append((end_time, tid, t[\"units\"]))\n                    available -= t[\"units\"]\n                    job_records[tid] = (current_time, end_time)\n\n        if running:\n            current_time = min(et for (et, _, _) in running)\n        elif len(completed) < len(tasks):\n            break\n\n    jobs = sorted(\n        [{\"id\": tid, \"start\": s, \"end\": e} for tid, (s, e) in job_records.items()],\n        key=lambda x: x[\"id\"],\n    )\n    makespan = max((e for (_, e) in job_records.values()), default=0)\n\n    return {\"jobs\": jobs, \"makespan\": makespan}\n```",
+  "elapsed_s": 77.14027095300025,
+  "reasoning_chars": 9344,
+  "grade": {
+    "score": 100.0,
+    "pass": true,
+    "tests": [
+      {
+        "test": 1,
+        "pass": true,
+        "actual": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "expected": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 2,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 3,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 4,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 5,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 6,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 4
+            },
+            {
+              "id": "b",
+              "start": 4,
+              "end": 6
+            },
+            {
+              "id": "c",
+              "start": 0,
+              "end": 1
+            }
+          ],
+          "makespan": 6
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 4
+            },
+            {
+              "id": "b",
+              "start": 4,
+              "end": 6
+            },
+            {
+              "id": "c",
+              "start": 0,
+              "end": 1
+            }
+          ],
+          "makespan": 6
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 7,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "c",
+              "start": 2,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "c",
+              "start": 2,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 8,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 2,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 4
+            },
+            {
+              "id": "z",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 4
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 2,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 4
+            },
+            {
+              "id": "z",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 4
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 9,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 10,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 11,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 12,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 13,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      }
+    ]
+  },
+  "hidden_grading_s_excluded": 0.04860094600007869
+}
