@@ -404,6 +404,8 @@ c6保留expert-cache=16000与--prefill auto，设置STRATA_PREFILL_AUTO_MAX=3276
 - 题卡与评分：`task-cards.md`、`tasks.json`、`wmma-isolation/long-horizon/`、编辑审读记录（wmma-isolation/editorial-review.json）。
 - 原始逐调用结果：`results/` 与 `wmma-isolation/results/`；逐题、逐阶段测量：`measurements.csv`（84 行，其中正式案例 68 行，其余为长程派生阶段）。
 - 选参与环境：`wmma-isolation/screen-selection.json`、`screen-cases.csv`、`environments.json`、`wmma-isolation/environments.json`；执行回执：`execution-receipts.json`，部署修复回执：`wmma-isolation/deployment-repair.json`。
-- 长程来源、source notes 与 combined screen：`wmma-isolation/long-horizon/`、`source-notes.md`、`screen-selection.json`。
+- 合并36次选参：`wmma-isolation/screen-selection.json`；首批28次：`screen-selection.json`。能力确认计划：`wmma-isolation/validation-plan.json`；最终能力结果：`wmma-isolation/summary.json`；长程来源与源码说明：`wmma-isolation/long-horizon/`、`source-notes.md`。
+- 七短题加一长程的事后描述性合计：`whole-workload.json`，不计作新增独立案例或预注册选参分数。
+- 发布材料：[富文本文章](publication/03-wechat-richtext.html)、[视频稿](publication/video-script.md)；[成片指纹与技术记录](movie-technical-qa.json)。
 - 部署修复：本轮记录的部署修复为0请求说明；不将修复时间计入请求等待，也不把服务操作写成模型结果。
 - 原始文件 SHA：`raw-manifest.json`；完整性核验：`integrity-report.json`。
