@@ -1,0 +1,328 @@
+{
+  "files": {
+    "README.md": "# 对账项目\n修复并持续维护workflow.py。输入为UTF-8 CSV字符串，输出使用整数分。工具可读取文件、修改workflow.py或delivery.md、运行公开测试、发布、查看当前发布。\n不提供终端，不允许依赖第三方包。参考答案与独立验收不会显示给模型。\n",
+    "spec-v1.md": "# v1契约\nreconcile(orders_csv, refunds_csv, policy=\"v1\", cutoff=None)返回对象：\n{\"orders\":[{\"order_id\":str,\"customer\":str,\"paid_cents\":int,\"refund_cents\":int,\"net_cents\":int}],\"customers\":[{\"customer\":str,\"net_cents\":int}],\"totals\":{\"paid_cents\":int,\"refund_cents\":int,\"net_cents\":int}}\norders按order_id字典序，customers按customer字典序。只包含paid订单，cancelled订单不入结果。金额非负，v1最多两位小数，拒绝NaN/Infinity/负数/超过两位小数；使用十进制定点，不使用float乘100。\norder_id和refund_id用于去重：相同id完全相同行只算一次；相同id但任何字段不同必须ValueError。未知订单退款、cancelled订单退款或单笔订单累计退款超过已付必须ValueError。退款均有效；零金额允许。所有输出整数分，paid-refund=net。只对paid订单所属客户出汇总，包括净额为零的客户。\n空CSV有表头时返回空列表及三个零。不能修改输入内容。\n",
+    "workflow.py": "def reconcile(orders_csv, refunds_csv, policy=\"v1\", cutoff=None):\n    # TODO: broken prototype; replace using the documented contract.\n    return {\"orders\": [], \"customers\": [], \"totals\": {\"paid_cents\": 0, \"refund_cents\": 0, \"net_cents\": 0}}\n\ndef export_bundle(result):\n    return {\"summary.json\": \"{}\"}\n",
+    "data/base/orders.csv": "order_id,customer,amount,status,created_at\nO01,A,10.10,paid,2026-10-01T10:00:00Z\nO02,A,20.20,paid,2026-10-02T10:00:00Z\nO03,B,8.00,cancelled,2026-10-02T12:00:00Z\nO04,B,9.90,paid,2026-10-03T10:00:00Z\nO01,A,10.10,paid,2026-10-01T10:00:00Z\n",
+    "data/base/refunds.csv": "refund_id,order_id,amount\nR01,O01,2.10\nR01,O01,2.10\nR02,O02,1.20\n"
+  },
+  "grade": {
+    "checks": [
+      {
+        "name": "base_exact",
+        "pass": false,
+        "detail": {
+          "actual": {
+            "orders": [],
+            "customers": [],
+            "totals": {
+              "paid_cents": 0,
+              "refund_cents": 0,
+              "net_cents": 0
+            }
+          },
+          "expected": {
+            "orders": [
+              {
+                "order_id": "O01",
+                "customer": "A",
+                "paid_cents": 1010,
+                "refund_cents": 210,
+                "net_cents": 800
+              },
+              {
+                "order_id": "O02",
+                "customer": "A",
+                "paid_cents": 2020,
+                "refund_cents": 120,
+                "net_cents": 1900
+              },
+              {
+                "order_id": "O04",
+                "customer": "B",
+                "paid_cents": 990,
+                "refund_cents": 0,
+                "net_cents": 990
+              }
+            ],
+            "customers": [
+              {
+                "customer": "A",
+                "net_cents": 2700
+              },
+              {
+                "customer": "B",
+                "net_cents": 990
+              }
+            ],
+            "totals": {
+              "paid_cents": 4020,
+              "refund_cents": 330,
+              "net_cents": 3690
+            }
+          }
+        }
+      },
+      {
+        "name": "base_row_order",
+        "pass": false,
+        "detail": {
+          "actual": {
+            "orders": [],
+            "customers": [],
+            "totals": {
+              "paid_cents": 0,
+              "refund_cents": 0,
+              "net_cents": 0
+            }
+          },
+          "expected": {
+            "orders": [
+              {
+                "order_id": "O01",
+                "customer": "A",
+                "paid_cents": 1010,
+                "refund_cents": 210,
+                "net_cents": 800
+              },
+              {
+                "order_id": "O02",
+                "customer": "A",
+                "paid_cents": 2020,
+                "refund_cents": 120,
+                "net_cents": 1900
+              },
+              {
+                "order_id": "O04",
+                "customer": "B",
+                "paid_cents": 990,
+                "refund_cents": 0,
+                "net_cents": 990
+              }
+            ],
+            "customers": [
+              {
+                "customer": "A",
+                "net_cents": 2700
+              },
+              {
+                "customer": "B",
+                "net_cents": 990
+              }
+            ],
+            "totals": {
+              "paid_cents": 4020,
+              "refund_cents": 330,
+              "net_cents": 3690
+            }
+          }
+        }
+      },
+      {
+        "name": "empty",
+        "pass": true
+      },
+      {
+        "name": "v1_negative",
+        "pass": false,
+        "detail": {
+          "actual": {
+            "orders": [],
+            "customers": [],
+            "totals": {
+              "paid_cents": 0,
+              "refund_cents": 0,
+              "net_cents": 0
+            }
+          },
+          "expected": null
+        }
+      },
+      {
+        "name": "v1_precision",
+        "pass": false,
+        "detail": {
+          "actual": {
+            "orders": [],
+            "customers": [],
+            "totals": {
+              "paid_cents": 0,
+              "refund_cents": 0,
+              "net_cents": 0
+            }
+          },
+          "expected": null
+        }
+      },
+      {
+        "name": "v1_nan",
+        "pass": false,
+        "detail": {
+          "actual": {
+            "orders": [],
+            "customers": [],
+            "totals": {
+              "paid_cents": 0,
+              "refund_cents": 0,
+              "net_cents": 0
+            }
+          },
+          "expected": null
+        }
+      },
+      {
+        "name": "v1_infinity",
+        "pass": false,
+        "detail": {
+          "actual": {
+            "orders": [],
+            "customers": [],
+            "totals": {
+              "paid_cents": 0,
+              "refund_cents": 0,
+              "net_cents": 0
+            }
+          },
+          "expected": null
+        }
+      },
+      {
+        "name": "order_duplicate_conflict",
+        "pass": false,
+        "detail": {
+          "actual": {
+            "orders": [],
+            "customers": [],
+            "totals": {
+              "paid_cents": 0,
+              "refund_cents": 0,
+              "net_cents": 0
+            }
+          },
+          "expected": null
+        }
+      },
+      {
+        "name": "refund_duplicate_conflict",
+        "pass": false,
+        "detail": {
+          "actual": {
+            "orders": [],
+            "customers": [],
+            "totals": {
+              "paid_cents": 0,
+              "refund_cents": 0,
+              "net_cents": 0
+            }
+          },
+          "expected": null
+        }
+      },
+      {
+        "name": "unknown_refund",
+        "pass": false,
+        "detail": {
+          "actual": {
+            "orders": [],
+            "customers": [],
+            "totals": {
+              "paid_cents": 0,
+              "refund_cents": 0,
+              "net_cents": 0
+            }
+          },
+          "expected": null
+        }
+      },
+      {
+        "name": "cancelled_refund",
+        "pass": false,
+        "detail": {
+          "actual": {
+            "orders": [],
+            "customers": [],
+            "totals": {
+              "paid_cents": 0,
+              "refund_cents": 0,
+              "net_cents": 0
+            }
+          },
+          "expected": null
+        }
+      },
+      {
+        "name": "excess_refund",
+        "pass": false,
+        "detail": {
+          "actual": {
+            "orders": [],
+            "customers": [],
+            "totals": {
+              "paid_cents": 0,
+              "refund_cents": 0,
+              "net_cents": 0
+            }
+          },
+          "expected": null
+        }
+      },
+      {
+        "name": "zero_customer_decimal",
+        "pass": false,
+        "detail": {
+          "actual": {
+            "orders": [],
+            "customers": [],
+            "totals": {
+              "paid_cents": 0,
+              "refund_cents": 0,
+              "net_cents": 0
+            }
+          },
+          "expected": {
+            "orders": [
+              {
+                "order_id": "Z",
+                "customer": "z",
+                "paid_cents": 29,
+                "refund_cents": 29,
+                "net_cents": 0
+              }
+            ],
+            "customers": [
+              {
+                "customer": "z",
+                "net_cents": 0
+              }
+            ],
+            "totals": {
+              "paid_cents": 29,
+              "refund_cents": 29,
+              "net_cents": 0
+            }
+          }
+        }
+      },
+      {
+        "name": "policy_invalid",
+        "pass": false,
+        "detail": {
+          "actual": {
+            "orders": [],
+            "customers": [],
+            "totals": {
+              "paid_cents": 0,
+              "refund_cents": 0,
+              "net_cents": 0
+            }
+          },
+          "expected": null
+        }
+      }
+    ],
+    "pass": false,
+    "passed": 1,
+    "total": 14
+  },
+  "publication": {}
+}

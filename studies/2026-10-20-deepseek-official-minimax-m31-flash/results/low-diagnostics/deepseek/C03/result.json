@@ -1,0 +1,366 @@
+{
+  "task": "C03",
+  "provider": "deepseek",
+  "scope": "exploratory-low-after-max-budget-failures",
+  "reasoning_effort": "low",
+  "started_at_epoch": 1792493781.9112537,
+  "model_requested": "deepseek-flash",
+  "response": {
+    "model": "deepseek-flash",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "def schedule(tasks, capacity):\n    if len(tasks) == 0:\n        return {\"jobs\": [], \"makespan\": 0}\n\n    task_map = {}\n    id_set = set()\n    for task in tasks:\n        tid = task[\"id\"]\n        id_set.add(tid)\n        task_map[tid] = {\n            \"duration\": task[\"duration\"],\n            \"units\": task[\"units\"],\n            \"deps\": list(task[\"deps\"])\n        }\n\n    for tid in task_map:\n        info = task_map[tid]\n        if info[\"units\"] > capacity:\n            raise ValueError\n        for dep in info[\"deps\"]:\n            if dep not in id_set:\n                raise ValueError\n\n    dep_count = {tid: len(task_map[tid][\"deps\"]) for tid in id_set}\n    dependents = {tid: [] for tid in id_set}\n\n    for tid in task_map:\n        for dep in task_map[tid][\"deps\"]:\n            dependents[dep].append(tid)\n\n    queue = [tid for tid in id_set if dep_count[tid] == 0]\n    processed = 0\n    qi = 0\n\n    while qi < len(queue):\n        tid = queue[qi]\n        qi += 1\n        processed += 1\n        for child in dependents[tid]:\n            dep_count[child] -= 1\n            if dep_count[child] == 0:\n                queue.append(child)\n\n    if processed != len(tasks):\n        raise ValueError\n\n    sorted_ids = sorted(id_set)\n    remaining = {tid: len(task_map[tid][\"deps\"]) for tid in id_set}\n    running = []\n    started = set()\n    finished = set()\n    jobs = {}\n    available = capacity\n    current = 0\n\n    while len(finished) < len(tasks):\n        still_running = []\n        for end, tid, units in running:\n            if end <= current:\n                available += units\n                finished.add(tid)\n                for child in dependents[tid]:\n                    remaining[child] -= 1\n            else:\n                still_running.append([end, tid, units])\n        running = still_running\n\n        if len(finished) == len(tasks):\n            break\n\n        candidates = []\n        for tid in sorted_ids:\n            if tid not in started and remaining[tid] == 0:\n                candidates.append(tid)\n\n        for tid in candidates:\n            info = task_map[tid]\n            units = info[\"units\"]\n            if units <= available:\n                start = current\n                end = current + info[\"duration\"]\n                jobs[tid] = {\"id\": tid, \"start\": start, \"end\": end}\n                started.add(tid)\n                running.append([end, tid, units])\n                available -= units\n\n        if not running:\n            if len(finished) < len(tasks):\n                raise ValueError\n            break\n\n        next_time = running[0][0]\n        for item in running[1:]:\n            if item[0] < next_time:\n                next_time = item[0]\n        current = next_time\n\n    job_list = [jobs[tid] for tid in sorted(jobs.keys())]\n    makespan = 0\n    for job in job_list:\n        if job[\"end\"] > makespan:\n            makespan = job[\"end\"]\n\n    return {\"jobs\": job_list, \"makespan\": makespan}",
+          "reasoning_content": "我们需要回答用户要求：实现纯Python函数 schedule(tasks, capacity)。需要只交付完整Python函数及必要纯函数，不输出说明。要遵守交付格式。需要解析规则。需要设计算法。\n\n关键点：事件时刻先释放全部已完成任务，再从所有依赖完成且未启动的任务按id字典序扫描：资源够就立即启动，不够就跳过并继续扫描其他任务。全部扫描后，推进到最早运行任务结束。资源和duration均为整数。任一未知依赖、循环依赖、units>capacity抛ValueError；空列表返回jobs=[]、makespan=0。不得修改输入，不import，不输出说明，仅交付完整Python函数及必要纯函数。\n\n需要输出代码。需要理解调度语义。capacity资源总量；每个任务有units资源占用，duration时长。非抢占。依赖任务完成后才可启动。在事件时刻：先释放全部已完成任务（即结束时间 <= 当前时刻？），然后扫描所有依赖完成且未启动的任务按id字典序，资源够就立即启动，不够跳过继续扫描。全部扫描后，推进到最早运行任务结束。如果没有运行任务且还有未完成任务，可能死锁？但未知/循环依赖已检查，units<=capacity，应该可调度，但扫描顺序可能导致某些任务等待；如果资源碎片，可能没有运行任务？如果没运行且任务未启动，且依赖完成，units<=capacity，那么至少一个可启动，因为容量空，所以不会。如果所有可启动任务都不够？容量空，units<=capacity，够。所以有运行。若当前没有可启动且无运行，则循环依赖/未知，但检查过。\n\n需要返回 jobs 按id排序，start,end。makespan 最大 end，空为0。\n\n需要纯Python，不import。函数必要纯函数可放辅助。需要不能修改输入。需要检查输入？capacity正整数？题面capacity为正整数，但也许无需验证。但若 capacity<=0? 用户说capacity为正整数，可以假设。但最好？ 不输出说明。需要抛 ValueError：任一未知依赖、循环依赖、units>capacity。也许 duration/units 正？题目称正整数，若非法？未要求。只对三类抛。不要额外抛？ 需谨慎：若 units>capacity 抛。未知依赖和循环依赖需检测。循环依赖包含自依赖。未知依赖优先？顺序任意。需要返回。\n\n关键调度扫描逻辑：在每个事件时刻，先释放全部已完成任务。然后扫描“所有依赖完成且未启动的任务按id字典序”。这里“依赖完成”指前置任务已完成（结束时间 <= 当前时刻？ 当前事件时刻刚好完成的任务先释放，所以算完成）。扫描时可能一次事件内启动多个任务？ 是的：按id字典序扫描，资源够就立即启动；不够跳过并继续扫描其他任务。启动后占用资源，继续扫描后续。已启动的不再。因此在一个事件时刻可能启动多个，直到扫描完所有当前可启动的候选。然后推进到最早运行任务结束。注意：启动后任务结束时间 = 当前时刻 + duration。最早运行任务结束是当前运行任务（包括刚启动的）的最小end。\n\n需要仔细处理“每个事件时刻先释放全部已完成任务”：如果当前时刻有多个任务完成，先全部释放。然后扫描。推进到最早运行任务结束。若当前时刻没有运行，但还有任务，时间可能保持不变？需要扫描后一定有运行（除非完成）。因此在初始时刻0扫描。\n\n需要检测循环依赖。可以在调度前做拓扑排序/DFS，未知依赖。由于不import，可以用简单 Kahn。需要检查所有deps在id集合中，否则 ValueError。循环检测：统计入度（依赖数量），构建依赖者映射。Kahn拓扑。如果处理数 < n，则循环。注意重复依赖？ deps列表可能重复？ 未说明。若重复，入度计数会重复；需要处理？ 通常deps是前置id列表，可能不应重复。若重复，拓扑入度需按列表长度，依赖者映射会添加多次；当完成一次任务，会减少多次，可能导致入度到0但实际？ 重复依赖可视为重复边，逻辑上依赖同一任务，重复也没关系？ 但入度初始为len(deps)，每完成一个前置，对每个出现减少一次，可正确。构建 dependents 时每个出现添加一次，完成时遍历出现次数减少相同次数，最终到0。可。但 id唯一。未知依赖检查。循环检测包括重复？ 不影响。\n\n调度中，需要知道每个任务依赖完成条件：未完成依赖数？ 因为重复依赖，可记录依赖集合。任务在依赖全部完成后可启动。可以在调度时维护 remaining_deps_count = len(deps)，每完成一个任务，对其 dependents 中每个条目减少。重复会减少多次。这样 correct。或者用集合。需要不修改输入所以构建副本。\n\n排序：按id字典序。Python字符串排序。jobs最终按id排序。\n\n资源管理：running列表包含 (end, id, units)。已启动集合。完成集合。当前时间 t=0。remaining资源 = capacity - sum running units。事件循环：\n- 释放全部已完成：所有 running 中 end <= t? 因为我们严格推进到最早结束，所以 t 可能等于某些 end。也可能初始。将所有 end == t? 由于推进到最早结束，t不会超过任何运行end，除非没有运行。用 <= t 安全。释放时标记任务完成，增加可用资源，更新依赖计数，记录 end 已定。需要从 running 移除。\n- 扫描可启动候选：未启动且 remaining_deps_count ==0，按id排序。对于每个候选：if units <= available: start=t, end=t+duration, running append, started, available -= units. else skip. 注意扫描候选列表是在扫描开始时确定的吗？ “从所有依赖完成且未启动的任务按id字典序扫描：资源够就立即启动，不够就跳过并继续扫描其他任务。” 因为启动任务不会使其他任务依赖完成（依赖完成只在任务完成时），所以候选集合在事件时刻固定。可以在扫描前生成候选并排序。启动后资源减少。注意如果任务依赖刚启动任务？ 不可能，依赖未完成，不在候选。所以固定OK。\n- 全部扫描后，推进到最早运行任务结束。如果 running 空：\n  - 如果所有任务已启动/完成？ 结束。\n  - 否则？ 可能没有候选可启动但还有未启动，且无运行。这不应发生，若拓扑有效且units<=capacity。但若事件时刻扫描后没有启动任何任务，而 running空，且还有未完成，则说明没有可启动候选，即循环或未知，但已检测。若候选存在但 units>capacity? 已检查。所以会启动。若没有候选，依赖未完成但无运行，说明依赖图循环或依赖未完成的任务未启动且无运行，循环。已检测。可以防御抛ValueError。\n  - 若所有任务已启动，running空 => 完成。\n- 否则 t = min(end for running). 注意如果刚启动任务，end=t+duration > t。如果之前释放后还有运行任务，end > t。推进。\n\n需要 makespan = max(end) of jobs, 空0。由于 jobs 按id排序，可以计算。\n\n需要小心：扫描候选时“依赖完成且未启动”包括依赖已完成集合。remaining_deps_count ==0 即可。完成集合包括已结束任务。任务在恰好完成时先释放，减少依赖计数，然后候选。正确。\n\n需要处理同一时刻新释放的任务后，扫描所有候选。启动多个。推进到最早结束。如果最早结束等于当前t？释放后已移除所有 <=t，所以运行end>t。\n\n需要输出完整Python函数及必要纯函数。不能import。可定义 schedule 和辅助 _validate? 但“仅交付完整Python函数及必要纯函数”。可以包含辅助函数。代码块？ 用户说“不输出说明，仅交付完整Python函数及必要纯函数”。最终应只给代码，可能不带markdown代码块？ 通常交付完整函数。为了符合“仅交付”，可以输出```python代码块? 那是格式说明？ 最好只输出代码文本，不要解释。但代码块标记不是Python函数。可能直接代码。需要确保可读。最终只代码。\n\n现在需要决定是否包含输入类型验证。题目要求 capacity为正整数。若 capacity <=0? 未要求。若 capacity 非整数? 不处理。若 tasks 空，返回 jobs=[] makespan=0，即使 capacity? 空列表返回。空列表时可能 capacity 0? 题面容量正，不必。未知依赖检测在空列表无。\n\n需要检查 units>capacity 抛 ValueError。是否在循环检测前？ 任一...抛。顺序无所谓。如果未知依赖且 units>capacity，抛哪个都是ValueError。可以统一。需要检查所有任务 units。duration/units正整数？若 units <=0? 题面正整数。若 0 资源？ 不许。不要额外抛。但若 units 非正，调度可能 weird。不用。\n\n需要循环依赖检测。实现：\ndef schedule(tasks, capacity):\n    n = len(tasks)\n    if n == 0:\n        return {\"jobs\": [], \"makespan\": 0}\n    ids = [t[\"id\"] for t in tasks]\n    # maybe id unique guaranteed\n    id_set = set(ids)\n    # map id -> task copy? 不修改输入。可构建 dict id-> {duration, units, deps}\n    task_map = {}\n    for task in tasks:\n        tid = task[\"id\"]\n        task_map[tid] = {\"duration\": task[\"duration\"], \"units\": task[\"units\"], \"deps\": list(task[\"deps\"])}\n    # validate unknown deps and units\n    for tid, info in task_map.items():\n        if info[\"units\"] > capacity:\n            raise ValueError\n        for d in info[\"deps\"]:\n            if d not in id_set: raise ValueError\n    # cycle detect using Kahn\n    # remaining dependency count len deps\n    dep_count = {tid: len(info[\"deps\"]) for tid, info in task_map.items()}\n    dependents = {tid: [] for tid in id_set}\n    for tid, info in task_map.items():\n        for d in info[\"deps\"]:\n            dependents[d].append(tid)\n    queue = [tid for tid in id_set if dep_count[tid] == 0] # order irrelevant\n    # Need not import. Use list as queue, index.\n    processed = 0\n    qi = 0\n    # For deterministic not needed\n    while qi < len(queue):\n        tid = queue[qi]; qi += 1\n        processed += 1\n        for child in dependents[tid]:\n            dep_count[child] -= 1\n            if dep_count[child] == 0:\n                queue.append(child)\n    if processed != n:\n        raise ValueError\n    # Now schedule. Need original order? id sorted for scan. Use sorted(ids)\n    sorted_ids = sorted(id_set) # set of unique ids. Since id unique. If id_set from set maybe fine.\n    # If duplicate ids? guaranteed unique. If not, set loses. 题面唯一。可.\n    # Build remaining deps count fresh, dependents maybe reuse? We mutated dep_count to 0. Need reset. Could build again.\n    remaining = {tid: len(task_map[tid][\"deps\"]) for tid in id_set}\n    dependents2 = {tid: [] for tid in id_set}\n    for tid, info in task_map.items():\n        for d in info[\"deps\"]:\n            dependents2[d].append(tid)\n    # Actually dependents from before can be reused; remaining reset.\n    # running list of [end, tid, units]\n    running = []\n    started = set()\n    finished = set()\n    available = capacity\n    current = 0\n    jobs = {}\n    total = n\n    # We need count completed? finished size.\n    while len(finished) < total:\n        # release all end <= current\n        # running sorted? not needed. Need collect to release.\n        still = []\n        for end, tid, units in running:\n            if end <= current:\n                available += units\n                finished.add(tid)\n                for child in dependents2[tid]:\n                    remaining[child] -= 1\n                # record already in jobs\n            else:\n                still.append([end, tid, units])\n        running = still\n        # If after release all finished, break? Loop condition next; but can break to avoid no running.\n        if len(finished) == total:\n            break\n        # build candidates: not started and remaining==0\n        candidates = []\n        for tid in sorted_ids:\n            if tid not in started and remaining[tid] == 0:\n                candidates.append(tid)\n        # scan\n        for tid in candidates:\n            info = task_map[tid]\n            u = info[\"units\"]\n            if u <= available:\n                d = info[\"duration\"]\n                start = current\n                end = current + d\n                jobs[tid] = {\"id\": tid, \"start\": start, \"end\": end}\n                started.add(tid)\n                running.append([end, tid, u])\n                available -= u\n        # after scan\n        if not running:\n            # if unfinished, error\n            if len(finished) < total:\n                raise ValueError\n            break\n        # advance to earliest end\n        min_end = running[0][0]\n        for item in running[1:]:\n            if item[0] < min_end:\n                min_end = item[0]\n        current = min_end\n    # Build jobs sorted by id\n    job_list = [jobs[tid] for tid in sorted(jobs.keys())] # sorted_ids? jobs all ids\n    makespan = 0\n    for job in job_list:\n        if job[\"end\"] > makespan:\n            makespan = job[\"end\"]\n    return {\"jobs\": job_list, \"makespan\": makespan}\n\nNeed ensure finished set and jobs includes all. For empty handled. For n>0. If tasks with duplicate id? no.\n\nPotential issue: release all end <= current. When advancing to min_end, current = min_end. At next iteration, release all tasks ending at min_end. Good. But what about tasks ending between? We always advance to earliest running end, so none earlier. release <= okay. If multiple.\n\nPotential issue: At event time after release, scanning candidates includes tasks whose dependencies completed at current, yes remaining updated. Good.\n\nPotential issue: At same event, after starting tasks, we do not start newly unblocked tasks (dependencies can't complete because no time passes). Good.\n\nPotential issue: If running has tasks and candidates include tasks with units > available, skip; then advance to earliest end. Good.\n\nPotential issue: \"推进到最早运行任务结束\" If after scan no task started but running existing, advance. Good.\n\nPotential issue: If after scan running empty and finished<total, raise. This might occur if candidates exist but all units>available. But available=capacity after release and no running? If running empty, available should be capacity. Since units<=capacity, all candidates can start. If no candidates, dependency cycle but validated. So no. Defensive.\n\nNeed detect cycle after unknown and units. Kahn. But note if deps contain unknown, we check. Good. If deps contain duplicate and cycle? Kahn with duplicate edges works. Suppose task A deps [B,B], B deps []. dep_count A=2; dependents B has A twice; process B, decrement A twice to0. Good. Suppose cycle A deps [B], B deps [A,A]? duplicate; Kahn processes none? dep_count A=1 B=2; no zero, processed0 -> cycle. Good.\n\nNeed not modify input. We copy deps via list. We don't mutate task dict. We don't sort task list in place. sorted(id_set) creates. Good.\n\nNeed \"必要纯函数\" maybe we can include helper _topological? But can keep all in schedule. \"完整Python函数及必要纯函数\" allows only schedule. Need no imports.\n\nShould we include type hints? 可以。纯Python。无import。Type hints using builtins. Not necessary. Might include. 但若使用 dict 类型？ 无import。可以不加。\n\nNeed consider capacity positive integer; if capacity=0 and tasks empty returns. If nonempty units>0 > capacity -> ValueError. Good. If capacity negative and units positive > capacity -> ValueError. No issue.\n\nNeed consider malformed tasks missing keys? 不处理.\n\nNow final answer should be only code. Need maybe include code block? They said \"不输出说明，仅交付完整Python函数及必要纯函数\". I can output code block without explanation. A markdown code fence is not a function but commonly acceptable. To be safe, output raw code only, no markdown. But final answer may be plain. Need include indentation. Let's produce raw code.\n\nBefore final, re-evaluate if any hidden semantics about \"每个事件时刻先释放全部已完成任务，再从所有依赖完成且未启动的任务按id字典序扫描\". The \"事件时刻\" includes time 0. We release none. Scan. Good. \"全部扫描后，推进到最早运行任务结束\" We set current to min end then loop. Good.\n\nPotential issue: Our release uses `end <= current`, but after scanning, current set to min end. At next iteration, release tasks with end <= current. Since current exactly min end, releases all tasks ending at current. Good. But what if multiple tasks started at current with duration such that end=current? duration positive so no. Good.\n\nPotential issue: At time current, before release, running may contain tasks with end < current? We always set current to min end, so no. But if we break? no. `<=` robust.\n\nPotential issue: available. We initialize capacity. At release add units. At start subtract. If release all finished at once. Good.\n\nPotential issue: If a task has zero deps, remaining=0. At t=0 candidate. Good.\n\nPotential issue: Sorting by id: Python string lexicographic. \"按id字典序\" likely string compare. Good. If id maybe not string? 题面唯一字符串. Good.\n\nPotential issue: jobs final sorted by id. We use `sorted(jobs.keys())`. Since jobs keys all ids. Good.\n\nPotential issue: makespan max end. If n>0, all started. Good.\n\nPotential issue: cycle detection with `queue = [tid for tid in id_set if dep_count[tid]==0]`. `id_set` is set, order arbitrary but only count. Fine. But if id_set includes all. Good.\n\nPotential issue: If id duplicate, id_set loses, processed count vs n mismatch? But unique guaranteed. No need.\n\nNow maybe include helper function to validate? Not necessary. But if code long, okay.\n\nShould we avoid using set? Builtin. Fine. \"不import\" okay.\n\nNeed ensure no use of `typing`. no.\n\nLet's final raw code."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 253,
+      "completion_tokens": 4836,
+      "total_tokens": 5089,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 4114
+      },
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 253
+    },
+    "timings": null
+  },
+  "latency": {
+    "first_event_s": 0.1758289289973618,
+    "first_reasoning_s": 0.8219097559995134,
+    "first_content_s": 21.000762653999118,
+    "first_tool_s": null,
+    "api_elapsed_s": 22.71466813599909
+  },
+  "elapsed_s": 22.714702321001823,
+  "content": "def schedule(tasks, capacity):\n    if len(tasks) == 0:\n        return {\"jobs\": [], \"makespan\": 0}\n\n    task_map = {}\n    id_set = set()\n    for task in tasks:\n        tid = task[\"id\"]\n        id_set.add(tid)\n        task_map[tid] = {\n            \"duration\": task[\"duration\"],\n            \"units\": task[\"units\"],\n            \"deps\": list(task[\"deps\"])\n        }\n\n    for tid in task_map:\n        info = task_map[tid]\n        if info[\"units\"] > capacity:\n            raise ValueError\n        for dep in info[\"deps\"]:\n            if dep not in id_set:\n                raise ValueError\n\n    dep_count = {tid: len(task_map[tid][\"deps\"]) for tid in id_set}\n    dependents = {tid: [] for tid in id_set}\n\n    for tid in task_map:\n        for dep in task_map[tid][\"deps\"]:\n            dependents[dep].append(tid)\n\n    queue = [tid for tid in id_set if dep_count[tid] == 0]\n    processed = 0\n    qi = 0\n\n    while qi < len(queue):\n        tid = queue[qi]\n        qi += 1\n        processed += 1\n        for child in dependents[tid]:\n            dep_count[child] -= 1\n            if dep_count[child] == 0:\n                queue.append(child)\n\n    if processed != len(tasks):\n        raise ValueError\n\n    sorted_ids = sorted(id_set)\n    remaining = {tid: len(task_map[tid][\"deps\"]) for tid in id_set}\n    running = []\n    started = set()\n    finished = set()\n    jobs = {}\n    available = capacity\n    current = 0\n\n    while len(finished) < len(tasks):\n        still_running = []\n        for end, tid, units in running:\n            if end <= current:\n                available += units\n                finished.add(tid)\n                for child in dependents[tid]:\n                    remaining[child] -= 1\n            else:\n                still_running.append([end, tid, units])\n        running = still_running\n\n        if len(finished) == len(tasks):\n            break\n\n        candidates = []\n        for tid in sorted_ids:\n            if tid not in started and remaining[tid] == 0:\n                candidates.append(tid)\n\n        for tid in candidates:\n            info = task_map[tid]\n            units = info[\"units\"]\n            if units <= available:\n                start = current\n                end = current + info[\"duration\"]\n                jobs[tid] = {\"id\": tid, \"start\": start, \"end\": end}\n                started.add(tid)\n                running.append([end, tid, units])\n                available -= units\n\n        if not running:\n            if len(finished) < len(tasks):\n                raise ValueError\n            break\n\n        next_time = running[0][0]\n        for item in running[1:]:\n            if item[0] < next_time:\n                next_time = item[0]\n        current = next_time\n\n    job_list = [jobs[tid] for tid in sorted(jobs.keys())]\n    makespan = 0\n    for job in job_list:\n        if job[\"end\"] > makespan:\n            makespan = job[\"end\"]\n\n    return {\"jobs\": job_list, \"makespan\": makespan}",
+  "grade": {
+    "score": 100.0,
+    "pass": true,
+    "tests": [
+      {
+        "test": 1,
+        "pass": true,
+        "actual": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "expected": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 2,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 3,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 4,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 5,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 6,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 4
+            },
+            {
+              "id": "b",
+              "start": 4,
+              "end": 6
+            },
+            {
+              "id": "c",
+              "start": 0,
+              "end": 1
+            }
+          ],
+          "makespan": 6
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 4
+            },
+            {
+              "id": "b",
+              "start": 4,
+              "end": 6
+            },
+            {
+              "id": "c",
+              "start": 0,
+              "end": 1
+            }
+          ],
+          "makespan": 6
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 7,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "c",
+              "start": 2,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "c",
+              "start": 2,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 8,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 2,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 4
+            },
+            {
+              "id": "z",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 4
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 2,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 4
+            },
+            {
+              "id": "z",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 4
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 9,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 10,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 11,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 12,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 13,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      }
+    ]
+  },
+  "length_qualified": true,
+  "complete_hard": true
+}
