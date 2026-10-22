@@ -1,6 +1,6 @@
-# 7900 XTX跑Qwen3.8 Next Flash：Strata三版本实测
+# 7900 XTX跑Qwen3.8 Next Flash：Strata 0.2.2升级实测
 
-同一台7900 XTX工作站，同一份Qwen3.8 Next Flash量化权重，把Strata从0.1.44.1升级到0.1.46，再升级到0.1.47。硬件不换，模型不换，软件更新到底能少等多久？
+同一台7900 XTX工作站，同一份Qwen3.8 Next Flash量化权重，对比旧版本地构建、Strata v0.2.1与v0.2.2发行包。硬件不换，模型不换，软件更新到底能少等多久？
 
 结果有点曲折：最新版生成比原版快约6.6%—11.2%，但中间版吐字更快。基础代码省了时间，复杂写作和长程收尾却没有一起变好。
 
@@ -8,19 +8,22 @@
 
 本地模型的等待，最后都落在具体工作上：函数能不能过测试，工具有没有越权，文字有没有事实错误。软件升级值得测，是因为它可能在不换硬件的情况下缩短这些等待。
 
-这次固定265W功耗上限，沿用同一套题。先跑原版0.1.44.1，再跑0.1.46。过程中官方发布了带0.1.47引擎的Strata v0.2.2，于是也完整跑了一遍。本文“三版”指这三个推理引擎版本，采集日期均为2026年10月21日。
+这次固定265W功耗上限，沿用同一套题。先跑旧版本地构建，再跑Strata v0.2.1发行包。过程中官方发布v0.2.2，于是也完整跑了一遍。三套环境采集日期均为2026年10月21日。
+
+发行版本与引擎版本分别记录：Strata v0.2.1发行包内置引擎0.1.46，v0.2.2发行包内置引擎0.1.47。旧版为本地HIP构建，记录的引擎号是0.1.44.1。下文以发行版本标注两套新版。
 
 测试覆盖代码、工具和写作，由浅入深。七道短题和连续四阶段项目仍是受控合成任务，不能代表大型真实仓库、多人并发与全天业务。
 
 ## 二、怎么做：配置、题面、门槛和计时
 
-| 指标 | Qwen3.8 Next Flash Strata 0.1.44.1 | Qwen3.8 Next Flash Strata 0.1.46 | Qwen3.8 Next Flash Strata 0.1.47 |
+| 指标 | Qwen3.8 Next Flash 旧版本地构建 引擎0.1.44.1 | Qwen3.8 Next Flash Strata v0.2.1 引擎0.1.46 | Qwen3.8 Next Flash Strata v0.2.2 引擎0.1.47 |
 |---|---:|---:|---:|
 | 机器 | Dell Precision5820 | 同左 | 同左 |
 | CPU / 内存 | Xeon W-2133 / 128GB DDR4-2133 | 同左 | 同左 |
 | 显卡 / 上限 | RX7900 XTX24GB / 265W | 同左 | 同左 |
+| 产品发行 | 旧版源码环境 | v0.2.1 | v0.2.2 |
 | 推理引擎 | 0.1.44.1 / 本地HIP构建 | 0.1.46 / 官方RX7900包 | 0.1.47 / 官方RX7900包 |
-| 发行 / Control | 旧版源码环境 | v0.2.1 / Control0.1.46.3 | v0.2.2 / Control0.1.47 |
+| Control | 旧版源码前端 | 0.1.46.3 | 0.1.47 |
 
 模型均为Qwen3.8 Next Flash，Unsloth UD-Q4_K_XL量化。仓库unsloth/Qwen3.8-Flash-Next-GGUF，固定修订38bb39ee97821de2c9009abb7e93950eec396e66，实际服务ID为Qwen/Qwen3.8-Flash-Next。复用同一GGUF、pack、MTP、tokenizer和内容相同的专家profile。
 
@@ -46,7 +49,7 @@ Ubuntu24.04.5、kernel7.0.0-38；显式参数固定prefill auto、expert-cache a
 
 验收：唯一记录筛选及严格JSON字段/值。输出上限4096 token，每版两轮。
 
-| 指标 | Qwen3.8 Next Flash Strata 0.1.44.1 | Qwen3.8 Next Flash Strata 0.1.46 | Qwen3.8 Next Flash Strata 0.1.47 |
+| 指标 | Qwen3.8 Next Flash 旧版本地构建 引擎0.1.44.1 | Qwen3.8 Next Flash Strata v0.2.1 引擎0.1.46 | Qwen3.8 Next Flash Strata v0.2.2 引擎0.1.47 |
 |---|---:|---:|---:|
 | 完整交付 | 2/2 | 2/2 | 2/2 |
 | 完整等待 秒 | 6.6 | 5.8 | 5.8 |
@@ -64,7 +67,7 @@ Ubuntu24.04.5、kernel7.0.0-38；显式参数固定prefill auto、expert-cache a
 
 验收：9项独立断言，返回值正确且不改输入。输出上限8192 token，每版两轮。
 
-| 指标 | Qwen3.8 Next Flash Strata 0.1.44.1 | Qwen3.8 Next Flash Strata 0.1.46 | Qwen3.8 Next Flash Strata 0.1.47 |
+| 指标 | Qwen3.8 Next Flash 旧版本地构建 引擎0.1.44.1 | Qwen3.8 Next Flash Strata v0.2.1 引擎0.1.46 | Qwen3.8 Next Flash Strata v0.2.2 引擎0.1.47 |
 |---|---:|---:|---:|
 | 完整交付 | 2/2 | 2/2 | 2/2 |
 | 完整等待 秒 | 18.2 | 15.9 | 15.9 |
@@ -82,7 +85,7 @@ Ubuntu24.04.5、kernel7.0.0-38；显式参数固定prefill auto、expert-cache a
 
 验收：100—180非空白字符、事实边界及编辑≥16/20。输出上限4096 token，每版两轮。
 
-| 指标 | Qwen3.8 Next Flash Strata 0.1.44.1 | Qwen3.8 Next Flash Strata 0.1.46 | Qwen3.8 Next Flash Strata 0.1.47 |
+| 指标 | Qwen3.8 Next Flash 旧版本地构建 引擎0.1.44.1 | Qwen3.8 Next Flash Strata v0.2.1 引擎0.1.46 | Qwen3.8 Next Flash Strata v0.2.2 引擎0.1.47 |
 |---|---:|---:|---:|
 | 完整交付 | 2/2 | 2/2 | 2/2 |
 | 完整等待 秒 | 33.1 | 42.4 | 24.7 |
@@ -101,7 +104,7 @@ Ubuntu24.04.5、kernel7.0.0-38；显式参数固定prefill auto、expert-cache a
 
 验收：查实库存、最低合规SKU、一次预留、禁止付款和严格JSON。输出上限8192 token，每版两轮。
 
-| 指标 | Qwen3.8 Next Flash Strata 0.1.44.1 | Qwen3.8 Next Flash Strata 0.1.46 | Qwen3.8 Next Flash Strata 0.1.47 |
+| 指标 | Qwen3.8 Next Flash 旧版本地构建 引擎0.1.44.1 | Qwen3.8 Next Flash Strata v0.2.1 引擎0.1.46 | Qwen3.8 Next Flash Strata v0.2.2 引擎0.1.47 |
 |---|---:|---:|---:|
 | 完整交付 | 2/2 | 2/2 | 2/2 |
 | 完整等待 秒 | 18.4 | 14.5 | 14.4 |
@@ -119,7 +122,7 @@ Ubuntu24.04.5、kernel7.0.0-38；显式参数固定prefill auto、expert-cache a
 
 验收：13项独立功能断言，含循环、未知依赖和超容量。输出上限8192 token，每版两轮。
 
-| 指标 | Qwen3.8 Next Flash Strata 0.1.44.1 | Qwen3.8 Next Flash Strata 0.1.46 | Qwen3.8 Next Flash Strata 0.1.47 |
+| 指标 | Qwen3.8 Next Flash 旧版本地构建 引擎0.1.44.1 | Qwen3.8 Next Flash Strata v0.2.1 引擎0.1.46 | Qwen3.8 Next Flash Strata v0.2.2 引擎0.1.47 |
 |---|---:|---:|---:|
 | 完整交付 | 2/2 | 2/2 | 2/2 |
 | 完整等待 秒 | 93.3 | 71.1 | 60.3 |
@@ -137,7 +140,7 @@ Ubuntu24.04.5、kernel7.0.0-38；显式参数固定prefill auto、expert-cache a
 
 验收：真实日志定位disk_full、重试、无越权，最终严格JSON。输出上限8192 token，每版两轮。
 
-| 指标 | Qwen3.8 Next Flash Strata 0.1.44.1 | Qwen3.8 Next Flash Strata 0.1.46 | Qwen3.8 Next Flash Strata 0.1.47 |
+| 指标 | Qwen3.8 Next Flash 旧版本地构建 引擎0.1.44.1 | Qwen3.8 Next Flash Strata v0.2.1 引擎0.1.46 | Qwen3.8 Next Flash Strata v0.2.2 引擎0.1.47 |
 |---|---:|---:|---:|
 | 完整交付 | 1/2 | 0/2 | 1/2 |
 | 完整等待 秒 | 19.4 | 17.8 | 17.6 |
@@ -155,7 +158,7 @@ Ubuntu24.04.5、kernel7.0.0-38；显式参数固定prefill auto、expert-cache a
 
 验收：600—900字符、F1—F4、隐私/责任/退出及编辑≥16/20。输出上限8192 token，每版两轮。
 
-| 指标 | Qwen3.8 Next Flash Strata 0.1.44.1 | Qwen3.8 Next Flash Strata 0.1.46 | Qwen3.8 Next Flash Strata 0.1.47 |
+| 指标 | Qwen3.8 Next Flash 旧版本地构建 引擎0.1.44.1 | Qwen3.8 Next Flash Strata v0.2.1 引擎0.1.46 | Qwen3.8 Next Flash Strata v0.2.2 引擎0.1.47 |
 |---|---:|---:|---:|
 | 完整交付 | 0/2 | 0/2 | 0/2 |
 | 完整等待 秒 | 160.0 | 113.6 | 132.6 |
@@ -176,7 +179,7 @@ Ubuntu24.04.5、kernel7.0.0-38；显式参数固定prefill auto、expert-cache a
 
 > 冻结题面：接手当前订单对账项目。先查看README.md和spec-v1.md，修复workflow.py中的reconcile函数，并完成data/base的对账。可运行visible测试和publish工具。此阶段只要求v1功能，不需要发布。完成后说明实际测试结果。
 
-| 指标 | Qwen3.8 Next Flash Strata 0.1.44.1 | Qwen3.8 Next Flash Strata 0.1.46 | Qwen3.8 Next Flash Strata 0.1.47 |
+| 指标 | Qwen3.8 Next Flash 旧版本地构建 引擎0.1.44.1 | Qwen3.8 Next Flash Strata v0.2.1 引擎0.1.46 | Qwen3.8 Next Flash Strata v0.2.2 引擎0.1.47 |
 |---|---:|---:|---:|
 | 硬项+收尾 | 1/2 | 0/2 | 0/2 |
 | 完整等待 秒 | 138.5 | 143.3 | 142.3 |
@@ -196,7 +199,7 @@ Ubuntu24.04.5、kernel7.0.0-38；显式参数固定prefill auto、expert-cache a
 
 > 冻结题面：需求更新了，新增spec-v2.md以及data/v2输入。继续维护同一个workflow.py，实现v2的日期截止、退款状态及三位小数四舍五入，并保留全部v1行为。请运行visible测试，并用v2输入核对汇总。此阶段仍不要求发布。
 
-| 指标 | Qwen3.8 Next Flash Strata 0.1.44.1 | Qwen3.8 Next Flash Strata 0.1.46 | Qwen3.8 Next Flash Strata 0.1.47 |
+| 指标 | Qwen3.8 Next Flash 旧版本地构建 引擎0.1.44.1 | Qwen3.8 Next Flash Strata v0.2.1 引擎0.1.46 | Qwen3.8 Next Flash Strata v0.2.2 引擎0.1.47 |
 |---|---:|---:|---:|
 | 硬项+收尾 | 2/2 | 2/2 | 2/2 |
 | 完整等待 秒 | 205.1 | 159.0 | 227.2 |
@@ -216,7 +219,7 @@ Ubuntu24.04.5、kernel7.0.0-38；显式参数固定prefill auto、expert-cache a
 
 > 冻结题面：现在需要可交付的发布包。查看release-spec.md，补齐workflow.py的export_bundle函数，并调用publish发布data/v2的结果。发布工具可能出现一次磁盘暂时故障，请根据真实返回恢复并确认当前发布内容；失败时不能删改旧版本或输入。发布包必须同时满足对账和格式要求。
 
-| 指标 | Qwen3.8 Next Flash Strata 0.1.44.1 | Qwen3.8 Next Flash Strata 0.1.46 | Qwen3.8 Next Flash Strata 0.1.47 |
+| 指标 | Qwen3.8 Next Flash 旧版本地构建 引擎0.1.44.1 | Qwen3.8 Next Flash Strata v0.2.1 引擎0.1.46 | Qwen3.8 Next Flash Strata v0.2.2 引擎0.1.47 |
 |---|---:|---:|---:|
 | 硬项+收尾 | 1/2 | 2/2 | 2/2 |
 | 完整等待 秒 | 153.5 | 117.9 | 135.9 |
@@ -236,7 +239,7 @@ Ubuntu24.04.5、kernel7.0.0-38；显式参数固定prefill auto、expert-cache a
 
 > 冻结题面：交付前收到一笔迟到的成功退款，已写入data/final/refunds.csv；订单与v2相同。截止时间仍为2026-10-04T23:59:59Z，须更新发布为data/final，保留v1/v2兼容性并再次测试。查看handoff-spec.md，生成delivery.md，列明最终金额、迟到退款的影响、测试证据和具体风险。以实际发布文件为准，不把先前版本的金额写进交付说明。最后说明是否交付完成。
 
-| 指标 | Qwen3.8 Next Flash Strata 0.1.44.1 | Qwen3.8 Next Flash Strata 0.1.46 | Qwen3.8 Next Flash Strata 0.1.47 |
+| 指标 | Qwen3.8 Next Flash 旧版本地构建 引擎0.1.44.1 | Qwen3.8 Next Flash Strata v0.2.1 引擎0.1.46 | Qwen3.8 Next Flash Strata v0.2.2 引擎0.1.47 |
 |---|---:|---:|---:|
 | 硬项+收尾 | 0/2 | 2/2 | 1/2 |
 | 完整等待 秒 | 214.3 | 141.2 | 144.3 |
@@ -254,7 +257,7 @@ Ubuntu24.04.5、kernel7.0.0-38；显式参数固定prefill auto、expert-cache a
 
 ### 长程整项：文件正确，仍未全程交付
 
-| 指标 | Qwen3.8 Next Flash Strata 0.1.44.1 | Qwen3.8 Next Flash Strata 0.1.46 | Qwen3.8 Next Flash Strata 0.1.47 |
+| 指标 | Qwen3.8 Next Flash 旧版本地构建 引擎0.1.44.1 | Qwen3.8 Next Flash Strata v0.2.1 引擎0.1.46 | Qwen3.8 Next Flash Strata v0.2.2 引擎0.1.47 |
 |---|---:|---:|---:|
 | 严格完整交付 | 0/2 | 0/2 | 0/2 |
 | 最终文件正确 | 2/2 | 2/2 | 2/2 |
@@ -274,7 +277,7 @@ Ubuntu24.04.5、kernel7.0.0-38；显式参数固定prefill auto、expert-cache a
 
 只对D01关闭思考，其余主分不变。三版都两轮通过，输出固定21 token，等待中位均约2.6秒；开启思考时约6.6、5.8、5.8秒。
 
-| 指标 | Qwen3.8 Next Flash Strata 0.1.44.1 | Qwen3.8 Next Flash Strata 0.1.46 | Qwen3.8 Next Flash Strata 0.1.47 |
+| 指标 | Qwen3.8 Next Flash 旧版本地构建 引擎0.1.44.1 | Qwen3.8 Next Flash Strata v0.2.1 引擎0.1.46 | Qwen3.8 Next Flash Strata v0.2.2 引擎0.1.47 |
 |---|---:|---:|---:|
 | 硬项通过 | 2/2 | 2/2 | 2/2 |
 | 完整等待 秒 | 2.7 | 2.6 | 2.6 |
@@ -292,7 +295,7 @@ Ubuntu24.04.5、kernel7.0.0-38；显式参数固定prefill auto、expert-cache a
 
 ### 短输入 + 512生成token
 
-| 指标 | Qwen3.8 Next Flash Strata 0.1.44.1 | Qwen3.8 Next Flash Strata 0.1.46 | Qwen3.8 Next Flash Strata 0.1.47 |
+| 指标 | Qwen3.8 Next Flash 旧版本地构建 引擎0.1.44.1 | Qwen3.8 Next Flash Strata v0.2.1 引擎0.1.46 | Qwen3.8 Next Flash Strata v0.2.2 引擎0.1.47 |
 |---|---:|---:|---:|
 | 样本数 | 3 | 3 | 3 |
 | 内容评分 | 不计分 | 不计分 | 不计分 |
@@ -307,7 +310,7 @@ Ubuntu24.04.5、kernel7.0.0-38；显式参数固定prefill auto、expert-cache a
 
 ### 约4K输入 + 512生成token
 
-| 指标 | Qwen3.8 Next Flash Strata 0.1.44.1 | Qwen3.8 Next Flash Strata 0.1.46 | Qwen3.8 Next Flash Strata 0.1.47 |
+| 指标 | Qwen3.8 Next Flash 旧版本地构建 引擎0.1.44.1 | Qwen3.8 Next Flash Strata v0.2.1 引擎0.1.46 | Qwen3.8 Next Flash Strata v0.2.2 引擎0.1.47 |
 |---|---:|---:|---:|
 | 样本数 | 3 | 3 | 3 |
 | 内容评分 | 不计分 | 不计分 | 不计分 |
@@ -322,7 +325,7 @@ Ubuntu24.04.5、kernel7.0.0-38；显式参数固定prefill auto、expert-cache a
 
 ### 约32K输入 + 512生成token
 
-| 指标 | Qwen3.8 Next Flash Strata 0.1.44.1 | Qwen3.8 Next Flash Strata 0.1.46 | Qwen3.8 Next Flash Strata 0.1.47 |
+| 指标 | Qwen3.8 Next Flash 旧版本地构建 引擎0.1.44.1 | Qwen3.8 Next Flash Strata v0.2.1 引擎0.1.46 | Qwen3.8 Next Flash Strata v0.2.2 引擎0.1.47 |
 |---|---:|---:|---:|
 | 样本数 | 3 | 3 | 3 |
 | 内容评分 | 不计分 | 不计分 | 不计分 |
@@ -339,7 +342,7 @@ Ubuntu24.04.5、kernel7.0.0-38；显式参数固定prefill auto、expert-cache a
 
 ### 硬件观察：无新增错误，未测全天可靠性
 
-| 指标 | Qwen3.8 Next Flash Strata 0.1.44.1 | Qwen3.8 Next Flash Strata 0.1.46 | Qwen3.8 Next Flash Strata 0.1.47 |
+| 指标 | Qwen3.8 Next Flash 旧版本地构建 引擎0.1.44.1 | Qwen3.8 Next Flash Strata v0.2.1 引擎0.1.46 | Qwen3.8 Next Flash Strata v0.2.2 引擎0.1.47 |
 |---|---:|---:|---:|
 | 设定上限 W | 265 | 265 | 265 |
 | 正式观察 分钟 | 39.5 | 32.1 | 34.7 |
@@ -355,9 +358,9 @@ Ubuntu24.04.5、kernel7.0.0-38；显式参数固定prefill auto、expert-cache a
 
 265W是配置回读值，PPT最高分别采到361、317、300W。最新版47个采样高于265W，9个超过280W。未用外部仪表验证整机功耗、能耗与瞬时峰值，设置上限不能当硬性瞬时保证。内存、VRAM和GTT口径不同，也不直接相加。
 
-## 综合推荐：0.1.47更均衡，固定生成中0.1.46更快
+## 综合推荐：Strata v0.2.2更均衡，固定生成中v0.2.1更快
 
-| 指标 | Qwen3.8 Next Flash Strata 0.1.44.1 | Qwen3.8 Next Flash Strata 0.1.46 | Qwen3.8 Next Flash Strata 0.1.47 |
+| 指标 | Qwen3.8 Next Flash 旧版本地构建 引擎0.1.44.1 | Qwen3.8 Next Flash Strata v0.2.1 引擎0.1.46 | Qwen3.8 Next Flash Strata v0.2.2 引擎0.1.47 |
 |---|---:|---:|---:|
 | 核心完整交付 / 14短题+2长程 | 11/16 | 10/16 | 11/16 |
 | 累计完整等待 秒 | 2,120.9 | 1,685.1 | 1,842.0 |
@@ -372,9 +375,9 @@ Ubuntu24.04.5、kernel7.0.0-38；显式参数固定prefill auto、expert-cache a
 
 核心累计保留失败和未交付等待，不含诊断与吞吐探针；它不表示完成吞吐或等质量成本。上表速度每轮合并七短题及长程的全部原生计算，再取两轮中位。各版实际答复、工具调用和缓存不同，这种混合任务速度不能替代前面同输入、固定512生成token的吞吐对照。
 
-这台7900 XTX、265W、Qwen3.8 Next Flash UD-Q4_K_XL，综合推荐Strata引擎0.1.47。它保持原版11/14短题交付，基础函数、调度代码、事实短讯与库存预留均2/2通过；固定Decode快约6.6%—11.2%，短题总等待少22.3%，长程等待中位少8.7%。
+这台7900 XTX、265W、Qwen3.8 Next Flash UD-Q4_K_XL，综合推荐Strata v0.2.2发行包（引擎0.1.47）。它保持原版11/14短题交付，基础函数、调度代码、事实短讯与库存预留均2/2通过；固定Decode快约6.6%—11.2%，短题总等待少22.3%，长程等待中位少8.7%。
 
-0.1.46的三组固定Decode和本次长程等待都更好，适合追求交互响应、并会检查工具结果的使用方式；但本轮排障最终JSON两轮都没过，完整交付少一项。与0.1.47的差别包含一轮格式结果，两个样本不能推出稳定的能力高低。
+v0.2.1发行包的三组固定Decode和本次长程等待都更好，适合追求交互响应、并会检查工具结果的使用方式；但本轮排障最终JSON两轮都没过，完整交付少一项。与v0.2.2的差别包含一轮格式结果，两个样本不能推出稳定的能力高低。
 
 实际能做什么：有断言核验的函数与调度代码、按给定事实写短讯、查库存和受权限约束的查询，以及对账文件生成。复杂决策备忘录三版都没过编辑门槛，严格JSON仍会多围栏，连续项目也会漏掉阶段收尾。升级缩短了一部分等待，这些交付缺口还得逐项检查。
 
