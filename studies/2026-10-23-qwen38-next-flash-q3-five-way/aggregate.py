@@ -122,8 +122,13 @@ def analyze(root):
         grouped = {}
         for path in sorted((folder / 'short').rglob('result.json')):
             r = load(path)
-            row = work_unit(r, r['turns'], lane, r.get('elapsed_s'), (r.get('grade') or {}).get('pass'))
-            row['automatic_only_for_writing'] = r['task'].startswith('W')
+            writing = r['task'].startswith('W')
+            automatic = (r.get('grade') or {}).get('pass')
+            row = work_unit(r, r['turns'], lane, r.get('elapsed_s'), None if writing else automatic)
+            row['automatic_only_for_writing'] = writing
+            if writing:
+                row['automatic_format_pass'] = automatic
+                row['editorial_pass'] = None
             row['result_file'] = path.relative_to(root).as_posix()
             row['resources'] = resources(path.parent / 'resources.jsonl')
             grouped.setdefault((r['variant'], r['task']), []).append(row)
