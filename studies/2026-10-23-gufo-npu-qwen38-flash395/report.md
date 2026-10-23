@@ -23,7 +23,7 @@ AI Max+ 395跑Qwen3.8 Next Flash Q4：Gufo加NPU快了多少？
 | 共同控制 | GPU fabric clock固定2000MHz；NPU performance/runtime-PM on；Prefill块16384；不把时钟改变归功于NPU |
 | 正式样本 | 每条件29单位，共87；7短题×2、关闭思考诊断×2、长程×2、100K×2、吞吐3种×3 |
 
-这是社区分支的对照，不能称为Gufo官方已发布NPU版。PR568尚未合入的状态仅限本轮核对时点。此前生产Gufo v0.20.0的成绩不拿来计算本轮NPU净收益。六个权重文件完整SHA256均通过；同机始终只加载一个模型，切换后确认主存和GPU分配回落。
+这是社区分支的对照，不能称为Gufo官方已发布NPU版。PR568尚未合入的状态仅限本轮核对时点。此前Gufo v0.20.0的成绩不拿来计算本轮NPU净收益。六个权重文件完整SHA256均通过；同机始终只加载一个模型，切换后确认主存和GPU分配回落。
 
 环境适配也有失败：旧固件1.0.0.166的真实算子未完成，换用固定官方固件1.1.2.65后才通过。社区时钟脚本的等待时间也不够，本轮实际读回连续稳定的2000MHz后才开测。这些是准备过程，不计为模型失败或模型成绩。三组正式测量无运行中止。
 
@@ -371,4 +371,4 @@ AI Max+ 395跑Qwen3.8 Next Flash Q4：Gufo加NPU快了多少？
 
 [完整题目、工具、预算、评分及原始结果](https://github.com/rffanlab/llm_eval/tree/main/studies/2026-10-23-gufo-npu-qwen38-flash395)。短题完整system/user提示词、长程四阶段提示词与生成100K材料的脚本均在同一份冻结档案，不能用本文摘要替代题面。
 
-[社区Gufo固定版本NPU说明](https://github.com/mikealanni/gufo/blob/a1f5549fd56dbe46eef0c7baff5239b0f5d64142/docs/NPU.md)；[官方linux-firmware固定固件目录](https://gitlab.com/kernel-firmware/linux-firmware/-/tree/8c7fac62c0d1c3b8915f596effc1ef6e95fd6b5f/amdnpu/17f0_11)。
+[社区Gufo固定版本NPU说明](https://github.com/mikealanni/gufo/blob/a1f5549fd56dbe46eef0c7baff5239b0f5d64142/docs/NPU.md)；[官方linux-firmware固定固件目录](https://kernel.googlesource.com/pub/scm/linux/kernel/git/firmware/linux-firmware.git/+/8c7fac62c0d1c3b8915f596effc1ef6e95fd6b5f/amdnpu/17f0_11/)。
