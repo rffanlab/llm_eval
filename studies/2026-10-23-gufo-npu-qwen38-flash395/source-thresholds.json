@@ -1,0 +1,229 @@
+{
+  "threshold_lines": [
+    {
+      "path": "kernels/rocm/kernels.hip.cpp",
+      "line": 2444,
+      "text": "                  slice];\n      window[i] = NpuStreamValue(stream, gt % stream_tokens, col);\n    } else {\n      window[i] ="
+    },
+    {
+      "path": "kernels/rocm/kernels.hip.cpp",
+      "line": 2462,
+      "text": "                slice];\n    const float v = NpuStreamValue(stream, t % stream_tokens, col);\n    const float acc = taps.x * window[0] + taps.y * window[1] +\n                      taps.z * window[2] + taps.w * v;"
+    },
+    {
+      "path": "kernels/rocm/kernels.hip.cpp",
+      "line": 7148,
+      "text": "    float* conv_out = nullptr, AttentionProjectionOutput attention = {},\n    std::uint32_t checkpoint_tokens = 0, std::size_t input_stride = 0) {\n  static_assert(WM * WN == 8, \"256 threads is 8 waves\");\n  static_assert(BM % (16 * WM) == 0 && BN % (16 * WN) == 0);"
+    },
+    {
+      "path": "kernels/rocm/kernels.hip.cpp",
+      "line": 7738,
+      "text": "                      std::uint32_t skip_gate_heads) {\n  if (n_tokens == 0 || weights == nullptr || input == nullptr ||\n      q_gamma == nullptr || k_gamma == nullptr || query == nullptr ||\n      gate == nullptr || keys == nullptr || values == nullptr ||"
+    },
+    {
+      "path": "kernels/rocm/kernels.hip.cpp",
+      "line": 8139,
+      "text": "// ---- NPU staging: block-float (v8bfp16ebs8) tiles for the XDNA2 GEMM -------\n// The NPU kernel (M = 4096 tokens, K = 2560, N = 1024) reads A and B as streams\n// of 9-byte groups: one shared exponent byte then eight signed 8-bit mantissas,\n// value = q * 2^(e - 127) / 64. Group order follows the kernel's L1 tiles"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 1445,
+      "text": "    if (WholeNpuEnabled() && e->model_->max_half_cols() >= npu->k()) {\n      const std::uint32_t group_tokens = npu->tokens();\n      const std::uint32_t bank_rows = e->options_.max_batch / 2;\n      if (group_tokens != 0 && bank_rows >= group_tokens) {"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 1448,
+      "text": "      if (group_tokens != 0 && bank_rows >= group_tokens) {\n        e->npu_whole_groups_ =\n            std::min<std::uint32_t>(3, bank_rows / group_tokens);\n        if (e->npu_whole_groups_ != 0) {"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 1450,
+      "text": "            std::min<std::uint32_t>(3, bank_rows / group_tokens);\n        if (e->npu_whole_groups_ != 0) {\n          bool ok = true;\n          for (std::size_t bank = 0; bank < 2 && ok; ++bank) {"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 1455,
+      "text": "            e->npu_whole_c_[bank].clear();\n            for (std::uint32_t g = 0; g < e->npu_whole_groups_ && ok; ++g) {\n              const int a = npu->NewBuffer(npu->ABytes(), &npu_error);\n              if (a < 0) {"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 1478,
+      "text": "              v.clear();\n            e->npu_whole_groups_ = 0;\n          }\n        }"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 2781,
+      "text": "    hipStream_t stream) {\n  if (npu == nullptr || c_ids == nullptr || groups == 0 || slices == 0 ||\n      stride == 0 || slice0 >= slices || slice_count == 0 ||\n      slice0 + slice_count > slices) {"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 2846,
+      "text": "      if (npu != nullptr && npu->Healthy() && !npu_a_.empty() &&\n          !l.npu_z.empty() && n_tokens % npu->tokens() == 0 &&\n          n_tokens / npu->tokens() <= npu_a_.size() &&\n          l.ssm_in.cols == npu->k() && NpuWarm()) {"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 2847,
+      "text": "          !l.npu_z.empty() && n_tokens % npu->tokens() == 0 &&\n          n_tokens / npu->tokens() <= npu_a_.size() &&\n          l.ssm_in.cols == npu->k() && NpuWarm()) {\n        // The last rows of the projection run on the NPU while the GPU does"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 2856,
+      "text": "        // through it as consecutive groups.\n        const std::uint32_t group_tokens = npu->tokens();\n        const std::uint32_t groups = n_tokens / group_tokens;\n        for (std::uint32_t g = 0; g < groups; ++g) {"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 2880,
+      "text": "        z_group_tokens = group_tokens;\n        npu_finish = [this, &l, npu, groups, group_tokens, gpu_rows,\n                      z_direct]() {\n          npu->Wait(stream_);"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3088,
+      "text": "  bool prepared = false;\n  std::uint32_t npu_gate_groups = 0;\n  std::array<std::uint64_t, 16> npu_gate_tickets{};\n  if (!l.attn_qkv.empty()) {"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3107,
+      "text": "      if (npu != nullptr && npu->Healthy() && !npu_a_.empty() &&\n          !l.npu_gate.empty() && n_tokens % npu->tokens() == 0 &&\n          n_tokens / npu->tokens() <= npu_a_.size() &&\n          l.attn_qkv.cols == npu->k() && NpuWarm()) {"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3108,
+      "text": "          !l.npu_gate.empty() && n_tokens % npu->tokens() == 0 &&\n          n_tokens / npu->tokens() <= npu_a_.size() &&\n          l.attn_qkv.cols == npu->k() && NpuWarm()) {\n        const std::uint32_t group_tokens = npu->tokens();"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3110,
+      "text": "          l.attn_qkv.cols == npu->k() && NpuWarm()) {\n        const std::uint32_t group_tokens = npu->tokens();\n        npu_gate_groups = n_tokens / group_tokens;\n        for (std::uint32_t g = 0; g < npu_gate_groups; ++g) {"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3111,
+      "text": "        const std::uint32_t group_tokens = npu->tokens();\n        npu_gate_groups = n_tokens / group_tokens;\n        for (std::uint32_t g = 0; g < npu_gate_groups; ++g) {\n          NpuEncodeActivations("
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3112,
+      "text": "        npu_gate_groups = n_tokens / group_tokens;\n        for (std::uint32_t g = 0; g < npu_gate_groups; ++g) {\n          NpuEncodeActivations(\n              static_cast<const __half*>(s_.x_half) +"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3258,
+      "text": "  }\n  const bool gate_by_group = npu_gate_groups > 1 && npu_c_dev_ != nullptr &&\n                             checkpoint_tokens == 0 && !last_only &&\n                             MatrixRows(n_tokens);"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3261,
+      "text": "                             MatrixRows(n_tokens);\n  if (npu_gate_groups != 0 && !gate_by_group) {\n    NpuGemm* npu = model_->npu();\n    npu->Wait(stream_);"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3264,
+      "text": "    npu->Wait(stream_);\n    const std::uint32_t group_tokens = npu->tokens();\n    const std::uint32_t q_heads =\n        static_cast<std::uint32_t>(l.npu_gate.size()) * 2;"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3275,
+      "text": "          2 * c.AttentionQDim() + 2 * c.AttentionKvDim();\n      for (std::uint32_t g = 0; g < npu_gate_groups; ++g) {\n        for (std::size_t i = 0; i < l.npu_gate.size(); ++i) {\n          NpuDecodeOutput("
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3344,
+      "text": "    NpuGemm* npu = model_->npu();\n    const std::uint32_t group_tokens = npu->tokens();\n    const std::uint32_t q_heads =\n        static_cast<std::uint32_t>(l.npu_gate.size()) * 2;"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3348,
+      "text": "    bool attended = true;\n    for (std::uint32_t g = 0; g < npu_gate_groups && attended; ++g) {\n      npu->Wait(stream_, npu_gate_tickets.at(g));\n      PrepareQueryHeadsStreams("
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3418,
+      "text": "  NpuGemm* npu = model_->npu();\n  std::uint32_t npu_shexp_groups = 0;\n  if (npu != nullptr && npu->Healthy() && !npu_a_.empty() &&\n      l.npu_shexp.size() == 2 && !last_only && n_tokens >= 1024 &&"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3420,
+      "text": "  if (npu != nullptr && npu->Healthy() && !npu_a_.empty() &&\n      l.npu_shexp.size() == 2 && !last_only && n_tokens >= 1024 &&\n      n_tokens <= options_.max_batch && n_tokens % npu->tokens() == 0 &&\n      n_tokens / npu->tokens() <= npu_a_.size() &&"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3421,
+      "text": "      l.npu_shexp.size() == 2 && !last_only && n_tokens >= 1024 &&\n      n_tokens <= options_.max_batch && n_tokens % npu->tokens() == 0 &&\n      n_tokens / npu->tokens() <= npu_a_.size() &&\n      l.shexp_up.cols == npu->k() && l.shexp_up.rows <= npu->n() &&"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3422,
+      "text": "      n_tokens <= options_.max_batch && n_tokens % npu->tokens() == 0 &&\n      n_tokens / npu->tokens() <= npu_a_.size() &&\n      l.shexp_up.cols == npu->k() && l.shexp_up.rows <= npu->n() &&\n      DenseF16Route(l.shexp_down, n_tokens) && NpuWarm()) {"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3426,
+      "text": "    PrepareHalfInput(x, n_tokens, l.shexp_up.cols);\n    const std::uint32_t group_tokens = npu->tokens();\n    npu_shexp_groups = n_tokens / group_tokens;\n    for (std::uint32_t g = 0; g < npu_shexp_groups; ++g) {"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3427,
+      "text": "    const std::uint32_t group_tokens = npu->tokens();\n    npu_shexp_groups = n_tokens / group_tokens;\n    for (std::uint32_t g = 0; g < npu_shexp_groups; ++g) {\n      NpuEncodeActivations("
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3428,
+      "text": "    npu_shexp_groups = n_tokens / group_tokens;\n    for (std::uint32_t g = 0; g < npu_shexp_groups; ++g) {\n      NpuEncodeActivations(\n          static_cast<const __half*>(s_.x_half) +"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3451,
+      "text": "  }\n  if (npu_shexp_groups != 0) {\n    // Finished below, after the routed experts.\n  } else if (shexp_half_ready_) {"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3484,
+      "text": "  }\n  if (npu_shexp_groups == 0) {\n    return MoeExperts(l, x, out, n_tokens, error_msg);\n  }"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3491,
+      "text": "  npu->Wait(stream_);\n  const std::uint32_t group_tokens = npu->tokens();\n  const std::uint32_t ff = l.shexp_up.rows;\n  for (std::uint32_t g = 0; g < npu_shexp_groups; ++g) {"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 3493,
+      "text": "  const std::uint32_t ff = l.shexp_up.rows;\n  for (std::uint32_t g = 0; g < npu_shexp_groups; ++g) {\n    const std::size_t base = static_cast<std::size_t>(g) * group_tokens * ff;\n    const std::size_t c0 = static_cast<std::size_t>(g) * kNpuSlicesMax;"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 4006,
+      "text": "      }\n      const std::uint32_t group_tokens = npu->tokens();\n      if (group_tokens == 0 || prepared->groups * group_tokens != n) {\n        AssignError(error_msg, \"NPU whole projection group mismatch\");"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 4721,
+      "text": "        first_last < c.num_layers && NpuWarm()) {\n      const std::uint32_t group_tokens = npu->tokens();\n      const std::uint32_t a_groups = group_tokens == 0 ? 0 : nA / group_tokens;\n      const std::uint32_t b_groups = group_tokens == 0 ? 0 : nB / group_tokens;"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 4725,
+      "text": "      const std::size_t max_half_cols = model_->max_half_cols();\n      whole = group_tokens != 0 && npu->k() != 0 && npu->n() != 0 &&\n              nA % group_tokens == 0 && nB % group_tokens == 0 &&\n              a_groups != 0 && b_groups != 0 && a_groups <= npu_whole_groups_ &&"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 4727,
+      "text": "              nA % group_tokens == 0 && nB % group_tokens == 0 &&\n              a_groups != 0 && b_groups != 0 && a_groups <= npu_whole_groups_ &&\n              b_groups <= npu_whole_groups_ &&\n              max_half_cols >= static_cast<std::size_t>(npu->k());"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 4728,
+      "text": "              a_groups != 0 && b_groups != 0 && a_groups <= npu_whole_groups_ &&\n              b_groups <= npu_whole_groups_ &&\n              max_half_cols >= static_cast<std::size_t>(npu->k());\n      if (whole) {"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 4775,
+      "text": "        }\n        const std::uint32_t group_tokens = npu->tokens();\n        if (group_tokens == 0 || rows % group_tokens != 0)\n          return false;"
+    },
+    {
+      "path": "kernels/rocm/executor.cpp",
+      "line": 4779,
+      "text": "        const std::uint32_t groups = rows / group_tokens;\n        if (groups == 0 || groups > npu_whole_groups_)\n          return false;\n        const std::uint32_t slices = linear ? 16U : 13U;"
+    }
+  ]
+}
