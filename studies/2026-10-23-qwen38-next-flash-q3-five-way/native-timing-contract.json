@@ -1,0 +1,21 @@
+{
+  "checked_before_Q3_capability_runs": true,
+  "common_llama_b11829": {
+    "raw_output_tokens": "usage.completion_tokens; retained unchanged",
+    "raw_generated_counter": "timings.predicted_n; retained unchanged",
+    "native_decode_steps": "max(timings.predicted_n - 1, 0)",
+    "reason": "This pinned server computes its first generated token from the final prompt logits. Its native n_gen_steps() and n_gen_tps() exclude that first token from decode time. Do not inflate speed by dividing predicted_n by a time that excludes the first-token step.",
+    "aggregation": "Within each round sum native_decode_steps, divide by sum predicted_ms / 1000; then take median across rounds. Prefill uses sum prompt_n / sum prompt_ms *1000; cache_n separate. Missing or zero compute interval is unknown.",
+    "primary_source": [
+      "https://github.com/ggml-org/llama.cpp/blob/b11829/tools/server/server-common.h#L460",
+      "https://github.com/ggml-org/llama.cpp/blob/b11829/tools/server/server-common.cpp#L148"
+    ],
+    "no_wall_clock_estimation": true,
+    "MTP": false
+  },
+  "strata_0147": {
+    "generated_counter": "timings.predicted_n",
+    "aggregation": "Within round sum predicted_n / sum predicted_ms * 1000; preserve draft counters and raw values. Missing native timing unknown.",
+    "separate_engine_lane": true
+  }
+}
