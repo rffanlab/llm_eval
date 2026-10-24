@@ -1,0 +1,566 @@
+{
+  "task": "C03",
+  "provider": "local",
+  "profile": "gufo022-q4xl",
+  "round": 1,
+  "variant": "main",
+  "model_requested": "Qwen/Qwen3.8-Flash-Next",
+  "fixture_sha256": "9220974a681fd645b7b8ec4a3aa53b91e0a45beba9cc2c066bf633053c7fdeb4",
+  "usage": {
+    "prompt_tokens": 236,
+    "completion_tokens": 3352,
+    "total_tokens": 3588
+  },
+  "usage_complete": true,
+  "turns": [
+    {
+      "index": 1,
+      "content": "```python\ndef schedule(tasks, capacity):\n    if not tasks:\n        return {\"jobs\": [], \"makespan\": 0}\n\n    task_map = {}\n    for t in tasks:\n        task_map[t[\"id\"]] = t\n\n    for t in tasks:\n        if t[\"units\"] > capacity:\n            raise ValueError(\"units exceeds capacity\")\n\n    for t in tasks:\n        for dep in t[\"deps\"]:\n            if dep not in task_map:\n                raise ValueError(\"unknown dependency\")\n\n    WHITE, GRAY, BLACK = 0, 1, 2\n    color = {tid: WHITE for tid in task_map}\n    for start in task_map:\n        if color[start] != WHITE:\n            continue\n        stack = [(start, iter(task_map[start][\"deps\"]))]\n        color[start] = GRAY\n        while stack:\n            node, it = stack[-1]\n            advanced = False\n            for dep in it:\n                if color[dep] == GRAY:\n                    raise ValueError(\"circular dependency\")\n                if color[dep] == WHITE:\n                    color[dep] = GRAY\n                    stack.append((dep, iter(task_map[dep][\"deps\"])))\n                    advanced = True\n                    break\n            if not advanced:\n                color[node] = BLACK\n                stack.pop()\n\n    all_ids = sorted(task_map.keys())\n    completed = set()\n    running = {}\n    started = set()\n    start_times = {}\n    t = 0\n\n    while len(completed) < len(tasks):\n        newly_completed = [rid for rid, end in running.items() if end <= t]\n        for rid in newly_completed:\n            completed.add(rid)\n            del running[rid]\n\n        for tid in all_ids:\n            if tid in started:\n                continue\n            task = task_map[tid]\n            if all(dep in completed for dep in task[\"deps\"]):\n                used = sum(task_map[rid][\"units\"] for rid in running)\n                if used + task[\"units\"] <= capacity:\n                    started.add(tid)\n                    start_times[tid] = t\n                    running[tid] = t + task[\"duration\"]\n\n        if running:\n            t = min(running.values())\n        else:\n            break\n\n    jobs = [\n        {\"id\": tid, \"start\": start_times[tid], \"end\": start_times[tid] + task_map[tid][\"duration\"]}\n        for tid in all_ids\n    ]\n    makespan = max(j[\"end\"] for j in jobs) if jobs else 0\n\n    return {\"jobs\": jobs, \"makespan\": makespan}\n```",
+      "returned_model": "Qwen/Qwen3.8-Flash-Next",
+      "reasoning_chars": 11100,
+      "tool_calls": [],
+      "usage": {
+        "prompt_tokens": 236,
+        "completion_tokens": 3352,
+        "total_tokens": 3588,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "cached_tokens": 0,
+        "prompt_tokens_per_second": 745.4925184771585,
+        "completion_tokens_per_second": 66.50925590509489,
+        "draft_tokens": 3299,
+        "draft_tokens_accepted": 2468,
+        "gufo": {
+          "component_cache": {
+            "schema": "component-cache-v1",
+            "reuse": "none",
+            "selection_reason": 4,
+            "deepest_live_tokens": 0,
+            "deepest_ram_tokens": 0,
+            "deepest_disk_tokens": 0,
+            "selected_tokens": 0,
+            "restored_bytes": 0,
+            "prefilled_tokens": 236,
+            "captures": 2,
+            "captured_capacity_bytes": 280756224,
+            "borrowed_capacity_bytes": 0,
+            "copied_payload_bytes": 278495372,
+            "captured_checkpoint_ids": [
+              7824,
+              7825
+            ],
+            "global_spill": {
+              "idle_bytes": 34078720,
+              "foreground_bytes": 0,
+              "idle_copy_ms": 2.682506,
+              "foreground_copy_ms": 0,
+              "stream_wait_ms": 0.033748,
+              "residual_wait_ms": 26.502288,
+              "reassignments": 10,
+              "idle_failures": 0
+            },
+            "global_ledger_bytes": 962846595,
+            "global_ram_bytes": 962846595,
+            "global_peak_ledger_bytes": 964440117,
+            "global_peak_ram_bytes": 964440117,
+            "global_persistence_pinned_bytes": 0,
+            "global_peak_persistence_pinned_bytes": 0,
+            "global_categories": {
+              "backing_free": {
+                "bytes": 103677952,
+                "reserved_bytes": 0,
+                "peak_bytes": 947716096
+              },
+              "backing_assigned": {
+                "bytes": 0,
+                "reserved_bytes": 0,
+                "peak_bytes": 13762560
+              },
+              "backing_materialized": {
+                "bytes": 6881280,
+                "reserved_bytes": 0,
+                "peak_bytes": 27525120
+              },
+              "private_state": {
+                "bytes": 800980992,
+                "reserved_bytes": 0,
+                "peak_bytes": 800980992
+              },
+              "private_tail": {
+                "bytes": 36175872,
+                "reserved_bytes": 0,
+                "peak_bytes": 36175872
+              },
+              "metadata": {
+                "bytes": 15130499,
+                "reserved_bytes": 0,
+                "peak_bytes": 16724021
+              },
+              "transfer_staging": {
+                "bytes": 0,
+                "reserved_bytes": 0,
+                "peak_bytes": 0
+              }
+            }
+          },
+          "cache_hit": false,
+          "cache_miss_reason": "disabled",
+          "cache_common_prefix_tokens": 0,
+          "cache_checkpoint_tokens": 0,
+          "cache_restore_bytes": 0,
+          "cache_snapshot_bytes": 278495372,
+          "cache_disk_queued_bytes": 0,
+          "cache_shared_bytes": 0,
+          "cache_restore_ms": 0,
+          "cache_snapshot_ms": 5.1020389999999995,
+          "cache_disk_enqueue_ms": 0.001664,
+          "cache_disk_hit": false,
+          "cache_shared_prefix_snapshots": 0,
+          "cache_shared_prefix_bytes": 0,
+          "cache_shared_prefix_ms": 0,
+          "draft_rounds": 884,
+          "prefill_tokens": 236,
+          "prefill_chunks": 1,
+          "active_decode_prefill_chunks": 0,
+          "max_prefill_chunk_tokens": 236,
+          "queue_depth_at_submit": 1,
+          "client_queue_depth_at_submit": 1,
+          "resident_requests_at_admission": 1,
+          "requested_logical_concurrency": 1,
+          "physical_execution_width": 1,
+          "queue_ms": 3.755578,
+          "shared_prefix_wait_ms": 0,
+          "prefill_ms": 316.56924,
+          "decode_ms": 50399.00017500004,
+          "ttft_ms": 320.362409,
+          "mean_inter_token_ms": 15.041383404655381,
+          "max_inter_token_ms": 87.927276,
+          "execution_plan": "serial-c1"
+        }
+      },
+      "finish_reason": "stop",
+      "timings": {
+        "prompt_n": 236,
+        "prompt_ms": 316.56924,
+        "prompt_per_token_ms": 1.3413950847457625,
+        "prompt_per_second": 745.4925184771585,
+        "predicted_n": 3352,
+        "predicted_ms": 50399.00017500004,
+        "predicted_per_token_ms": 15.03550124552507,
+        "predicted_per_second": 66.5092559050949,
+        "cache_n": 0,
+        "cache_restore_ms": 0,
+        "cache_snapshot_ms": 5.1020389999999995,
+        "cache_disk_enqueue_ms": 0.001664,
+        "draft_rounds": 884,
+        "draft_n": 3299,
+        "draft_n_accepted": 2468,
+        "component_cache": {
+          "schema": "component-cache-v1",
+          "reuse": "none",
+          "selection_reason": 4,
+          "deepest_live_tokens": 0,
+          "deepest_ram_tokens": 0,
+          "deepest_disk_tokens": 0,
+          "selected_tokens": 0,
+          "restored_bytes": 0,
+          "prefilled_tokens": 236,
+          "captures": 2,
+          "captured_capacity_bytes": 280756224,
+          "borrowed_capacity_bytes": 0,
+          "copied_payload_bytes": 278495372,
+          "captured_checkpoint_ids": [
+            7824,
+            7825
+          ],
+          "global_spill": {
+            "idle_bytes": 34078720,
+            "foreground_bytes": 0,
+            "idle_copy_ms": 2.682506,
+            "foreground_copy_ms": 0,
+            "stream_wait_ms": 0.033748,
+            "residual_wait_ms": 26.502288,
+            "reassignments": 10,
+            "idle_failures": 0
+          },
+          "global_ledger_bytes": 962846595,
+          "global_ram_bytes": 962846595,
+          "global_peak_ledger_bytes": 964440117,
+          "global_peak_ram_bytes": 964440117,
+          "global_persistence_pinned_bytes": 0,
+          "global_peak_persistence_pinned_bytes": 0,
+          "global_categories": {
+            "backing_free": {
+              "bytes": 103677952,
+              "reserved_bytes": 0,
+              "peak_bytes": 947716096
+            },
+            "backing_assigned": {
+              "bytes": 0,
+              "reserved_bytes": 0,
+              "peak_bytes": 13762560
+            },
+            "backing_materialized": {
+              "bytes": 6881280,
+              "reserved_bytes": 0,
+              "peak_bytes": 27525120
+            },
+            "private_state": {
+              "bytes": 800980992,
+              "reserved_bytes": 0,
+              "peak_bytes": 800980992
+            },
+            "private_tail": {
+              "bytes": 36175872,
+              "reserved_bytes": 0,
+              "peak_bytes": 36175872
+            },
+            "metadata": {
+              "bytes": 15130499,
+              "reserved_bytes": 0,
+              "peak_bytes": 16724021
+            },
+            "transfer_staging": {
+              "bytes": 0,
+              "reserved_bytes": 0,
+              "peak_bytes": 0
+            }
+          }
+        },
+        "lookup_n": 840,
+        "lookup_n_accepted": 698
+      },
+      "first_event_s": 0.016353172017261386,
+      "first_reasoning_s": 0.33269789000041783,
+      "first_content_s": 44.7170868809917,
+      "first_tool_s": null,
+      "api_elapsed_s": 50.737000675988384
+    }
+  ],
+  "started_at_epoch": 1792821895.7373102,
+  "human_corrections": 0,
+  "content": "```python\ndef schedule(tasks, capacity):\n    if not tasks:\n        return {\"jobs\": [], \"makespan\": 0}\n\n    task_map = {}\n    for t in tasks:\n        task_map[t[\"id\"]] = t\n\n    for t in tasks:\n        if t[\"units\"] > capacity:\n            raise ValueError(\"units exceeds capacity\")\n\n    for t in tasks:\n        for dep in t[\"deps\"]:\n            if dep not in task_map:\n                raise ValueError(\"unknown dependency\")\n\n    WHITE, GRAY, BLACK = 0, 1, 2\n    color = {tid: WHITE for tid in task_map}\n    for start in task_map:\n        if color[start] != WHITE:\n            continue\n        stack = [(start, iter(task_map[start][\"deps\"]))]\n        color[start] = GRAY\n        while stack:\n            node, it = stack[-1]\n            advanced = False\n            for dep in it:\n                if color[dep] == GRAY:\n                    raise ValueError(\"circular dependency\")\n                if color[dep] == WHITE:\n                    color[dep] = GRAY\n                    stack.append((dep, iter(task_map[dep][\"deps\"])))\n                    advanced = True\n                    break\n            if not advanced:\n                color[node] = BLACK\n                stack.pop()\n\n    all_ids = sorted(task_map.keys())\n    completed = set()\n    running = {}\n    started = set()\n    start_times = {}\n    t = 0\n\n    while len(completed) < len(tasks):\n        newly_completed = [rid for rid, end in running.items() if end <= t]\n        for rid in newly_completed:\n            completed.add(rid)\n            del running[rid]\n\n        for tid in all_ids:\n            if tid in started:\n                continue\n            task = task_map[tid]\n            if all(dep in completed for dep in task[\"deps\"]):\n                used = sum(task_map[rid][\"units\"] for rid in running)\n                if used + task[\"units\"] <= capacity:\n                    started.add(tid)\n                    start_times[tid] = t\n                    running[tid] = t + task[\"duration\"]\n\n        if running:\n            t = min(running.values())\n        else:\n            break\n\n    jobs = [\n        {\"id\": tid, \"start\": start_times[tid], \"end\": start_times[tid] + task_map[tid][\"duration\"]}\n        for tid in all_ids\n    ]\n    makespan = max(j[\"end\"] for j in jobs) if jobs else 0\n\n    return {\"jobs\": jobs, \"makespan\": makespan}\n```",
+  "elapsed_s": 50.825324447010644,
+  "reasoning_chars": 11100,
+  "grade": {
+    "score": 100.0,
+    "pass": true,
+    "tests": [
+      {
+        "test": 1,
+        "pass": true,
+        "actual": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "expected": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 2,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 3,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 4,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 5,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 6,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 4
+            },
+            {
+              "id": "b",
+              "start": 4,
+              "end": 6
+            },
+            {
+              "id": "c",
+              "start": 0,
+              "end": 1
+            }
+          ],
+          "makespan": 6
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 4
+            },
+            {
+              "id": "b",
+              "start": 4,
+              "end": 6
+            },
+            {
+              "id": "c",
+              "start": 0,
+              "end": 1
+            }
+          ],
+          "makespan": 6
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 7,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "c",
+              "start": 2,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "c",
+              "start": 2,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 8,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 2,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 4
+            },
+            {
+              "id": "z",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 4
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 2,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 4
+            },
+            {
+              "id": "z",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 4
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 9,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 10,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 11,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 12,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 13,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      }
+    ]
+  },
+  "hidden_grading_s_excluded": 0.04144218302099034
+}

@@ -1,0 +1,82 @@
+```python
+def schedule(tasks, capacity):
+    if not tasks:
+        return {"jobs": [], "makespan": 0}
+
+    task_map = {}
+    for t in tasks:
+        task_map[t["id"]] = t
+
+    for t in tasks:
+        if t["units"] > capacity:
+            raise ValueError("units exceeds capacity")
+
+    for t in tasks:
+        for d in t["deps"]:
+            if d not in task_map:
+                raise ValueError("unknown dependency")
+
+    in_degree = {t["id"]: 0 for t in tasks}
+    adj = {t["id"]: [] for t in tasks}
+    for t in tasks:
+        for d in t["deps"]:
+            adj[d].append(t["id"])
+            in_degree[t["id"]] += 1
+
+    queue = [tid for tid, deg in in_degree.items() if deg == 0]
+    count = 0
+    while queue:
+        node = queue.pop(0)
+        count += 1
+        for nb in adj[node]:
+            in_degree[nb] -= 1
+            if in_degree[nb] == 0:
+                queue.append(nb)
+
+    if count != len(tasks):
+        raise ValueError("circular dependency")
+
+    completed = set()
+    started = set()
+    running = []
+    jobs = {}
+    t = 0
+
+    while len(completed) < len(tasks):
+        new_running = []
+        for end_time, tid in running:
+            if end_time <= t:
+                completed.add(tid)
+            else:
+                new_running.append((end_time, tid))
+        running = new_running
+
+        eligible = []
+        for task in tasks:
+            tid = task["id"]
+            if tid in started:
+                continue
+            if all(d in completed for d in task["deps"]):
+                eligible.append(task)
+
+        eligible.sort(key=lambda x: x["id"])
+
+        available = capacity - sum(task_map[tid]["units"] for _, tid in running)
+
+        for task in eligible:
+            if task["units"] <= available:
+                started.add(task["id"])
+                jobs[task["id"]] = {"id": task["id"], "start": t, "end": t + task["duration"]}
+                running.append((t + task["duration"], task["id"]))
+                available -= task["units"]
+
+        if running:
+            t = min(end_time for end_time, _ in running)
+        elif len(completed) < len(tasks):
+            break
+
+    result_jobs = sorted(jobs.values(), key=lambda x: x["id"])
+    makespan = max(job["end"] for job in result_jobs) if result_jobs else 0
+
+    return {"jobs": result_jobs, "makespan": makespan}
+```
