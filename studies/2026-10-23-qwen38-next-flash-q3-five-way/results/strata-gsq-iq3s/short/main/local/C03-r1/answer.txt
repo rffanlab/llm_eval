@@ -1,0 +1,77 @@
+```python
+def schedule(tasks, capacity):
+    if not tasks:
+        return {"jobs": [], "makespan": 0}
+
+    task_map = {}
+    for t in tasks:
+        task_map[t["id"]] = t
+
+    for t in tasks:
+        if t["units"] > capacity:
+            raise ValueError("units exceeds capacity")
+
+    for t in tasks:
+        for d in t["deps"]:
+            if d not in task_map:
+                raise ValueError("unknown dependency")
+
+    in_degree = {t["id"]: 0 for t in tasks}
+    adj = {t["id"]: [] for t in tasks}
+    for t in tasks:
+        for d in t["deps"]:
+            adj[d].append(t["id"])
+            in_degree[t["id"]] += 1
+
+    queue = [tid for tid in in_degree if in_degree[tid] == 0]
+    sorted_count = 0
+    while queue:
+        node = queue.pop(0)
+        sorted_count += 1
+        for neighbor in adj[node]:
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                queue.append(neighbor)
+
+    if sorted_count != len(tasks):
+        raise ValueError("circular dependency")
+
+    started = set()
+    completed = set()
+    running = {}
+    start_times = {}
+    current_time = 0
+    all_ids = sorted(task_map.keys())
+
+    while len(completed) < len(tasks):
+        to_complete = [tid for tid in running if running[tid] <= current_time]
+        for tid in to_complete:
+            completed.add(tid)
+            del running[tid]
+
+        available = capacity - sum(task_map[tid]["units"] for tid in running)
+
+        for tid in all_ids:
+            if tid in started:
+                continue
+            if all(d in completed for d in task_map[tid]["deps"]):
+                if task_map[tid]["units"] <= available:
+                    started.add(tid)
+                    end_time = current_time + task_map[tid]["duration"]
+                    running[tid] = end_time
+                    start_times[tid] = current_time
+                    available -= task_map[tid]["units"]
+
+        if running:
+            current_time = min(running.values())
+        else:
+            break
+
+    jobs = [
+        {"id": tid, "start": start_times[tid], "end": start_times[tid] + task_map[tid]["duration"]}
+        for tid in all_ids
+    ]
+    makespan = max(j["end"] for j in jobs) if jobs else 0
+
+    return {"jobs": jobs, "makespan": makespan}
+```

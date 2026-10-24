@@ -1,0 +1,85 @@
+```python
+def schedule(tasks, capacity):
+    if not tasks:
+        return {"jobs": [], "makespan": 0}
+
+    id_set = set()
+    for t in tasks:
+        id_set.add(t['id'])
+
+    for t in tasks:
+        if t['units'] > capacity:
+            raise ValueError("units exceeds capacity")
+
+    for t in tasks:
+        for d in t['deps']:
+            if d not in id_set:
+                raise ValueError("unknown dependency")
+
+    adj = {t['id']: [] for t in tasks}
+    for t in tasks:
+        for d in t['deps']:
+            adj[d].append(t['id'])
+
+    WHITE, GRAY, BLACK = 0, 1, 2
+    color = {t['id']: WHITE for t in tasks}
+    for start in [t['id'] for t in tasks]:
+        if color[start] != WHITE:
+            continue
+        stack = [(start, 0)]
+        color[start] = GRAY
+        while stack:
+            node, idx = stack[-1]
+            if idx < len(adj[node]):
+                neighbor = adj[node][idx]
+                stack[-1] = (node, idx + 1)
+                if color[neighbor] == GRAY:
+                    raise ValueError("circular dependency")
+                if color[neighbor] == WHITE:
+                    color[neighbor] = GRAY
+                    stack.append((neighbor, 0))
+            else:
+                color[node] = BLACK
+                stack.pop()
+
+    time = 0
+    available = capacity
+    running = []
+    completed = set()
+    started = set()
+    jobs = []
+    total = len(tasks)
+
+    while len(completed) < total:
+        new_running = []
+        for (rid, rend, runits) in running:
+            if rend <= time:
+                available += runits
+                completed.add(rid)
+            else:
+                new_running.append((rid, rend, runits))
+        running = new_running
+
+        candidates = sorted(
+            [t for t in tasks
+             if t['id'] not in started and all(d in completed for d in t['deps'])],
+            key=lambda x: x['id']
+        )
+
+        for t in candidates:
+            if available >= t['units']:
+                available -= t['units']
+                started.add(t['id'])
+                end_time = time + t['duration']
+                running.append((t['id'], end_time, t['units']))
+                jobs.append({"id": t['id'], "start": time, "end": end_time})
+
+        if running:
+            time = min(r[1] for r in running)
+        elif len(completed) < total:
+            raise ValueError("deadlock")
+
+    makespan = max(j['end'] for j in jobs) if jobs else 0
+    jobs.sort(key=lambda x: x['id'])
+    return {"jobs": jobs, "makespan": makespan}
+```

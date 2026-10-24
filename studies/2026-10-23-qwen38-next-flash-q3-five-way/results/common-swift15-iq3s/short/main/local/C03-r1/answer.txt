@@ -1,0 +1,81 @@
+```python
+def schedule(tasks, capacity):
+    if not tasks:
+        return {"jobs": [], "makespan": 0}
+
+    if not isinstance(capacity, int) or capacity <= 0:
+        raise ValueError("capacity must be a positive integer")
+
+    task_map = {}
+    for t in tasks:
+        tid = t["id"]
+        if tid in task_map:
+            raise ValueError("duplicate id: " + tid)
+        task_map[tid] = t
+
+    for t in tasks:
+        if t["units"] > capacity:
+            raise ValueError("units exceeds capacity for task " + t["id"])
+
+    for t in tasks:
+        for d in t["deps"]:
+            if d not in task_map:
+                raise ValueError("unknown dependency: " + d)
+
+    state = {tid: 0 for tid in task_map}
+
+    def _dfs(tid):
+        if state[tid] == 1:
+            raise ValueError("circular dependency detected")
+        if state[tid] == 2:
+            return
+        state[tid] = 1
+        for d in task_map[tid]["deps"]:
+            _dfs(d)
+        state[tid] = 2
+
+    for tid in task_map:
+        if state[tid] == 0:
+            _dfs(tid)
+
+    completed = set()
+    running = []
+    unstarted = set(task_map.keys())
+    current_time = 0
+    current_usage = 0
+    jobs = []
+
+    while unstarted or running:
+        new_running = []
+        for (end, tid) in running:
+            if end <= current_time:
+                completed.add(tid)
+                current_usage -= task_map[tid]["units"]
+            else:
+                new_running.append((end, tid))
+        running = new_running
+
+        for tid in sorted(unstarted):
+            t = task_map[tid]
+            if all(d in completed for d in t["deps"]):
+                if current_usage + t["units"] <= capacity:
+                    start = current_time
+                    end = current_time + t["duration"]
+                    jobs.append({"id": tid, "start": start, "end": end})
+                    running.append((end, tid))
+                    current_usage += t["units"]
+                    unstarted.discard(tid)
+
+        if not unstarted and not running:
+            break
+
+        if running:
+            current_time = min(end for (end, _) in running)
+        else:
+            raise ValueError("circular dependency detected")
+
+    jobs.sort(key=lambda x: x["id"])
+    makespan = max((j["end"] for j in jobs), default=0)
+
+    return {"jobs": jobs, "makespan": makespan}
+```

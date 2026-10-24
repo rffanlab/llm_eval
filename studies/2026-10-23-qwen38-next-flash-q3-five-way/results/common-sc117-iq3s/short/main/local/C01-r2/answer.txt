@@ -1,0 +1,12 @@
+def invoice_total(lines):
+    total = 0
+    for line in lines:
+        if not isinstance(line, dict):
+            continue
+        if line.get("status") != "paid":
+            continue
+        qty = line.get("qty")
+        unit_cents = line.get("unit_cents")
+        if type(qty) is int and qty >= 0 and type(unit_cents) is int and unit_cents >= 0:
+            total += qty * unit_cents
+    return total

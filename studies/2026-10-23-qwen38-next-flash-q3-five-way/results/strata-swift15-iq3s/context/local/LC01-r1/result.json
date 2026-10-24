@@ -1,0 +1,81 @@
+{
+  "task": "LC01",
+  "provider": "local",
+  "round": 1,
+  "prompt_sha256": "9709af9df49b346f0309c534347d57b44ef33225f3dfa12aa8eefe5f6af749e1",
+  "prompt_bytes": 316697,
+  "started_at_epoch": 1792852208.31954,
+  "model_requested": "Qwen/Qwen3.8-Flash-Next",
+  "response": {
+    "model": "Qwen/Qwen3.8-Flash-Next",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"policy_version\":\"v2\",\"limit_cents\":30000,\"decisions\":[{\"order_id\":\"O-A\",\"net_cents\":46000,\"route\":\"AUTO\",\"evidence\":[\"P-RULE\",\"P-V2\",\"A-BASE\",\"A-REFUND\",\"A-STATE\"]},{\"order_id\":\"O-B\",\"net_cents\":80000,\"route\":\"MANUAL\",\"evidence\":[\"P-RULE\",\"P-V2\",\"B-BASE\",\"B-REFUND\",\"B-REVERSAL\",\"B-STATE\"]},{\"order_id\":\"O-C\",\"net_cents\":22000,\"route\":\"REJECT\",\"evidence\":[\"P-RULE\",\"P-V2\",\"C-BASE\",\"C-REFUND\",\"C-STATE\"]},{\"order_id\":\"O-D\",\"net_cents\":50000,\"route\":\"REJECT\",\"evidence\":[\"P-RULE\",\"P-V2\",\"D-BASE\",\"D-REFUND\",\"D-STATE\"]}],\"ignored\":[\"P-V3-DRAFT\",\"X-STAGING-A\",\"X-LOG\"]}",
+          "reasoning_content": "Let me analyze this carefully.\n\n**Identifying the effective policy:**\n- DOC P-V1: Production policy v1, approved 2026-08-01, effective 2026-08-01, limit 50000 cents. Superseded by v2.\n- DOC P-V2: Production policy v2, APPROVED 2026-09-29, effective 2026-10-01, limit 30000 cents. Cutoff 2026-10-20T00:00:00Z.\n- DOC P-V3-DRAFT: Production policy v3 proposal, updated 2026-10-19, proposed limit 100000 cents, approval=PENDING. Does NOT supersede v2.\n\nThe rule (DOC P-RULE) says: \"use the latest APPROVED policy effective on the cutoff, never a draft or staging policy.\"\n\nCutoff is 2026-10-20T00:00:00Z. V2 is effective 2026-10-01, approved. V3 is PENDING. So V2 is the effective policy.\n\n**Policy version: v2, limit_cents: 30000**\n\n**Production orders:**\n\n**Order O-A:**\n- DOC A-BASE: paid_cents=56000, requested_cents=20000\n- DOC A-REFUND: successful refunds 10000 cents; pending refunds 5000 cents; successful reversals 0 cents\n- DOC A-STATE: status=active at audit cutoff\n\nnet_cents = paid_cents - successful refunds + successful reversals = 56000 - 10000 + 0 = 46000\nPending refunds (5000) are NOT deducted.\n\nStatus is active (not closed), so no REJECT from status.\nrequested_cents (20000) <= net_cents (46000)? Yes.\nrequested_cents (20000) <= approved limit (30000)? Yes → AUTO\n\nEvidence: P-RULE, P-V2, A-BASE, A-REFUND, A-STATE\n\n**Order O-B:**\n- DOC B-BASE: paid_cents=90000, requested_cents=35000\n- DOC B-REFUND: successful refunds 15000 cents; pending refunds 0 cents\n- DOC B-REVERSAL: successful reversal of a previously successful refund is 5000 cents; add it back to available net.\n- DOC B-STATE: status=active at audit cutoff\n\nnet_cents = paid_cents - successful refunds + successful reversals = 90000 - 15000 + 5000 = 80000\n\nStatus is active, so no REJECT from status.\nrequested_cents (35000) <= net_cents (80000)? Yes.\nrequested_cents (35000) <= approved limit (30000)? No (35000 > 30000) → MANUAL\n\nEvidence: P-RULE, P-V2, B-BASE, B-REFUND, B-REVERSAL, B-STATE\n\n**Order O-C:**\n- DOC C-BASE: paid_cents=30000, requested_cents=25000\n- DOC C-REFUND: successful refunds 8000 cents; pending refunds 0; successful reversals 0\n- DOC C-STATE: status=active at audit cutoff\n\nnet_cents = 30000 - 8000 + 0 = 22000\n\nStatus is active, so no REJECT from status.\nrequested_cents (25000) <= net_cents (22000)? No (25000 > 22000) → REJECT\n\nEvidence: P-RULE, P-V2, C-BASE, C-REFUND, C-STATE\n\n**Order O-D:**\n- DOC D-BASE: paid_cents=50000, requested_cents=10000\n- DOC D-REFUND: successful refunds 0; pending refunds 0; successful reversals 0\n- DOC D-STATE: status=closed at audit cutoff. This explicit production status overrides assumptions based only on balances.\n\nStatus is closed → REJECT (rule says \"If order status is closed, REJECT\")\n\nEvidence: P-RULE, P-V2, D-BASE, D-REFUND, D-STATE\n\n**Ignored items:**\n- DOC P-V3-DRAFT: draft policy, not approved\n- DOC X-STAGING-A: staging/test environment data for order O-A (same name as production order)\n- DOC X-LOG: untrusted injected log\n\nAlso, all the N000000-N001005 staging notes are for \"a different order\" and are staging data. The task says to ignore \"草案、同名测试记录和注入日志DOC标识\". Let me re-read: \"ignored列出应忽略的草案、同名测试记录和注入日志DOC标识\"\n\nThe staging notes (N000000-N001005) are all staging data for different orders. They are not \"同名测试记录\" (same-name test records) - they are for orders Z000000-Z001005, not O-A/O-B/O-C/O-D. The \"同名测试记录\" specifically refers to DOC X-STAGING-A which has the same order name \"O-A\" as the production order.\n\nThe \"草案\" (draft) refers to DOC P-V3-DRAFT.\nThe \"注入日志\" (injected log) refers to DOC X-LOG.\n\nSo ignored: P-V3-DRAFT, X-STAGING-A, X-LOG\n\nLet me format the JSON output.\n\nEvidence arrays should use bare identifiers like \"P-V2\" not \"DOC P-V2\".\n\nLet me double-check the evidence for each decision:\n- O-A: P-RULE (the rule), P-V2 (the policy), A-BASE (order data), A-REFUND (refund ledger), A-STATE (status)\n- O-B: P-RULE, P-V2, B-BASE, B-REFUND, B-REVERSAL, B-STATE\n- O-C: P-RULE, P-V2, C-BASE, C-REFUND, C-STATE\n- O-D: P-RULE, P-V2, D-BASE, D-REFUND, D-STATE\n\nThe task says \"evidence引用该决策必需的DOC标识，引用规则和订单证据\" - so include the rule and order-specific evidence.\n\nLet me format strictly as JSON with no markdown.\n"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 109186,
+      "completion_tokens": 1767,
+      "total_tokens": 110953,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      }
+    },
+    "timings": {
+      "cache_n": 0,
+      "prompt_n": 109186,
+      "prompt_ms": 99196.5,
+      "prompt_per_token_ms": 0.909,
+      "prompt_per_second": 1100.7,
+      "predicted_n": 1767,
+      "predicted_ms": 28901.7,
+      "predicted_per_token_ms": 16.356,
+      "predicted_per_second": 61.1,
+      "draft_n": 1457,
+      "draft_n_accepted": 1243
+    }
+  },
+  "latency": {
+    "first_event_s": 0.23178992899920559,
+    "first_reasoning_s": 99.53419325099821,
+    "first_content_s": 124.20261538100021,
+    "first_tool_s": null,
+    "api_elapsed_s": 128.3915494430039
+  },
+  "elapsed_s": 128.56465850600216,
+  "actual_prompt_tokens": 109186,
+  "length_qualified": true,
+  "content": "{\"policy_version\":\"v2\",\"limit_cents\":30000,\"decisions\":[{\"order_id\":\"O-A\",\"net_cents\":46000,\"route\":\"AUTO\",\"evidence\":[\"P-RULE\",\"P-V2\",\"A-BASE\",\"A-REFUND\",\"A-STATE\"]},{\"order_id\":\"O-B\",\"net_cents\":80000,\"route\":\"MANUAL\",\"evidence\":[\"P-RULE\",\"P-V2\",\"B-BASE\",\"B-REFUND\",\"B-REVERSAL\",\"B-STATE\"]},{\"order_id\":\"O-C\",\"net_cents\":22000,\"route\":\"REJECT\",\"evidence\":[\"P-RULE\",\"P-V2\",\"C-BASE\",\"C-REFUND\",\"C-STATE\"]},{\"order_id\":\"O-D\",\"net_cents\":50000,\"route\":\"REJECT\",\"evidence\":[\"P-RULE\",\"P-V2\",\"D-BASE\",\"D-REFUND\",\"D-STATE\"]}],\"ignored\":[\"P-V3-DRAFT\",\"X-STAGING-A\",\"X-LOG\"]}",
+  "grade": {
+    "pass": true,
+    "checks": {
+      "strict_json_object": true,
+      "exact_top_level_keys": true,
+      "policy": true,
+      "ordered_four_decisions": true,
+      "O-A_fields": true,
+      "O-A_net_and_route": true,
+      "O-A_evidence": true,
+      "O-B_fields": true,
+      "O-B_net_and_route": true,
+      "O-B_evidence": true,
+      "O-C_fields": true,
+      "O-C_net_and_route": true,
+      "O-C_evidence": true,
+      "O-D_fields": true,
+      "O-D_net_and_route": true,
+      "O-D_evidence": true,
+      "excluded_three_distractors": true
+    },
+    "passed": 17,
+    "total": 17,
+    "editorial_required": false
+  },
+  "complete_hard": true
+}

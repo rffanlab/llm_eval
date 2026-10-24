@@ -1,0 +1,3 @@
+# 最终交付说明
+
+对账截止 2026-10-04T23:59:59Z，已发布 dataset=final，以 release/summary.json 核对：已付 ¥40.21、退款 ¥5.51、净额 ¥34.70；客户净额 A=¥24.80、B=¥9.90（见 release/customers.csv）。迟到退款 R04=¥3.40（O02，succeeded，2026-10-04T20:00:00Z，截止前，见 data/final/refunds.csv）已计入，总净额因此减少 ¥3.40，订单本金 ¥40.21 不变。排除项：订单 O05（¥100，创建于截止后）、退款 R02（pending 状态）、R03（截止后），均不满足 v2 计入规则。v1 契约完全兼容，v2 行为未变。测试：8 项公开 visible 测试（含 base_exact、v2_exact、v2_inclusive_round_each、v2_cutoff_missing 等）全部通过；此前 v2 发布曾遇注入的 ENOSPC 故障，旧发布未受损，按真实返回重试成功；final 发布一次成功并核对 manifest 哈希。隐藏验收未由我执行，不声称其通过。业务风险：R02（¥1.20，pending）后续若成功将再减净额 ¥1.20；金额逐条 ROUND_HALF_UP 取整到分，汇总存在分位舍入差异；O02 已退 4.60/20.20，仍有退款空间。

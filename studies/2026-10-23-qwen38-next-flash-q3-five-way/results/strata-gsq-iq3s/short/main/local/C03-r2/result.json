@@ -1,0 +1,376 @@
+{
+  "task": "C03",
+  "provider": "local",
+  "profile": "strata-gsq-iq3s",
+  "round": 2,
+  "variant": "main",
+  "model_requested": "Qwen/Qwen3.8-Flash-Next",
+  "fixture_sha256": "9220974a681fd645b7b8ec4a3aa53b91e0a45beba9cc2c066bf633053c7fdeb4",
+  "usage": {
+    "prompt_tokens": 236,
+    "completion_tokens": 6831,
+    "total_tokens": 7067
+  },
+  "usage_complete": true,
+  "turns": [
+    {
+      "index": 1,
+      "content": "```python\ndef schedule(tasks, capacity):\n    if not tasks:\n        return {\"jobs\": [], \"makespan\": 0}\n\n    info = {}\n    for task in tasks:\n        tid = task[\"id\"]\n        if tid in info:\n            raise ValueError(\"duplicate id\")\n\n        duration = task[\"duration\"]\n        units = task[\"units\"]\n        deps = task.get(\"deps\", [])\n        if deps is None:\n            deps = []\n\n        if units > capacity:\n            raise ValueError(\"units exceed capacity\")\n\n        info[tid] = {\n            \"duration\": duration,\n            \"units\": units,\n            \"deps\": deps,\n        }\n\n    adj = {tid: [] for tid in info}\n    indeg = {tid: 0 for tid in info}\n\n    for tid, data in info.items():\n        for dep in data[\"deps\"]:\n            if dep not in info:\n                raise ValueError(\"unknown dependency\")\n            adj[dep].append(tid)\n            indeg[tid] += 1\n\n    queue = [tid for tid in info if indeg[tid] == 0]\n    processed = 0\n\n    while queue:\n        v = queue.pop()\n        processed += 1\n        for w in adj[v]:\n            indeg[w] -= 1\n            if indeg[w] == 0:\n                queue.append(w)\n\n    if processed != len(info):\n        raise ValueError(\"cycle dependency\")\n\n    sorted_ids = sorted(info)\n    completed = set()\n    running = {}\n    started = set()\n    jobs = {}\n    time = 0\n\n    while len(completed) < len(info):\n        finished = [tid for tid, end in running.items() if end <= time]\n        for tid in finished:\n            del running[tid]\n            completed.add(tid)\n\n        if len(completed) == len(info):\n            break\n\n        available = capacity\n        for tid in running:\n            available -= info[tid][\"units\"]\n\n        for tid in sorted_ids:\n            if tid in started:\n                continue\n\n            ready = True\n            for dep in info[tid][\"deps\"]:\n                if dep not in completed:\n                    ready = False\n                    break\n\n            if not ready:\n                continue\n\n            units = info[tid][\"units\"]\n            if units <= available:\n                start = time\n                end = time + info[tid][\"duration\"]\n                started.add(tid)\n                running[tid] = end\n                jobs[tid] = (start, end)\n                available -= units\n\n        if not running:\n            raise ValueError(\"unable to schedule\")\n\n        time = min(running.values())\n\n    result_jobs = []\n    makespan = 0\n\n    for tid in sorted_ids:\n        start, end = jobs[tid]\n        result_jobs.append({\"id\": tid, \"start\": start, \"end\": end})\n        if end > makespan:\n            makespan = end\n\n    return {\"jobs\": result_jobs, \"makespan\": makespan}\n```",
+      "returned_model": "Qwen/Qwen3.8-Flash-Next",
+      "reasoning_chars": 26446,
+      "tool_calls": [],
+      "usage": {
+        "prompt_tokens": 236,
+        "completion_tokens": 6831,
+        "total_tokens": 7067,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "finish_reason": "stop",
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 236,
+        "prompt_ms": 2133.2,
+        "prompt_per_token_ms": 9.039,
+        "prompt_per_second": 110.6,
+        "predicted_n": 6831,
+        "predicted_ms": 115575.0,
+        "predicted_per_token_ms": 16.964,
+        "predicted_per_second": 58.9,
+        "draft_n": 5378,
+        "draft_n_accepted": 3901
+      },
+      "first_event_s": 0.05635898200034717,
+      "first_reasoning_s": 1.8422866020000583,
+      "first_content_s": 107.76547655899958,
+      "first_tool_s": null,
+      "api_elapsed_s": 117.77235514400036
+    }
+  ],
+  "started_at_epoch": 1792816827.703871,
+  "human_corrections": 0,
+  "content": "```python\ndef schedule(tasks, capacity):\n    if not tasks:\n        return {\"jobs\": [], \"makespan\": 0}\n\n    info = {}\n    for task in tasks:\n        tid = task[\"id\"]\n        if tid in info:\n            raise ValueError(\"duplicate id\")\n\n        duration = task[\"duration\"]\n        units = task[\"units\"]\n        deps = task.get(\"deps\", [])\n        if deps is None:\n            deps = []\n\n        if units > capacity:\n            raise ValueError(\"units exceed capacity\")\n\n        info[tid] = {\n            \"duration\": duration,\n            \"units\": units,\n            \"deps\": deps,\n        }\n\n    adj = {tid: [] for tid in info}\n    indeg = {tid: 0 for tid in info}\n\n    for tid, data in info.items():\n        for dep in data[\"deps\"]:\n            if dep not in info:\n                raise ValueError(\"unknown dependency\")\n            adj[dep].append(tid)\n            indeg[tid] += 1\n\n    queue = [tid for tid in info if indeg[tid] == 0]\n    processed = 0\n\n    while queue:\n        v = queue.pop()\n        processed += 1\n        for w in adj[v]:\n            indeg[w] -= 1\n            if indeg[w] == 0:\n                queue.append(w)\n\n    if processed != len(info):\n        raise ValueError(\"cycle dependency\")\n\n    sorted_ids = sorted(info)\n    completed = set()\n    running = {}\n    started = set()\n    jobs = {}\n    time = 0\n\n    while len(completed) < len(info):\n        finished = [tid for tid, end in running.items() if end <= time]\n        for tid in finished:\n            del running[tid]\n            completed.add(tid)\n\n        if len(completed) == len(info):\n            break\n\n        available = capacity\n        for tid in running:\n            available -= info[tid][\"units\"]\n\n        for tid in sorted_ids:\n            if tid in started:\n                continue\n\n            ready = True\n            for dep in info[tid][\"deps\"]:\n                if dep not in completed:\n                    ready = False\n                    break\n\n            if not ready:\n                continue\n\n            units = info[tid][\"units\"]\n            if units <= available:\n                start = time\n                end = time + info[tid][\"duration\"]\n                started.add(tid)\n                running[tid] = end\n                jobs[tid] = (start, end)\n                available -= units\n\n        if not running:\n            raise ValueError(\"unable to schedule\")\n\n        time = min(running.values())\n\n    result_jobs = []\n    makespan = 0\n\n    for tid in sorted_ids:\n        start, end = jobs[tid]\n        result_jobs.append({\"id\": tid, \"start\": start, \"end\": end})\n        if end > makespan:\n            makespan = end\n\n    return {\"jobs\": result_jobs, \"makespan\": makespan}\n```",
+  "elapsed_s": 117.94645426700026,
+  "reasoning_chars": 26446,
+  "grade": {
+    "score": 100.0,
+    "pass": true,
+    "tests": [
+      {
+        "test": 1,
+        "pass": true,
+        "actual": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "expected": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 2,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 3,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 4,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 5,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 6,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 4
+            },
+            {
+              "id": "b",
+              "start": 4,
+              "end": 6
+            },
+            {
+              "id": "c",
+              "start": 0,
+              "end": 1
+            }
+          ],
+          "makespan": 6
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 4
+            },
+            {
+              "id": "b",
+              "start": 4,
+              "end": 6
+            },
+            {
+              "id": "c",
+              "start": 0,
+              "end": 1
+            }
+          ],
+          "makespan": 6
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 7,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "c",
+              "start": 2,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "c",
+              "start": 2,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 8,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 2,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 4
+            },
+            {
+              "id": "z",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 4
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 2,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 4
+            },
+            {
+              "id": "z",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 4
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 9,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 10,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 11,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 12,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 13,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      }
+    ]
+  },
+  "hidden_grading_s_excluded": 0.04882740800076135
+}

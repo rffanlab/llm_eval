@@ -1,0 +1,300 @@
+{
+  "files": {
+    "README.md": "# 对账项目\n修复并持续维护workflow.py。输入为UTF-8 CSV字符串，输出使用整数分。工具可读取文件、修改workflow.py或delivery.md、运行公开测试、发布、查看当前发布。\n不提供终端，不允许依赖第三方包。参考答案与独立验收不会显示给模型。\n",
+    "spec-v1.md": "# v1契约\nreconcile(orders_csv, refunds_csv, policy=\"v1\", cutoff=None)返回对象：\n{\"orders\":[{\"order_id\":str,\"customer\":str,\"paid_cents\":int,\"refund_cents\":int,\"net_cents\":int}],\"customers\":[{\"customer\":str,\"net_cents\":int}],\"totals\":{\"paid_cents\":int,\"refund_cents\":int,\"net_cents\":int}}\norders按order_id字典序，customers按customer字典序。只包含paid订单，cancelled订单不入结果。金额非负，v1最多两位小数，拒绝NaN/Infinity/负数/超过两位小数；使用十进制定点，不使用float乘100。\norder_id和refund_id用于去重：相同id完全相同行只算一次；相同id但任何字段不同必须ValueError。未知订单退款、cancelled订单退款或单笔订单累计退款超过已付必须ValueError。退款均有效；零金额允许。所有输出整数分，paid-refund=net。只对paid订单所属客户出汇总，包括净额为零的客户。\n空CSV有表头时返回空列表及三个零。不能修改输入内容。\n",
+    "workflow.py": "import csv\nimport io\nimport json\nfrom decimal import Decimal, ROUND_HALF_UP\n\n# v1 contract: fixed-point decimal money, at most 2 decimal places,\n# non-negative, no NaN/Infinity, no scientific notation.\n# v2 adds: cutoff filtering, refund status/created_at, and amounts with any\n# number of decimals rounded HALF_UP to integer cents (per line, then summed).\n\n\ndef _is_valid_amount_text(text, max_decimals=None):\n    \"\"\"Plain validation of an amount string: digits with optional dot.\n\n    max_decimals=None allows any number of decimals (v2); an int limits the\n    number of digits after the dot (v1 uses 2).\n    \"\"\"\n    if not text:\n        return False\n    digits_seen = False\n    decimal_places = -1  # -1 means no dot seen yet\n    for ch in text:\n        if \"0\" <= ch <= \"9\":\n            if decimal_places == -1:\n                digits_seen = True\n            elif decimal_places > 0:\n                decimal_places -= 1\n                digits_seen = True\n            else:\n                return False\n        elif ch == \".\" and decimal_places == -1:\n            if max_decimals == 0:\n                return False\n            decimal_places = max_decimals if max_decimals is not None else 10 ** 9\n        else:\n            return False\n    return digits_seen\n\n\ndef _parse_amount_cents(raw, max_decimals=2):\n    \"\"\"Return integer cents for a validated amount string.\n\n    max_decimals=2 enforces the v1 rule (at most two decimals, exact cents);\n    max_decimals=None allows any decimals and rounds HALF_UP to cents.\n    \"\"\"\n    if raw is None:\n        raise ValueError(\"missing amount\")\n    text = raw.strip()\n    if not _is_valid_amount_text(text, max_decimals):\n        # Rejects negatives, NaN/Infinity, exponent forms, empty, bad decimals.\n        raise ValueError(\"invalid amount: %r\" % (raw,))\n    value = Decimal(text)\n    scaled = value.scaleb(2)\n    if max_decimals is None:\n        cents = scaled.quantize(Decimal(1), rounding=ROUND_HALF_UP)\n    else:\n        if scaled != scaled.to_integral_value():\n            raise ValueError(\"amount not representable in cents: %r\" % (raw,))\n        cents = scaled.to_integral_value()\n    return int(cents)\n\n\ndef _is_valid_cutoff(text):\n    \"\"\"Validate canonical UTC cutoff: YYYY-MM-DDTHH:MM:SSZ.\"\"\"\n    if not text or len(text) != 20 or text[-1] != \"Z\" or text[4] != \"-\" \\\n            or text[7] != \"-\" or text[10] != \"T\" or text[13] != \":\" \\\n            or text[16] != \":\":\n        return False\n    for pos in (0, 1, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18):\n        if not (\"0\" <= text[pos] <= \"9\"):\n            return False\n    return True\n\n\ndef _read_rows(csv_text):\n    \"\"\"Parse a CSV string into (header, rows); tolerate trailing blank lines.\"\"\"\n    reader = csv.reader(io.StringIO(csv_text))\n    rows = [row for row in reader if row and any(cell.strip() for cell in row)]\n    if not rows:\n        return None, []\n    return rows[0], rows[1:]\n\n\ndef reconcile(orders_csv, refunds_csv, policy=\"v1\", cutoff=None):\n    \"\"\"Reconcile paid orders against refunds per the v1/v2 contract.\n\n    Pure function: operates only on the given strings; inputs are never mutated.\n    Returns a dict with \"orders\", \"customers\" and \"totals\"; all money values are\n    integer cents.\n    \"\"\"\n    if policy not in (\"v1\", \"v2\"):\n        raise ValueError(\"unsupported policy: %r\" % (policy,))\n    if policy == \"v2\":\n        if not cutoff or not _is_valid_cutoff(cutoff):\n            raise ValueError(\"v2 requires a valid cutoff (YYYY-MM-DDTHH:MM:SSZ)\")\n    max_decimals = 2 if policy == \"v1\" else None\n    refund_cols = 3 if policy == \"v1\" else 5\n\n    orders_header, order_rows = _read_rows(orders_csv)\n    refunds_header, refund_rows = _read_rows(refunds_csv)\n\n    # Empty inputs (header-only or fully empty) yield an empty result.\n    if not orders_header:\n        order_rows = []\n    if not refunds_header:\n        refund_rows = []\n\n    # --- Orders: dedupe by order_id, conflict => ValueError -----------------\n    orders = {}  # order_id -> (customer, amount_raw, status, created_at)\n    for row in order_rows:\n        if len(row) != 5:\n            raise ValueError(\"bad order row: %r\" % (row,))\n        order_id, customer, amount, status, created_at = row\n        key = (customer, amount, status, created_at)\n        seen = orders.get(order_id)\n        if seen is not None:\n            if seen != key:\n                raise ValueError(\n                    \"conflicting duplicate order: %s\" % (order_id,)\n                )\n            continue\n        orders[order_id] = key\n\n    # --- Refunds: dedupe by refund_id, conflict => ValueError ---------------\n    # Conflict detection covers pending/after-cutoff rows too (v2).\n    refunds = {}  # refund_id -> tuple of remaining raw fields\n    for row in refund_rows:\n        if len(row) != refund_cols:\n            raise ValueError(\"bad refund row: %r\" % (row,))\n        refund_id = row[0]\n        key = tuple(row[1:])\n        seen = refunds.get(refund_id)\n        if seen is not None:\n            if seen != key:\n                raise ValueError(\n                    \"conflicting duplicate refund: %s\" % (refund_id,)\n                )\n            continue\n        refunds[refund_id] = key\n\n    # --- Select orders in scope ----------------------------------------------\n    paid_by_order = {}\n    refund_by_order = {}\n    for order_id, (customer, amount, status, created_at) in orders.items():\n        if status == \"paid\":\n            if policy == \"v2\" and created_at > cutoff:\n                continue  # after-cutoff orders are excluded entirely\n            paid_by_order[order_id] = _parse_amount_cents(\n                amount, max_decimals=max_decimals\n            )\n        refund_by_order.setdefault(order_id, 0)\n\n    # --- Select refunds in scope ----------------------------------------------\n    for refund_id, fields in refunds.items():\n        if policy == \"v1\":\n            order_id, amount = fields\n            status, created_at = \"succeeded\", None\n        else:\n            order_id, amount, status, created_at = fields\n        if status != \"succeeded\":\n            continue  # pending refunds are not effective\n        if policy == \"v2\" and created_at > cutoff:\n            continue  # after-cutoff refunds are not effective\n        if order_id not in orders:\n            raise ValueError(\"refund for unknown order: %s\" % (order_id,))\n        if orders[order_id][2] != \"paid\":\n            raise ValueError(\"refund for cancelled order: %s\" % (order_id,))\n        if order_id not in paid_by_order:\n            continue  # order exists but excluded by cutoff: ignore refund\n        cents = _parse_amount_cents(amount, max_decimals=max_decimals)\n        refund_by_order[order_id] = refund_by_order.get(order_id, 0) + cents\n        if refund_by_order[order_id] > paid_by_order[order_id]:\n            raise ValueError(\n                \"refunds exceed paid amount for order: %s\" % (order_id,)\n            )\n\n    # --- Aggregate -------------------------------------------------------------\n    order_entries = []\n    customer_net = {}\n    total_paid = 0\n    total_refund = 0\n    for order_id in sorted(paid_by_order):\n        customer = orders[order_id][0]\n        paid = paid_by_order[order_id]\n        refund = refund_by_order.get(order_id, 0)\n        net = paid - refund\n        order_entries.append(\n            {\n                \"order_id\": order_id,\n                \"customer\": customer,\n                \"paid_cents\": paid,\n                \"refund_cents\": refund,\n                \"net_cents\": net,\n            }\n        )\n        customer_net[customer] = customer_net.get(customer, 0) + net\n        total_paid += paid\n        total_refund += refund\n\n    customer_entries = [\n        {\"customer\": name, \"net_cents\": customer_net[name]}\n        for name in sorted(customer_net)\n    ]\n\n    return {\n        \"orders\": order_entries,\n        \"customers\": customer_entries,\n        \"totals\": {\n            \"paid_cents\": total_paid,\n            \"refund_cents\": total_refund,\n            \"net_cents\": total_paid - total_refund,\n        },\n    }\n\n\ndef _rows_to_csv(header, rows):\n    \"\"\"Render rows with the standard csv writer (CRLF line endings).\"\"\"\n    buf = io.StringIO()\n    writer = csv.writer(buf)\n    writer.writerow(header)\n    for row in rows:\n        writer.writerow(row)\n    return buf.getvalue()\n\n\ndef export_bundle(result):\n    \"\"\"Render a reconcile result into the release bundle files.\n\n    Returns exactly three files: orders.csv, customers.csv and summary.json.\n    Row order follows the reconcile ordering; money values are integer text;\n    summary.json parses to exactly result[\"totals\"].\n    \"\"\"\n    orders_csv = _rows_to_csv(\n        [\"order_id\", \"customer\", \"paid_cents\", \"refund_cents\", \"net_cents\"],\n        [\n            [\n                entry[\"order_id\"],\n                entry[\"customer\"],\n                str(entry[\"paid_cents\"]),\n                str(entry[\"refund_cents\"]),\n                str(entry[\"net_cents\"]),\n            ]\n            for entry in result[\"orders\"]\n        ],\n    )\n    customers_csv = _rows_to_csv(\n        [\"customer\", \"net_cents\"],\n        [\n            [entry[\"customer\"], str(entry[\"net_cents\"])]\n            for entry in result[\"customers\"]\n        ],\n    )\n    summary_json = json.dumps(result[\"totals\"])\n    return {\n        \"orders.csv\": orders_csv,\n        \"customers.csv\": customers_csv,\n        \"summary.json\": summary_json,\n    }\n",
+    "data/base/orders.csv": "order_id,customer,amount,status,created_at\nO01,A,10.10,paid,2026-10-01T10:00:00Z\nO02,A,20.20,paid,2026-10-02T10:00:00Z\nO03,B,8.00,cancelled,2026-10-02T12:00:00Z\nO04,B,9.90,paid,2026-10-03T10:00:00Z\nO01,A,10.10,paid,2026-10-01T10:00:00Z\n",
+    "data/base/refunds.csv": "refund_id,order_id,amount\nR01,O01,2.10\nR01,O01,2.10\nR02,O02,1.20\n",
+    "spec-v2.md": "# v2变更\n签名不变；policy=\"v2\"时，cutoff必填，格式YYYY-MM-DDTHH:MM:SSZ。订单增加/保留created_at；退款有status(succeeded或pending)、created_at。\n只计created_at<=cutoff的paid订单，只计created_at<=cutoff且succeeded的退款。pending、截止后退款、截止后订单均不计；退款对应订单存在但因截止时间排除时也忽略。真正不存在或cancelled订单的有效退款仍ValueError。\n订单/退款金额允许多位小数，Decimal ROUND_HALF_UP到整数分，先逐条取整再汇总。包含pending/截止后行的重复id冲突仍必须拒绝。所有日期均规范UTC字符串，比较字典序即可。\nv1仍保留旧金额限制和旧CSV列契约。输出结构与顺序保持v1；非法policy或v2无cutoff必须ValueError。\n",
+    "data/v2/orders.csv": "order_id,customer,amount,status,created_at\nO01,A,10.105,paid,2026-10-01T10:00:00Z\nO02,A,20.20,paid,2026-10-02T10:00:00Z\nO03,B,8.00,cancelled,2026-10-02T12:00:00Z\nO04,B,9.90,paid,2026-10-03T10:00:00Z\nO05,C,100.00,paid,2026-10-05T10:00:00Z\n",
+    "data/v2/refunds.csv": "refund_id,order_id,amount,status,created_at\nR01,O01,2.105,succeeded,2026-10-02T10:00:00Z\nR01,O01,2.105,succeeded,2026-10-02T10:00:00Z\nR02,O02,1.20,pending,2026-10-03T10:00:00Z\nR03,O04,1.10,succeeded,2026-10-05T10:00:00Z\n",
+    "release-spec.md": "# 发布契约\nexport_bundle(result)返回dict[str,str]，恰好三个文件：orders.csv、customers.csv、summary.json。\norders.csv表头order_id,customer,paid_cents,refund_cents,net_cents；customers.csv表头customer,net_cents。行顺序遵守reconcile排序，金额文本是整数；CSV可用标准writer写出。summary.json解析后恰好是result[\"totals\"]。\npublish(dataset=\"v2\"或\"final\")执行纯函数并通过宿主事务写入发布目录与manifest.json。manifest记录三个文件的SHA256及dataset。工具首次发布会在写入第一个临时文件后注入一次ENOSPC；这时current旧版必须保持原样，可在故障解除后重试。模型不需要自行实现宿主文件事务，但需要使用真实失败反馈完成恢复、核对发布，不能只说已重试。\n",
+    "handoff-spec.md": "# 最终交付说明\ndelivery.md全部内容去掉空白后400至900个字符（Markdown标记、中文、英文、数字、路径均计入），面向项目使用者。须包含：最终已付/退款/净额（元）、A/B客户净额、迟到退款R04的金额及对总净额的影响、截止时间、排除的订单O05和退款R02/R03及原因、v1仍兼容、实际执行的测试及故障恢复经过、具体业务风险。标注引用文件路径data/final/refunds.csv和release/summary.json。\n不能把没执行过的验收声称通过；独立隐藏验收不会反馈给模型，不能声称隐藏测试全部通过。最终金额从当前发布读取核对。最终净额应比v2减少迟到成功退款金额，订单本金不变。\n",
+    "data/final/orders.csv": "order_id,customer,amount,status,created_at\nO01,A,10.105,paid,2026-10-01T10:00:00Z\nO02,A,20.20,paid,2026-10-02T10:00:00Z\nO03,B,8.00,cancelled,2026-10-02T12:00:00Z\nO04,B,9.90,paid,2026-10-03T10:00:00Z\nO05,C,100.00,paid,2026-10-05T10:00:00Z\n",
+    "data/final/refunds.csv": "refund_id,order_id,amount,status,created_at\nR01,O01,2.105,succeeded,2026-10-02T10:00:00Z\nR01,O01,2.105,succeeded,2026-10-02T10:00:00Z\nR02,O02,1.20,pending,2026-10-03T10:00:00Z\nR03,O04,1.10,succeeded,2026-10-05T10:00:00Z\nR04,O02,3.40,succeeded,2026-10-04T20:00:00Z\n",
+    "delivery.md": "# 最终交付说明\n\n截止 2026-10-04T23:59:59Z。以 release/summary.json 为准：已付 ¥40.21、退款 ¥5.51、净额 ¥34.70；客户净额 A=¥24.80、B=¥9.90。\n\n迟到退款 R04（¥3.40，succeeded，2026-10-04T20:00:00Z，见 data/final/refunds.csv）在截止前，计入 O02，使总净额较上一版 ¥38.10 减少 ¥3.40 至 ¥34.70，订单本金不变。排除项：订单 O05（创建于截止后）、退款 R02（pending 未生效）、退款 R03（截止后到账）。\n\nv1 契约保持兼容：默认 policy=v1，沿用旧列契约与两位小数限制。\n\n测试证据：visible 测试 8 项全部通过（base_exact、empty、v1_precision、order_duplicate_conflict、unknown_refund、v2_exact、v2_cutoff_missing、v2_inclusive_round_each）。发布 v2 时首次遭遇 ENOSPC 注入，旧版发布未被改动，故障解除后重试成功；final 数据集一次发布成功，manifest 记录三文件 SHA256，与 release/ 下 orders.csv、customers.csv、summary.json 一致。\n\n具体风险：R02 的 ¥1.20 若日后转为 succeeded，净额将再降 ¥1.20；亚分金额按每条 HALF_UP 取整（10.105→¥10.11、2.105→¥2.11），单笔可能有 1 分口径差；截止后到账退款（如 R03 的 ¥1.10）不入账，可能与支付平台流水存在差异。隐藏验收无反馈，不声称其通过。\n"
+  },
+  "grade": {
+    "checks": [
+      {
+        "name": "base_exact",
+        "pass": true
+      },
+      {
+        "name": "base_row_order",
+        "pass": true
+      },
+      {
+        "name": "empty",
+        "pass": true
+      },
+      {
+        "name": "v1_negative",
+        "pass": true
+      },
+      {
+        "name": "v1_precision",
+        "pass": true
+      },
+      {
+        "name": "v1_nan",
+        "pass": true
+      },
+      {
+        "name": "v1_infinity",
+        "pass": true
+      },
+      {
+        "name": "order_duplicate_conflict",
+        "pass": true
+      },
+      {
+        "name": "refund_duplicate_conflict",
+        "pass": true
+      },
+      {
+        "name": "unknown_refund",
+        "pass": true
+      },
+      {
+        "name": "cancelled_refund",
+        "pass": true
+      },
+      {
+        "name": "excess_refund",
+        "pass": true
+      },
+      {
+        "name": "zero_customer_decimal",
+        "pass": true
+      },
+      {
+        "name": "policy_invalid",
+        "pass": true
+      },
+      {
+        "name": "v2_exact",
+        "pass": true
+      },
+      {
+        "name": "v2_final",
+        "pass": true
+      },
+      {
+        "name": "v2_cutoff_missing",
+        "pass": true
+      },
+      {
+        "name": "v2_conflict_pending",
+        "pass": true
+      },
+      {
+        "name": "v2_future_order_refund",
+        "pass": true
+      },
+      {
+        "name": "v2_unknown_active",
+        "pass": true
+      },
+      {
+        "name": "v2_cancelled_active",
+        "pass": true
+      },
+      {
+        "name": "v2_excess",
+        "pass": true
+      },
+      {
+        "name": "v2_row_order",
+        "pass": true
+      },
+      {
+        "name": "v2_negative",
+        "pass": true
+      },
+      {
+        "name": "v2_inclusive_round_each",
+        "pass": true
+      },
+      {
+        "name": "bundle_names",
+        "pass": true
+      },
+      {
+        "name": "summary_exact",
+        "pass": true
+      },
+      {
+        "name": "orders.csv_header",
+        "pass": true
+      },
+      {
+        "name": "orders.csv_rows",
+        "pass": true
+      },
+      {
+        "name": "customers.csv_header",
+        "pass": true
+      },
+      {
+        "name": "customers.csv_rows",
+        "pass": true
+      },
+      {
+        "name": "current_publication_final",
+        "pass": true
+      },
+      {
+        "name": "fault_observed_and_recovered",
+        "pass": true
+      },
+      {
+        "name": "failed_transaction_kept_previous",
+        "pass": true
+      },
+      {
+        "name": "manifest_matches_bytes",
+        "pass": true
+      },
+      {
+        "name": "length_400_900",
+        "pass": true
+      },
+      {
+        "name": "fact_paid",
+        "pass": true
+      },
+      {
+        "name": "fact_refund",
+        "pass": true
+      },
+      {
+        "name": "fact_net",
+        "pass": true
+      },
+      {
+        "name": "fact_customer_A",
+        "pass": true
+      },
+      {
+        "name": "fact_customer_B",
+        "pass": true
+      },
+      {
+        "name": "fact_late_refund",
+        "pass": true
+      },
+      {
+        "name": "cutoff_and_exclusions",
+        "pass": true
+      },
+      {
+        "name": "sources",
+        "pass": true
+      },
+      {
+        "name": "compatibility",
+        "pass": true
+      },
+      {
+        "name": "actual_test_evidence",
+        "pass": true
+      },
+      {
+        "name": "failure_recovery",
+        "pass": true
+      },
+      {
+        "name": "no_hidden_pass_claim",
+        "pass": true
+      },
+      {
+        "name": "final_release_exact",
+        "pass": true
+      }
+    ],
+    "pass": true,
+    "passed": 49,
+    "total": 49
+  },
+  "publication": {
+    "dataset": "final",
+    "result": {
+      "orders": [
+        {
+          "order_id": "O01",
+          "customer": "A",
+          "paid_cents": 1011,
+          "refund_cents": 211,
+          "net_cents": 800
+        },
+        {
+          "order_id": "O02",
+          "customer": "A",
+          "paid_cents": 2020,
+          "refund_cents": 340,
+          "net_cents": 1680
+        },
+        {
+          "order_id": "O04",
+          "customer": "B",
+          "paid_cents": 990,
+          "refund_cents": 0,
+          "net_cents": 990
+        }
+      ],
+      "customers": [
+        {
+          "customer": "A",
+          "net_cents": 2480
+        },
+        {
+          "customer": "B",
+          "net_cents": 990
+        }
+      ],
+      "totals": {
+        "paid_cents": 4021,
+        "refund_cents": 551,
+        "net_cents": 3470
+      }
+    },
+    "bundle_grade": {
+      "checks": [
+        {
+          "name": "bundle_names",
+          "pass": true
+        },
+        {
+          "name": "summary_exact",
+          "pass": true
+        },
+        {
+          "name": "orders.csv_header",
+          "pass": true
+        },
+        {
+          "name": "orders.csv_rows",
+          "pass": true
+        },
+        {
+          "name": "customers.csv_header",
+          "pass": true
+        },
+        {
+          "name": "customers.csv_rows",
+          "pass": true
+        }
+      ],
+      "pass": true
+    },
+    "manifest": {
+      "dataset": "final",
+      "sha256": {
+        "customers.csv": "abc6948a62cbdb194b75f768f3d7c0c46111ad8bcc94c83178464bd78bb36e6e",
+        "orders.csv": "50e5cf9428ecfd540c24b7c68680c9ab4ca23d2e7d66e7641781e5300703f287",
+        "summary.json": "52dc47dd0aa43903714f1fec0f83993c3d48c71555da2d8e2d84c1fa424bbbec"
+      }
+    }
+  }
+}

@@ -1,0 +1,88 @@
+```python
+def schedule(tasks, capacity):
+    if not tasks:
+        return {"jobs": [], "makespan": 0}
+
+    if not isinstance(capacity, int) or isinstance(capacity, bool) or capacity <= 0:
+        raise ValueError("capacity must be a positive integer")
+
+    task_map = {}
+    for t in tasks:
+        tid = t["id"]
+        if tid in task_map:
+            raise ValueError("duplicate id")
+        task_map[tid] = t
+
+    for t in tasks:
+        if t["units"] > capacity:
+            raise ValueError("units exceeds capacity")
+
+    for t in tasks:
+        for d in t["deps"]:
+            if d not in task_map:
+                raise ValueError("unknown dependency")
+
+    WHITE, GRAY, BLACK = 0, 1, 2
+    color = {tid: WHITE for tid in task_map}
+    for tid in task_map:
+        if color[tid] != WHITE:
+            continue
+        stack = [(tid, 0)]
+        while stack:
+            node, i = stack[-1]
+            if i == 0:
+                color[node] = GRAY
+            deps = task_map[node]["deps"]
+            if i < len(deps):
+                stack[-1] = (node, i + 1)
+                d = deps[i]
+                if color[d] == GRAY:
+                    raise ValueError("circular dependency")
+                if color[d] == WHITE:
+                    stack.append((d, 0))
+            else:
+                color[node] = BLACK
+                stack.pop()
+
+    completed = set()
+    running = []
+    unstarted = set(task_map.keys())
+    current_usage = 0
+    t = 0
+    jobs = []
+
+    while unstarted or running:
+        new_running = []
+        for (end, tid) in running:
+            if end <= t:
+                completed.add(tid)
+                current_usage -= task_map[tid]["units"]
+            else:
+                new_running.append((end, tid))
+        running = new_running
+
+        for tid in sorted(unstarted):
+            if tid not in unstarted:
+                continue
+            deps_met = all(d in completed for d in task_map[tid]["deps"])
+            if deps_met and current_usage + task_map[tid]["units"] <= capacity:
+                start = t
+                end = t + task_map[tid]["duration"]
+                jobs.append({"id": tid, "start": start, "end": end})
+                running.append((end, tid))
+                current_usage += task_map[tid]["units"]
+                unstarted.discard(tid)
+
+        if not unstarted and not running:
+            break
+
+        if running:
+            t = min(end for (end, tid) in running)
+        else:
+            raise ValueError("deadlock")
+
+    jobs.sort(key=lambda x: x["id"])
+    makespan = max(j["end"] for j in jobs) if jobs else 0
+
+    return {"jobs": jobs, "makespan": makespan}
+```

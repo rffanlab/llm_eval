@@ -1,0 +1,108 @@
+```python
+def schedule(tasks, capacity):
+    if not tasks:
+        return {"jobs": [], "makespan": 0}
+
+    info = {}
+    for task in tasks:
+        tid = task["id"]
+        if tid in info:
+            raise ValueError("duplicate id")
+
+        duration = task["duration"]
+        units = task["units"]
+        deps = task.get("deps", [])
+        if deps is None:
+            deps = []
+
+        if units > capacity:
+            raise ValueError("units exceed capacity")
+
+        info[tid] = {
+            "duration": duration,
+            "units": units,
+            "deps": deps,
+        }
+
+    adj = {tid: [] for tid in info}
+    indeg = {tid: 0 for tid in info}
+
+    for tid, data in info.items():
+        for dep in data["deps"]:
+            if dep not in info:
+                raise ValueError("unknown dependency")
+            adj[dep].append(tid)
+            indeg[tid] += 1
+
+    queue = [tid for tid in info if indeg[tid] == 0]
+    processed = 0
+
+    while queue:
+        v = queue.pop()
+        processed += 1
+        for w in adj[v]:
+            indeg[w] -= 1
+            if indeg[w] == 0:
+                queue.append(w)
+
+    if processed != len(info):
+        raise ValueError("cycle dependency")
+
+    sorted_ids = sorted(info)
+    completed = set()
+    running = {}
+    started = set()
+    jobs = {}
+    time = 0
+
+    while len(completed) < len(info):
+        finished = [tid for tid, end in running.items() if end <= time]
+        for tid in finished:
+            del running[tid]
+            completed.add(tid)
+
+        if len(completed) == len(info):
+            break
+
+        available = capacity
+        for tid in running:
+            available -= info[tid]["units"]
+
+        for tid in sorted_ids:
+            if tid in started:
+                continue
+
+            ready = True
+            for dep in info[tid]["deps"]:
+                if dep not in completed:
+                    ready = False
+                    break
+
+            if not ready:
+                continue
+
+            units = info[tid]["units"]
+            if units <= available:
+                start = time
+                end = time + info[tid]["duration"]
+                started.add(tid)
+                running[tid] = end
+                jobs[tid] = (start, end)
+                available -= units
+
+        if not running:
+            raise ValueError("unable to schedule")
+
+        time = min(running.values())
+
+    result_jobs = []
+    makespan = 0
+
+    for tid in sorted_ids:
+        start, end = jobs[tid]
+        result_jobs.append({"id": tid, "start": start, "end": end})
+        if end > makespan:
+            makespan = end
+
+    return {"jobs": result_jobs, "makespan": makespan}
+```

@@ -1,0 +1,120 @@
+{
+  "files": {
+    "README.md": "# 对账项目\n修复并持续维护workflow.py。输入为UTF-8 CSV字符串，输出使用整数分。工具可读取文件、修改workflow.py或delivery.md、运行公开测试、发布、查看当前发布。\n不提供终端，不允许依赖第三方包。参考答案与独立验收不会显示给模型。\n",
+    "spec-v1.md": "# v1契约\nreconcile(orders_csv, refunds_csv, policy=\"v1\", cutoff=None)返回对象：\n{\"orders\":[{\"order_id\":str,\"customer\":str,\"paid_cents\":int,\"refund_cents\":int,\"net_cents\":int}],\"customers\":[{\"customer\":str,\"net_cents\":int}],\"totals\":{\"paid_cents\":int,\"refund_cents\":int,\"net_cents\":int}}\norders按order_id字典序，customers按customer字典序。只包含paid订单，cancelled订单不入结果。金额非负，v1最多两位小数，拒绝NaN/Infinity/负数/超过两位小数；使用十进制定点，不使用float乘100。\norder_id和refund_id用于去重：相同id完全相同行只算一次；相同id但任何字段不同必须ValueError。未知订单退款、cancelled订单退款或单笔订单累计退款超过已付必须ValueError。退款均有效；零金额允许。所有输出整数分，paid-refund=net。只对paid订单所属客户出汇总，包括净额为零的客户。\n空CSV有表头时返回空列表及三个零。不能修改输入内容。\n",
+    "workflow.py": "\"\"\"订单对账 v1/v2 实现。\n\n契约见 spec-v1.md 与 spec-v2.md：输入为 UTF-8 CSV 字符串，输出使用整数分\n（Decimal 定点，不用 float）。v1 保留旧金额限制与旧 CSV 列契约；\nv2 增加 created_at 截止、退款 status，以及多位小数 ROUND_HALF_UP 取整。\n\"\"\"\n\nimport csv\nimport io\nimport json\nfrom datetime import datetime\nfrom decimal import Decimal, InvalidOperation, ROUND_HALF_UP\n\n_V1_ORDERS_REQUIRED = (\"order_id\", \"customer\", \"amount\", \"status\")\n_V1_REFUNDS_REQUIRED = (\"refund_id\", \"order_id\", \"amount\")\n_V2_ORDERS_REQUIRED = (\"order_id\", \"customer\", \"amount\", \"status\", \"created_at\")\n_V2_REFUNDS_REQUIRED = (\"refund_id\", \"order_id\", \"amount\", \"status\", \"created_at\")\n\n_PAID = \"paid\"\n_CANCELLED = \"cancelled\"\n_EXCLUDED = \"excluded\"\n_SUCCEEDED = \"succeeded\"\n_PENDING = \"pending\"\n_CUTOFF_FORMAT = \"%Y-%m-%dT%H:%M:%SZ\"\n\n\ndef _amount_to_cents(raw, context, policy):\n    \"\"\"把金额字符串转成整数分；拒绝 NaN/Infinity/负数。\n\n    v1: 最多两位小数（超出即报错）。\n    v2: 允许多位小数，按 ROUND_HALF_UP 逐条取到整数分。\n    \"\"\"\n    if raw is None:\n        raise ValueError(\"%s: 缺少金额字段\" % context)\n    text = raw.strip()\n    if text == \"\":\n        raise ValueError(\"%s: 金额为空\" % context)\n    try:\n        value = Decimal(text)\n    except (InvalidOperation, ValueError):\n        raise ValueError(\"%s: 金额无法解析: %r\" % (context, raw))\n    if not value.is_finite():\n        raise ValueError(\"%s: 金额必须是有限数: %r\" % (context, raw))\n    if value < 0:\n        raise ValueError(\"%s: 金额不能为负: %r\" % (context, raw))\n    if policy == \"v1\":\n        exponent = value.as_tuple().exponent\n        if not isinstance(exponent, int) or exponent < -2:\n            raise ValueError(\"%s: 金额最多两位小数: %r\" % (context, raw))\n        return int(value.scaleb(2).to_integral_value())\n    quantized = value.quantize(Decimal(\"0.01\"), rounding=ROUND_HALF_UP)\n    return int(quantized.scaleb(2).to_integral_value())\n\n\ndef _read_rows(csv_text, required, kind):\n    \"\"\"读取 CSV 字符串，返回 (header, rows)；不修改输入内容。\"\"\"\n    if csv_text is None:\n        raise ValueError(\"%s: 输入必须是字符串\" % kind)\n    if not isinstance(csv_text, str):\n        raise ValueError(\"%s: 输入必须是字符串\" % kind)\n    reader = csv.DictReader(io.StringIO(csv_text))\n    header = reader.fieldnames\n    if header is None:\n        return [], []\n    missing = [name for name in required if name not in header]\n    if missing:\n        raise ValueError(\"%s: 缺少列 %s\" % (kind, \",\".join(missing)))\n    rows = []\n    for index, row in enumerate(reader, start=2):\n        if row.get(None) is not None:\n            raise ValueError(\"%s 第%d行: 字段过多\" % (kind, index))\n        values = {}\n        for name in header:\n            if name is None:\n                continue\n            value = row.get(name)\n            if value is None:\n                raise ValueError(\"%s 第%d行: 缺少列 %s\" % (kind, index, name))\n            values[name] = value.strip()\n        if all(value == \"\" for value in values.values()):\n            continue\n        rows.append(values)\n    return header, rows\n\n\ndef _index_unique(rows, id_field, kind):\n    \"\"\"按 id 去重：完全相同的行只算一次；同 id 但任何字段不同抛 ValueError。\n\n    pending / 截止后行虽不计入汇总，但重复 id 冲突仍必须拒绝。\n    \"\"\"\n    seen = {}\n    unique = []\n    for row in rows:\n        key = row.get(id_field, \"\")\n        if key == \"\":\n            raise ValueError(\"%s: %s 不能为空\" % (kind, id_field))\n        signature = tuple(row.get(name, \"\") for name in sorted(row))\n        if key in seen:\n            if seen[key] != signature:\n                raise ValueError(\"%s %s 重复但字段不一致\" % (kind, id_field))\n            continue\n        seen[key] = signature\n        unique.append(row)\n    return unique\n\n\ndef _validate_timestamp(text, context):\n    \"\"\"校验规范 UTC 字符串 YYYY-MM-DDTHH:MM:SSZ。\"\"\"\n    if text == \"\":\n        raise ValueError(\"%s: 缺少 created_at\" % context)\n    try:\n        datetime.strptime(text, _CUTOFF_FORMAT)\n    except ValueError:\n        raise ValueError(\"%s: 非法时间 %r\" % (context, text))\n    return text\n\n\ndef _validate_cutoff(cutoff):\n    if cutoff is None:\n        raise ValueError(\"policy=v2 时 cutoff 必填\")\n    if not isinstance(cutoff, str):\n        raise ValueError(\"cutoff 必须是字符串\")\n    return _validate_timestamp(cutoff.strip(), \"cutoff\")\n\n\ndef reconcile(orders_csv, refunds_csv, policy=\"v1\", cutoff=None):\n    \"\"\"按 v1/v2 契约对账，返回 orders / customers / totals。\"\"\"\n    if policy not in (\"v1\", \"v2\"):\n        raise ValueError(\"未知 policy: %r\" % (policy,))\n    if policy == \"v2\":\n        cutoff = _validate_cutoff(cutoff)\n\n    if policy == \"v2\":\n        orders_required, refunds_required = (\n            _V2_ORDERS_REQUIRED,\n            _V2_REFUNDS_REQUIRED,\n        )\n    else:\n        orders_required, refunds_required = _V1_ORDERS_REQUIRED, _V1_REFUNDS_REQUIRED\n\n    _, order_rows = _read_rows(orders_csv, orders_required, \"orders\")\n    _, refund_rows = _read_rows(refunds_csv, refunds_required, \"refunds\")\n\n    order_rows = _index_unique(order_rows, \"order_id\", \"orders\")\n    refund_rows = _index_unique(refund_rows, \"refund_id\", \"refunds\")\n\n    orders = {}\n    for row in order_rows:\n        order_id = row[\"order_id\"]\n        customer = row[\"customer\"]\n        status = row[\"status\"]\n        if customer == \"\":\n            raise ValueError(\"orders: customer 不能为空\")\n        if status not in (_PAID, _CANCELLED):\n            raise ValueError(\"orders: 未知 status %r\" % (status,))\n        paid_cents = _amount_to_cents(row[\"amount\"], \"orders %s\" % order_id, policy)\n        if policy == \"v2\":\n            created_at = _validate_timestamp(\n                row.get(\"created_at\", \"\"), \"orders %s\" % order_id\n            )\n            if status == _PAID and created_at > cutoff:\n                # 截止后订单：保留记录用于退款校验，但不计入结果。\n                status = _EXCLUDED\n        orders[order_id] = {\n            \"order_id\": order_id,\n            \"customer\": customer,\n            \"status\": status,\n            \"paid_cents\": paid_cents,\n        }\n\n    refund_by_order = {}\n    for row in refund_rows:\n        refund_id = row[\"refund_id\"]\n        order_id = row[\"order_id\"]\n        amount_cents = _amount_to_cents(\n            row[\"amount\"], \"refunds %s\" % refund_id, policy\n        )\n        if policy == \"v2\":\n            status = row[\"status\"]\n            if status not in (_SUCCEEDED, _PENDING):\n                raise ValueError(\"refunds: 未知 status %r\" % (status,))\n            created_at = _validate_timestamp(\n                row.get(\"created_at\", \"\"), \"refunds %s\" % refund_id\n            )\n            effective = status == _SUCCEEDED and created_at <= cutoff\n        else:\n            effective = True\n        if not effective:\n            # pending 或截止后退款不计入汇总。\n            continue\n        order = orders.get(order_id)\n        if order is None:\n            raise ValueError(\"refunds %s: 未知订单 %s\" % (refund_id, order_id))\n        if order[\"status\"] == _CANCELLED:\n            raise ValueError(\n                \"refunds %s: 订单 %s 不是 paid 状态\" % (refund_id, order_id)\n            )\n        if order[\"status\"] == _EXCLUDED:\n            # 订单存在但被截止时间排除：忽略该退款。\n            continue\n        refund_by_order[order_id] = refund_by_order.get(order_id, 0) + amount_cents\n\n    for order_id, order in orders.items():\n        if order[\"status\"] != _PAID:\n            continue\n        refunded = refund_by_order.get(order_id, 0)\n        if refunded > order[\"paid_cents\"]:\n            raise ValueError(\n                \"订单 %s 累计退款 %d 超过已付 %d\"\n                % (order_id, refunded, order[\"paid_cents\"])\n            )\n\n    result_orders = []\n    customer_totals = {}\n    total_paid = 0\n    total_refund = 0\n    for order_id in sorted(orders):\n        order = orders[order_id]\n        if order[\"status\"] != _PAID:\n            continue\n        paid_cents = order[\"paid_cents\"]\n        refund_cents = refund_by_order.get(order_id, 0)\n        net_cents = paid_cents - refund_cents\n        result_orders.append({\n            \"order_id\": order_id,\n            \"customer\": order[\"customer\"],\n            \"paid_cents\": paid_cents,\n            \"refund_cents\": refund_cents,\n            \"net_cents\": net_cents,\n        })\n        customer_totals[order[\"customer\"]] = (\n            customer_totals.get(order[\"customer\"], 0) + net_cents\n        )\n        total_paid += paid_cents\n        total_refund += refund_cents\n\n    customers = [\n        {\"customer\": name, \"net_cents\": customer_totals[name]}\n        for name in sorted(customer_totals)\n    ]\n    return {\n        \"orders\": result_orders,\n        \"customers\": customers,\n        \"totals\": {\n            \"paid_cents\": total_paid,\n            \"refund_cents\": total_refund,\n            \"net_cents\": total_paid - total_refund,\n        },\n    }\n\n\ndef export_bundle(result):\n    \"\"\"把对账结果导出为可序列化的文件集合（确定性 JSON）。\"\"\"\n    summary = {\n        \"totals\": result[\"totals\"],\n        \"customers\": result[\"customers\"],\n    }\n    return {\n        \"summary.json\": json.dumps(\n            summary, sort_keys=True, separators=(\",\", \":\"), ensure_ascii=False\n        ),\n        \"orders.json\": json.dumps(\n            result[\"orders\"], sort_keys=True, separators=(\",\", \":\"), ensure_ascii=False\n        ),\n    }\n",
+    "data/base/orders.csv": "order_id,customer,amount,status,created_at\nO01,A,10.10,paid,2026-10-01T10:00:00Z\nO02,A,20.20,paid,2026-10-02T10:00:00Z\nO03,B,8.00,cancelled,2026-10-02T12:00:00Z\nO04,B,9.90,paid,2026-10-03T10:00:00Z\nO01,A,10.10,paid,2026-10-01T10:00:00Z\n",
+    "data/base/refunds.csv": "refund_id,order_id,amount\nR01,O01,2.10\nR01,O01,2.10\nR02,O02,1.20\n",
+    "spec-v2.md": "# v2变更\n签名不变；policy=\"v2\"时，cutoff必填，格式YYYY-MM-DDTHH:MM:SSZ。订单增加/保留created_at；退款有status(succeeded或pending)、created_at。\n只计created_at<=cutoff的paid订单，只计created_at<=cutoff且succeeded的退款。pending、截止后退款、截止后订单均不计；退款对应订单存在但因截止时间排除时也忽略。真正不存在或cancelled订单的有效退款仍ValueError。\n订单/退款金额允许多位小数，Decimal ROUND_HALF_UP到整数分，先逐条取整再汇总。包含pending/截止后行的重复id冲突仍必须拒绝。所有日期均规范UTC字符串，比较字典序即可。\nv1仍保留旧金额限制和旧CSV列契约。输出结构与顺序保持v1；非法policy或v2无cutoff必须ValueError。\n",
+    "data/v2/orders.csv": "order_id,customer,amount,status,created_at\nO01,A,10.105,paid,2026-10-01T10:00:00Z\nO02,A,20.20,paid,2026-10-02T10:00:00Z\nO03,B,8.00,cancelled,2026-10-02T12:00:00Z\nO04,B,9.90,paid,2026-10-03T10:00:00Z\nO05,C,100.00,paid,2026-10-05T10:00:00Z\n",
+    "data/v2/refunds.csv": "refund_id,order_id,amount,status,created_at\nR01,O01,2.105,succeeded,2026-10-02T10:00:00Z\nR01,O01,2.105,succeeded,2026-10-02T10:00:00Z\nR02,O02,1.20,pending,2026-10-03T10:00:00Z\nR03,O04,1.10,succeeded,2026-10-05T10:00:00Z\n"
+  },
+  "grade": {
+    "checks": [
+      {
+        "name": "base_exact",
+        "pass": true
+      },
+      {
+        "name": "base_row_order",
+        "pass": true
+      },
+      {
+        "name": "empty",
+        "pass": true
+      },
+      {
+        "name": "v1_negative",
+        "pass": true
+      },
+      {
+        "name": "v1_precision",
+        "pass": true
+      },
+      {
+        "name": "v1_nan",
+        "pass": true
+      },
+      {
+        "name": "v1_infinity",
+        "pass": true
+      },
+      {
+        "name": "order_duplicate_conflict",
+        "pass": true
+      },
+      {
+        "name": "refund_duplicate_conflict",
+        "pass": true
+      },
+      {
+        "name": "unknown_refund",
+        "pass": true
+      },
+      {
+        "name": "cancelled_refund",
+        "pass": true
+      },
+      {
+        "name": "excess_refund",
+        "pass": true
+      },
+      {
+        "name": "zero_customer_decimal",
+        "pass": true
+      },
+      {
+        "name": "policy_invalid",
+        "pass": true
+      },
+      {
+        "name": "v2_exact",
+        "pass": true
+      },
+      {
+        "name": "v2_final",
+        "pass": true
+      },
+      {
+        "name": "v2_cutoff_missing",
+        "pass": true
+      },
+      {
+        "name": "v2_conflict_pending",
+        "pass": true
+      },
+      {
+        "name": "v2_future_order_refund",
+        "pass": true
+      },
+      {
+        "name": "v2_unknown_active",
+        "pass": true
+      },
+      {
+        "name": "v2_cancelled_active",
+        "pass": true
+      },
+      {
+        "name": "v2_excess",
+        "pass": true
+      },
+      {
+        "name": "v2_row_order",
+        "pass": true
+      },
+      {
+        "name": "v2_negative",
+        "pass": true
+      },
+      {
+        "name": "v2_inclusive_round_each",
+        "pass": true
+      }
+    ],
+    "pass": true,
+    "passed": 25,
+    "total": 25
+  },
+  "publication": {}
+}
