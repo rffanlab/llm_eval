@@ -1,0 +1,80 @@
+```python
+def schedule(tasks, capacity):
+    if not tasks:
+        return {"jobs": [], "makespan": 0}
+
+    task_map = {}
+    for task in tasks:
+        task_map[task["id"]] = task
+
+    for tid, task in task_map.items():
+        if task["units"] > capacity:
+            raise ValueError("units exceeds capacity")
+        for dep in task["deps"]:
+            if dep not in task_map:
+                raise ValueError("unknown dependency")
+
+    WHITE, GRAY, BLACK = 0, 1, 2
+    color = {tid: WHITE for tid in task_map}
+
+    def _dfs(tid):
+        color[tid] = GRAY
+        for dep in task_map[tid]["deps"]:
+            if color[dep] == GRAY:
+                raise ValueError("circular dependency")
+            if color[dep] == WHITE:
+                _dfs(dep)
+        color[tid] = BLACK
+
+    for tid in task_map:
+        if color[tid] == WHITE:
+            _dfs(tid)
+
+    completed = set()
+    running = []
+    pending = set(task_map.keys())
+    started = {}
+    t = 0
+
+    while pending or running:
+        new_running = []
+        for end_time, rid, runits in running:
+            if end_time <= t:
+                completed.add(rid)
+            else:
+                new_running.append((end_time, rid, runits))
+        running = new_running
+
+        available = capacity - sum(runits for _, _, runits in running)
+
+        candidates = sorted(
+            tid for tid in pending
+            if all(dep in completed for dep in task_map[tid]["deps"])
+        )
+
+        for tid in candidates:
+            units = task_map[tid]["units"]
+            if units <= available:
+                duration = task_map[tid]["duration"]
+                end = t + duration
+                started[tid] = (t, end)
+                running.append((end, tid, units))
+                pending.remove(tid)
+                available -= units
+
+        if not pending and not running:
+            break
+
+        if running:
+            t = min(end_time for end_time, _, _ in running)
+        else:
+            raise ValueError("deadlock")
+
+    jobs = sorted(
+        [{"id": tid, "start": s, "end": e} for tid, (s, e) in started.items()],
+        key=lambda x: x["id"],
+    )
+    makespan = max((e for _, e in started.values()), default=0)
+
+    return {"jobs": jobs, "makespan": makespan}
+```

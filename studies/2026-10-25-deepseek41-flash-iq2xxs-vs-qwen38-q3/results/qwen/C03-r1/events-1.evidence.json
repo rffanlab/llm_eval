@@ -1,0 +1,113 @@
+{
+  "response": {
+    "model": "qwen3.8-next-flash-unsloth-ud-q3-k-xl",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```python\ndef schedule(tasks, capacity):\n    if not tasks:\n        return {\"jobs\": [], \"makespan\": 0}\n\n    task_map = {}\n    for task in tasks:\n        task_map[task[\"id\"]] = task\n\n    for tid, task in task_map.items():\n        if task[\"units\"] > capacity:\n            raise ValueError(\"units exceeds capacity\")\n        for dep in task[\"deps\"]:\n            if dep not in task_map:\n                raise ValueError(\"unknown dependency\")\n\n    WHITE, GRAY, BLACK = 0, 1, 2\n    color = {tid: WHITE for tid in task_map}\n\n    def _dfs(tid):\n        color[tid] = GRAY\n        for dep in task_map[tid][\"deps\"]:\n            if color[dep] == GRAY:\n                raise ValueError(\"circular dependency\")\n            if color[dep] == WHITE:\n                _dfs(dep)\n        color[tid] = BLACK\n\n    for tid in task_map:\n        if color[tid] == WHITE:\n            _dfs(tid)\n\n    completed = set()\n    running = []\n    pending = set(task_map.keys())\n    started = {}\n    t = 0\n\n    while pending or running:\n        new_running = []\n        for end_time, rid, runits in running:\n            if end_time <= t:\n                completed.add(rid)\n            else:\n                new_running.append((end_time, rid, runits))\n        running = new_running\n\n        available = capacity - sum(runits for _, _, runits in running)\n\n        candidates = sorted(\n            tid for tid in pending\n            if all(dep in completed for dep in task_map[tid][\"deps\"])\n        )\n\n        for tid in candidates:\n            units = task_map[tid][\"units\"]\n            if units <= available:\n                duration = task_map[tid][\"duration\"]\n                end = t + duration\n                started[tid] = (t, end)\n                running.append((end, tid, units))\n                pending.remove(tid)\n                available -= units\n\n        if not pending and not running:\n            break\n\n        if running:\n            t = min(end_time for end_time, _, _ in running)\n        else:\n            raise ValueError(\"deadlock\")\n\n    jobs = sorted(\n        [{\"id\": tid, \"start\": s, \"end\": e} for tid, (s, e) in started.items()],\n        key=lambda x: x[\"id\"],\n    )\n    makespan = max((e for _, e in started.values()), default=0)\n\n    return {\"jobs\": jobs, \"makespan\": makespan}\n```",
+          "reasoning_content": "我们需要实现一个纯Python函数 schedule(tasks, capacity)。\n\n需求分析：\n- capacity 为正整数。\n- tasks 是 dict 列表，每项包含 id（唯一字符串）、duration（正整数）、units（正整数）、deps（前置 id 列表）。\n- 返回 {\"jobs\": 按 id 排序的 [{\"id\": id, \"start\": 整数, \"end\": 整数}], \"makespan\": 整数}。\n- 时间从 0 开始；任务不可抢占。\n- 每个事件时刻先释放全部已完成任务，再从所有依赖完成且未启动的任务按 id 字典序扫描：资源够就立即启动，不够就跳过并继续扫描其他任务。全部扫描后，推进到最早运行任务结束。\n- 资源和 duration 均为整数。\n- 任一未知依赖、循环依赖、units > capacity 抛 ValueError。\n- 空列表返回 jobs=[]、makespan=0。\n- 不得修改输入，不 import，不输出说明，仅交付完整 Python 函数及必要纯函数。\n\n算法设计：\n1. 验证输入：\n   - capacity 为正整数（但题目说 capacity 为正整数，可能不需要验证？但为了安全可以验证）\n   - tasks 为空则返回 {\"jobs\": [], \"makespan\": 0}\n   - 检查每个 task 的 id 唯一、duration 正整数、units 正整数、units <= capacity\n   - 检查 deps 中的 id 是否都在 tasks 中（未知依赖）\n   - 检查循环依赖（拓扑排序或 DFS）\n\n2. 模拟调度：\n   - 维护当前时间 t = 0\n   - 维护已完成任务集合 completed\n   - 维护正在运行的任务列表 running，每个元素包含 (end_time, id, units)\n   - 维护未启动任务集合 pending（所有任务 id）\n   - 维护已启动任务集合 started\n   - 维护每个任务的 start 和 end 时间\n\n   事件循环：\n   - 当 pending 不为空或 running 不为空时：\n     a. 释放已完成任务：将所有 end_time <= t 的 running 任务移到 completed，从 running 中移除\n     b. 扫描所有依赖完成且未启动的任务（按 id 字典序）：\n        - 对于每个未启动任务，如果其所有 deps 都在 completed 中，则尝试启动\n        - 如果当前可用资源 >= units，则启动：start = t, end = t + duration, 加入 running，从 pending 移除，加入 started\n        - 如果资源不够，跳过（继续扫描其他任务）\n     c. 如果 pending 不为空但没有任何任务可以启动（即所有未启动任务要么依赖未完成，要么资源不够），需要推进时间到最早运行任务结束\n     d. 如果 running 为空但 pending 不为空，说明有循环依赖或死锁（但前面已检查循环依赖，所以不应该发生）\n     e. 推进 t 到 running 中最早的 end_time\n\n   注意：步骤 b 中，\"资源够就立即启动，不够就跳过并继续扫描其他任务\"。这意味着在同一时刻，我们按 id 字典序扫描所有可启动任务，能启动的就启动，不能启动的跳过。\n\n3. 循环依赖检测：\n   - 使用 DFS 或 Kahn 算法检测循环依赖。\n   - 如果存在循环依赖，抛 ValueError。\n\n4. 未知依赖检测：\n   - 遍历所有 task 的 deps，检查每个 dep 是否在 task id 集合中。\n\n5. 返回结果：\n   - jobs 按 id 排序\n   - makespan 是所有任务 end 时间的最大值（如果没有任务则为 0）\n\n让我仔细考虑调度逻辑：\n\n事件时刻的处理：\n- 初始 t = 0\n- 循环：\n  1. 释放已完成任务（end <= t 的从 running 移到 completed）\n  2. 按 id 字典序扫描所有未启动且依赖已完成的候选任务：\n     - 对每个候选，如果可用资源 >= units，启动它\n     - 否则跳过\n  3. 如果所有任务都已完成（pending 为空且 running 为空），退出\n  4. 如果 running 为空但 pending 不为空，这是死锁（循环依赖已检测，但可能有其他问题？实际上如果循环依赖已检测，且所有依赖都在 tasks 中，那么不应该出现这种情况。但为了安全，可以抛 ValueError）\n  5. 推进 t 到 running 中最早的 end_time\n\n等等，让我重新理解\"每个事件时刻先释放全部已完成任务，再从所有依赖完成且未启动的任务按 id 字典序扫描\"。\n\n这意味着在每个事件时刻（包括 t=0），我们先释放，再扫描启动。\n\n推进到最早运行任务结束：如果 running 为空，那就没有可推进的了。但如果 pending 不为空且 running 为空，说明没有任务能启动（依赖未完成或资源不够），但资源不够的情况在 running 为空时不会发生（因为资源全空闲）。所以如果 running 为空且 pending 不为空，说明有依赖未完成，但依赖未完成意味着有循环依赖（因为所有依赖都在 tasks 中）。所以循环依赖检测应该能捕获这种情况。\n\n让我写代码：\n\n```python\ndef schedule(tasks, capacity):\n    if not tasks:\n        return {\"jobs\": [], \"makespan\": 0}\n    \n    # 验证 capacity\n    if not isinstance(capacity, int) or capacity <= 0:\n        raise ValueError(\"capacity must be a positive integer\")\n    \n    # 构建 id 集合和任务映射\n    task_map = {}\n    ids = []\n    for task in tasks:\n        tid = task[\"id\"]\n        if tid in task_map:\n            raise ValueError(\"duplicate id\")\n        task_map[tid] = task\n        ids.append(tid)\n    \n    # 验证每个任务\n    for tid, task in task_map.items():\n        if not isinstance(task[\"duration\"], int) or task[\"duration\"] <= 0:\n            raise ValueError(\"duration must be positive integer\")\n        if not isinstance(task[\"units\"], int) or task[\"units\"] <= 0:\n            raise ValueError(\"units must be positive integer\")\n        if task[\"units\"] > capacity:\n            raise ValueError(\"units exceeds capacity\")\n        for dep in task[\"deps\"]:\n            if dep not in task_map:\n                raise ValueError(\"unknown dependency\")\n    \n    # 循环依赖检测（DFS）\n    WHITE, GRAY, BLACK = 0, 1, 2\n    color = {tid: WHITE for tid in task_map}\n    \n    def dfs(tid):\n        color[tid] = GRAY\n        for dep in task_map[tid][\"deps\"]:\n            if color[dep] == GRAY:\n                raise ValueError(\"circular dependency\")\n            if color[dep] == WHITE:\n                dfs(dep)\n        color[tid] = BLACK\n    \n    for tid in task_map:\n        if color[tid] == WHITE:\n            dfs(tid)\n    \n    # 调度模拟\n    completed = set()\n    running = []  # list of (end_time, id, units)\n    pending = set(task_map.keys())\n    started = {}  # id -> (start, end)\n    t = 0\n    \n    while pending or running:\n        # 释放已完成任务\n        new_running = []\n        for end_time, rid, runits in running:\n            if end_time <= t:\n                completed.add(rid)\n            else:\n                new_running.append((end_time, rid, runits))\n        running = new_running\n        \n        # 计算当前可用资源\n        used = sum(runits for _, _, runits in running)\n        available = capacity - used\n        \n        # 按 id 字典序扫描候选任务\n        candidates = sorted(\n            tid for tid in pending\n            if all(dep in completed for dep in task_map[tid][\"deps\"])\n        )\n        \n        for tid in candidates:\n            units = task_map[tid][\"units\"]\n            if units <= available:\n                # 启动\n                duration = task_map[tid][\"duration\"]\n                start = t\n                end = t + duration\n                started[tid] = (start, end)\n                running.append((end, tid, units))\n                pending.remove(tid)\n                available -= units\n        \n        # 如果所有任务完成\n        if not pending and not running:\n            break\n        \n        # 推进到最早运行任务结束\n        if running:\n            t = min(end_time for end_time, _, _ in running)\n        else:\n            # running 为空但 pending 不为空，死锁\n            raise ValueError(\"deadlock detected\")\n    \n    # 构建结果\n    jobs = sorted(\n        [{\"id\": tid, \"start\": started[tid][0], \"end\": started[tid][1]} for tid in started],\n        key=lambda x: x[\"id\"]\n    )\n    makespan = max((e for _, e in started.values()), default=0)\n    \n    return {\"jobs\": jobs, \"makespan\": makespan}\n```\n\n等等，我需要再仔细看看调度逻辑。\n\n\"每个事件时刻先释放全部已完成任务，再从所有依赖完成且未启动的任务按 id 字典序扫描：资源够就立即启动，不够就跳过并继续扫描其他任务。全部扫描后，推进到最早运行任务结束。\"\n\n这里的关键是：在同一个事件时刻，我们扫描所有候选任务，能启动的就启动。但注意，启动一个任务后，available 减少了，后续任务可能因为资源不够而跳过。\n\n但还有一个问题：如果在一个事件时刻，我们启动了某些任务，然后推进到下一个事件时刻。在下一个事件时刻，我们再次释放、扫描。\n\n但考虑这种情况：在 t=0，任务 A（units=5, duration=10）和任务 B（units=5, duration=5）都可以启动，capacity=10。按 id 字典序，A 先启动，B 也启动。然后推进到 t=5（B 结束）。在 t=5，释放 B，扫描候选任务...\n\n这看起来正确。\n\n但还有一个微妙的问题：在扫描候选任务时，我们按 id 字典序排序。但如果一个任务因为资源不够被跳过，我们继续扫描其他任务。这意味着即使前面的任务被跳过，后面的任务如果资源够（因为跳过的任务没有占用资源），也可以启动。\n\n等等，不对。如果任务 A 需要 8 个单位，任务 B 需要 3 个单位，capacity=10。按 id 字典序 A 先扫描，A 需要 8 <= 10，启动 A，available=2。然后 B 需要 3 > 2，跳过。这是正确的行为。\n\n但如果 A 需要 12 > 10，A 被跳过（但 units > capacity 已经提前检查了，所以不会发生）。\n\n好的，逻辑看起来正确。\n\n让我再考虑一下：在扫描候选任务时，我们是在一个循环中逐个启动的。启动一个任务后 available 减少。这是正确的，因为\"资源够就立即启动\"。\n\n但等等，题目说\"资源够就立即启动，不够就跳过并继续扫描其他任务\"。这意味着在同一轮扫描中，如果任务 A 因为资源不够被跳过，任务 B 可能因为资源够而启动。这是正确的。\n\n但有一个问题：如果任务 A 被跳过（资源不够），但在同一轮中任务 B 被启动了，那么任务 A 是否应该被重新考虑？不，题目说\"不够就跳过并继续扫描其他任务\"，意味着在同一轮中跳过的任务不会被重新考虑。它会在下一个事件时刻被重新考虑。\n\n这是正确的。\n\n让我再检查一下：在扫描候选任务时，我们按 id 字典序排序所有候选。然后逐个尝试启动。如果启动成功，available 减少。如果失败，跳过。\n\n这看起来正确。\n\n现在让我考虑一个边界情况：如果没有任何候选任务（所有未启动任务都有未完成的依赖），但 running 不为空，我们推进到最早运行任务结束。这是正确的。\n\n如果没有任何候选任务且 running 为空，但 pending 不为空，这是死锁。但循环依赖检测应该已经捕获了这种情况。不过，如果循环依赖检测通过，但所有依赖都已完成，那候选任务应该不为空。所以这种情况不应该发生。\n\n等等，实际上循环依赖检测通过后，如果所有依赖都已完成，那么所有未启动任务都应该有所有依赖完成，所以候选任务应该包含所有未启动任务。如果候选任务为空但 pending 不为空，那意味着... 不可能，因为如果所有依赖都完成，所有 pending 任务都是候选。\n\n所以如果 running 为空且 pending 不为空，那意味着有依赖未完成，但 running 为空意味着没有任务在运行，所以依赖永远不会完成。这确实是死锁，但循环依赖检测应该已经捕获了。\n\n不过为了安全，保留这个检查。\n\n让我再想想循环依赖检测。DFS 检测循环依赖是正确的。\n\n还有一个问题：deps 列表可能包含重复的 id？题目没说，但应该没问题，因为检查 dep in completed 对重复 dep 也正确。\n\n让我再考虑一下\"不得修改输入\"。我的代码没有修改输入，只是读取。task_map 存储的是引用，但我没有修改 task 的内容。好的。\n\n让我再考虑一下 makespan。makespan 是所有任务 end 时间的最大值。如果没有任务，makespan=0。\n\n让我测试一个简单的例子：\n- tasks = [{\"id\": \"A\", \"duration\": 5, \"units\": 1, \"deps\": []}]\n- capacity = 1\n- t=0: 释放（无），扫描候选：A（依赖完成），units=1 <= 1，启动，start=0, end=5。推进到 t=5。\n- t=5: 释放 A，completed={A}。扫描候选：无（pending 为空）。退出。\n- jobs = [{\"id\": \"A\", \"start\": 0, \"end\": 5}], makespan = 5。正确。\n\n另一个例子：\n- tasks = [{\"id\": \"A\", \"duration\": 5, \"units\": 1, \"deps\": []}, {\"id\": \"B\", \"duration\": 3, \"units\": 1, \"deps\": [\"A\"]}]\n- capacity = 1\n- t=0: 释放（无），扫描候选：A（依赖完成），启动 A，start=0, end=5。推进到 t=5。\n- t=5: 释放 A，completed={A}。扫描候选：B（依赖 A 完成），启动 B，start=5, end=8。推进到 t=8。\n- t=8: 释放 B，completed={A,B}。退出。\n- jobs = [{\"id\": \"A\", \"start\": 0, \"end\": 5}, {\"id\": \"B\", \"start\": 5, \"end\": 8}], makespan = 8。正确。\n\n另一个例子（并行）：\n- tasks = [{\"id\": \"A\", \"duration\": 5, \"units\": 1, \"deps\": []}, {\"id\": \"B\", \"duration\": 3, \"units\": 1, \"deps\": []}]\n- capacity = 2\n- t=0: 释放（无），扫描候选：A, B（按 id 字典序）。A 启动（available=1），B 启动（available=0）。推进到 t=3（B 结束）。\n- t=3: 释放 B，completed={B}。扫描候选：无。推进到 t=5。\n- t=5: 释放 A，completed={A,B}。退出。\n- jobs = [{\"id\": \"A\", \"start\": 0, \"end\": 5}, {\"id\": \"B\", \"start\": 0, \"end\": 3}], makespan = 5。正确。\n\n另一个例子（资源不够）：\n- tasks = [{\"id\": \"A\", \"duration\": 5, \"units\": 2, \"deps\": []}, {\"id\": \"B\", \"duration\": 3, \"units\": 1, \"deps\": []}]\n- capacity = 2\n- t=0: 释放（无），扫描候选：A, B。A 需要 2 <= 2，启动，available=0。B 需要 1 > 0，跳过。推进到 t=5。\n- t=5: 释放 A，completed={A}。扫描候选：B，启动 B，start=5, end=8。推进到 t=8。\n- t=8: 释放 B。退出。\n- jobs = [{\"id\": \"A\", \"start\": 0, \"end\": 5}, {\"id\": \"B\", \"start\": 5, \"end\": 8}], makespan = 8。正确。\n\n但如果 B 的 id 是 \"A\"，A 的 id 是 \"B\"：\n- tasks = [{\"id\": \"B\", \"duration\": 5, \"units\": 2, \"deps\": []}, {\"id\": \"A\", \"duration\": 3, \"units\": 1, \"deps\": []}]\n- capacity = 2\n- t=0: 扫描候选按 id 字典序：A, B。A 需要 1 <= 2，启动，available=1。B 需要 2 > 1，跳过。推进到 t=3。\n- t=3: 释放 A，completed={A}。扫描候选：B，启动 B，start=3, end=8。推进到 t=8。\n- jobs = [{\"id\": \"A\", \"start\": 0, \"end\": 3}, {\"id\": \"B\", \"start\": 3, \"end\": 8}], makespan = 8。\n\n这展示了按 id 字典序扫描的影响。\n\n好的，代码看起来正确。\n\n让我再检查一下：在释放已完成任务时，我使用 end_time <= t。这是正确的，因为任务在 end_time 时刻完成，所以在 t 时刻（t >= end_time）释放。\n\n推进到最早运行任务结束：t = min(end_time for ...)。在下一个循环中，我们会释放 end_time <= t 的任务，即刚好在 t 时刻结束的任务。这是正确的。\n\n让我再考虑一个情况：如果多个任务在同一时刻结束。释放所有 end_time <= t 的任务。正确。\n\n现在让我考虑是否需要处理 deps 为空列表的情况。task_map[tid][\"deps\"] 可能是空列表，all(dep in completed for dep in []) 返回 True。正确。\n\n让我考虑是否需要验证 tasks 是列表。题目说 tasks 是 dict 列表，所以不需要额外验证。\n\n让我考虑是否需要验证 id 是字符串。题目说 id 是唯一字符串，所以不需要额外验证。\n\n让我考虑是否需要验证 duration 和 units 是正整数。题目说 duration 是正整数，units 是正整数。但为了安全，可以验证。不过题目说\"任一未知依赖、循环依赖、units>capacity抛ValueError\"，没有说其他验证。但为了健壮性，我还是加上基本验证。\n\n实际上，题目说\"capacity为正整数\"，\"duration(正整数)\"，\"units(正整数)\"，这些是输入约束，可能不需要验证。但 units > capacity 需要抛 ValueError。\n\n让我简化验证，只验证题目要求抛 ValueError 的情况：\n- 未知依赖\n- 循环依赖\n- units > capacity\n\n其他情况假设输入合法。\n\n但 id 唯一性呢？题目说\"id(唯一字符串)\"，所以假设输入保证唯一。但为了安全，可以检查。\n\n让我重新考虑：题目说\"任一未知依赖、循环依赖、units>capacity抛ValueError\"。这意味着只有这三种情况需要抛 ValueError。其他情况假设输入合法。\n\n但为了代码健壮性，我还是加上一些基本检查。\n\n实际上，让我不要过度验证，只验证题目明确要求的：\n1. units > capacity -> ValueError\n2. 未知依赖 -> ValueError\n3. 循环依赖 -> ValueError\n\nid 唯一性假设输入保证。\n\n让我重写代码，更简洁：\n\n```python\ndef schedule(tasks, capacity):\n    if not tasks:\n        return {\"jobs\": [], \"makespan\": 0}\n    \n    task_map = {}\n    for task in tasks:\n        tid = task[\"id\"]\n        task_map[tid] = task\n    \n    # 检查 units > capacity 和未知依赖\n    for tid, task in task_map.items():\n        if task[\"units\"] > capacity:\n            raise ValueError(\"units exceeds capacity\")\n        for dep in task[\"deps\"]:\n            if dep not in task_map:\n                raise ValueError(\"unknown dependency\")\n    \n    # 循环依赖检测\n    WHITE, GRAY, BLACK = 0, 1, 2\n    color = {tid: WHITE for tid in task_map}\n    \n    def dfs(tid):\n        color[tid] = GRAY\n        for dep in task_map[tid][\"deps\"]:\n            if color[dep] == GRAY:\n                raise ValueError(\"circular dependency\")\n            if color[dep] == WHITE:\n                dfs(dep)\n        color[tid] = BLACK\n    \n    for tid in task_map:\n        if color[tid] == WHITE:\n            dfs(tid)\n    \n    # 调度\n    completed = set()\n    running = []  # (end_time, id, units)\n    pending = set(task_map.keys())\n    started = {}\n    t = 0\n    \n    while pending or running:\n        # 释放已完成任务\n        new_running = []\n        for end_time, rid, runits in running:\n            if end_time <= t:\n                completed.add(rid)\n            else:\n                new_running.append((end_time, rid, runits))\n        running = new_running\n        \n        # 可用资源\n        available = capacity - sum(runits for _, _, runits in running)\n        \n        # 按 id 字典序扫描候选\n        candidates = sorted(\n            tid for tid in pending\n            if all(dep in completed for dep in task_map[tid][\"deps\"])\n        )\n        \n        for tid in candidates:\n            units = task_map[tid][\"units\"]\n            if units <= available:\n                duration = task_map[tid][\"duration\"]\n                end = t + duration\n                started[tid] = (t, end)\n                running.append((end, tid, units))\n                pending.remove(tid)\n                available -= units\n        \n        if not pending and not running:\n            break\n        \n        if running:\n            t = min(end_time for end_time, _, _ in running)\n        else:\n            raise ValueError(\"deadlock\")\n    \n    jobs = sorted(\n        [{\"id\": tid, \"start\": s, \"end\": e} for tid, (s, e) in started.items()],\n        key=lambda x: x[\"id\"]\n    )\n    makespan = max((e for _, e in started.values()), default=0)\n    \n    return {\"jobs\": jobs, \"makespan\": makespan}\n```\n\n这看起来不错。让我再检查一下是否有问题。\n\n等等，有一个问题：在 while 循环中，如果 pending 为空但 running 不为空，我们进入循环，释放已完成任务，扫描候选（无），然后推进到最早运行任务结束。这是正确的。\n\n如果 pending 不为空但 running 为空，且没有候选任务（所有 pending 任务都有未完成的依赖），但我们已经通过了循环依赖检测，所以这种情况不应该发生。但为了安全，raise ValueError(\"deadlock\")。\n\n实际上，让我再想想：如果循环依赖检测通过，是否意味着不会出现死锁？\n\n考虑：A 依赖 B，B 依赖 C，C 没有依赖。拓扑排序：C -> B -> A。没有循环。在 t=0，C 是候选，启动 C。推进到 C 结束。释放 C，B 成为候选，启动 B。推进到 B 结束。释放 B，A 成为候选，启动 A。没有死锁。\n\n如果循环依赖检测通过，那么存在拓扑排序，所以不会出现死锁。所以 deadlock 检查理论上不会触发。但保留作为安全网。\n\n好的，代码看起来正确。\n\n让我再考虑一下：题目说\"不得修改输入\"。我的代码中 task_map[tid] = task 存储的是引用，但我没有修改 task 的任何字段。pending = set(task_map.keys()) 创建了新集合。没有修改输入。好的。\n\n\"不 import\"：代码中没有 import。好的。\n\n\"不输出说明，仅交付完整Python函数及必要纯函数\"：只输出代码。好的。\n\n让我最终确认一下代码的正确性和完整性。\n\n实际上，我注意到一个问题：在释放已完成任务时，如果 running 中有多个任务在同一时刻结束，它们都会被释放。这是正确的。\n\n另一个问题：在扫描候选任务时，我使用 sorted() 按 id 字典序排序。Python 的 sorted() 对字符串默认按字典序排序。正确。\n\n还有一个问题：如果 tasks 列表中有重复 id，task_map 会覆盖。但题目说 id 唯一，所以不需要处理。\n\n让我再考虑一下 makespan 的计算。如果所有任务都完成了，makespan 是 max end。如果没有任务（空列表），makespan = 0。正确。\n\n我觉得代码是正确的。让我最终输出。\n\n等等，让我再仔细读一遍题目：\"每个事件时刻先释放全部已完成任务，再从所有依赖完成且未启动的任务按 id 字典序扫描：资源够就立即启动，不够就跳过并继续扫描其他任务。全部扫描后，推进到最早运行任务结束。\"\n\n\"全部扫描后，推进到最早运行任务结束\" - 这意味着在扫描完所有候选任务后，推进到最早运行任务的结束时间。如果 running 为空（没有任务在运行），那就不需要推进。但如果 pending 不为空且 running 为空，这是死锁。\n\n我的代码中：\n```python\nif not pending and not running:\n    break\n\nif running:\n    t = min(end_time for end_time, _, _ in running)\nelse:\n    raise ValueError(\"deadlock\")\n```\n\n这是正确的。\n\n但等等，还有一个情况：如果 pending 为空但 running 不为空，我们推进到最早运行任务结束，然后在下一次循环中释放。这是正确的。\n\n如果 pending 不为空且 running 不为空，我们推进到最早运行任务结束。这是正确的。\n\n好的，我对代码有信心了。\n\n让我再想想是否需要处理 deps 中包含自身 id 的情况。如果 task A 的 deps 包含 \"A\"，那么 A 永远无法启动（因为 A 不在 completed 中直到它完成，但它无法启动）。DFS 会检测到 GRAY -> GRAY 的循环。正确。\n\n最终代码确认完毕。\n"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 257,
+      "completion_tokens": 6425,
+      "total_tokens": 6682,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      }
+    },
+    "timings": {
+      "cache_n": 0,
+      "prompt_n": 257,
+      "prompt_ms": 2728.2,
+      "prompt_per_token_ms": 10.616,
+      "prompt_per_second": 94.2,
+      "predicted_n": 6425,
+      "predicted_ms": 118117.8,
+      "predicted_per_token_ms": 18.384,
+      "predicted_per_second": 54.4,
+      "draft_n": 5479,
+      "draft_n_accepted": 4267
+    }
+  },
+  "timing": {
+    "first_event_s": 0.004713802976766601,
+    "first_reasoning_s": 2.75615030300105,
+    "first_content_s": 108.21534726198297,
+    "first_tool_s": null,
+    "api_elapsed_s": 120.85270113899605,
+    "evidence_capture_s": 0.002210682985605672,
+    "HTTP_status": 200,
+    "SSE_DONE_seen": true,
+    "error": null,
+    "engine_log_begin_byte": 10794,
+    "engine_log_end_byte": 11367,
+    "engine_log_device": 66306,
+    "engine_log_inode": 8793155,
+    "request_SHA256": "7cd30f5f17af7471b01e5ad33abff715d3189db4a018e2f8365a9d6c2bce6143",
+    "native_capture": {
+      "capture_complete": true,
+      "capture_errors": [],
+      "metrics_new_request": {
+        "id": "dd894f13bf25",
+        "projection": null,
+        "time": 1793052857.9924889,
+        "duration_s": 120.8,
+        "finish": "stop",
+        "prompt_tokens": 257,
+        "reused": 0,
+        "output_tokens": 6425,
+        "first_engine_token_s": 2.751,
+        "prompt_total": 257,
+        "prompt_read": 257,
+        "reasoning_recoveries": 0,
+        "reasoning_repeat_coverage": 0.0,
+        "engine_generated": 6425,
+        "prompt_ms": 2728.2,
+        "decode_ms": 118117.8,
+        "decode_tok_s": 54.4,
+        "hit_rate": 0.863,
+        "pcie_share": 0.046,
+        "ram_blobs": 0,
+        "file_blobs": 0,
+        "file_mb": 0,
+        "drafts_offered": 5479,
+        "drafts_accepted": 4267
+      },
+      "all_GEN_legs": [
+        {
+          "prompt": 257,
+          "cache": 0,
+          "read": 257,
+          "generated": 6425,
+          "prompt_ms": 2728.0,
+          "decode_ms": 118118.0,
+          "expected_read": 257,
+          "line_no": 3,
+          "raw": "strata serve: prompt 257 tokens = 0 reused + 257 read in 2728 ms (94.2 tok/s), 6425 generated in 118118 ms (54.4 tok/s), drafts accepted 4267 of 5479, 1 checkpoints",
+          "prompt_complete": true
+        }
+      ],
+      "native": {
+        "native_legs": 1,
+        "capture_complete": true,
+        "new_prompt_tokens": 257,
+        "prompt_ms": 2728.0,
+        "generated_tokens": 6425,
+        "decode_ms": 118118.0,
+        "prefill_tok_s": 94.20821114369501,
+        "decode_tok_s": 54.39475778458829,
+        "timing_source": "native_engine_stderr_summaries",
+        "precision_note": "Use the native milliseconds as printed; do not reconstruct higher precision from displayed tok/s."
+      },
+      "internal_prefix_reuse_tokens": [],
+      "metrics_drafts_offered": 5479,
+      "metrics_drafts_accepted": 4267
+    },
+    "capture_exceptions": []
+  }
+}

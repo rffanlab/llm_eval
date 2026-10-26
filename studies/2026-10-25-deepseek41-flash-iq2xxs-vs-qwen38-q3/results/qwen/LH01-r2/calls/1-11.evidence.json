@@ -1,0 +1,123 @@
+{
+  "response": {
+    "model": "qwen3.8-next-flash-unsloth-ud-q3-k-xl",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "visible测试有1项失败：`order_duplicate_conflict` 期望抛 ValueError 但我的实现未抛出。原因可能是冲突发生在规范列之外的额外字段上，而我的去重指纹只覆盖了固定5列。改为对整行所有字段做指纹。",
+          "reasoning_content": "The order_duplicate_conflict test expects a ValueError (expected: null probably means an exception is expected). Our code should raise a ValueError for conflicting rows with the same order_id... but the actual result shows O01's paid as 1110, meaning the test data probably has O01 with a different amount (e.g., 11.10) — wait, but then the digest should differ and a ValueError should be raised. Hmm, but the actual output shows it returned normally. Wait — maybe the conflicting rows differ in a column not in order_columns? For example, created_at differs? No, created_at is included in order_columns. Hmm, but the actual output shows paid 1110 for O01 — so the test data has two rows for O01: 10.10 and 11.10? Then the digests would differ and a ValueError should be raised. But the actual result shows no exception...\n\nWait — maybe the test is passing the conflict in a different form: same id, same amount, but different customer? Then the digests would differ → ValueError. Hmm.\n\nActually, maybe the test expects a ValueError but our code... the \"actual\" shows a result dict, meaning no exception was raised. Why? Perhaps the test's CSV rows have trailing spaces or the header order is different? Our _read_rows strips values. If the conflict is in a field like status \"PAID\" vs \"paid\"... we lowercase status when storing, but the digest uses the raw stripped value, so the digests would differ → error. Hmm.\n\nWait, maybe the test's conflict is: same order_id, same fields except created_at? We include created_at in the digest columns... but what if the orders CSV doesn't have a created_at column? _digest uses row.get(column, \"\") — missing column → \"\". Both rows \"\" → equal. Then the conflict would be in amount: 10.10 vs 11.10 → digests differ → error. Hmm.\n\nLet me think: the actual output shows O01's paid_cents is 1110. So the second row's amount 11.10 was used? No — we skip duplicates (continue), so the first row's paid_cents should be used. Unless the first row was 11.10. The actual shows 1110, and refund 210 (R01 applies). So the first row's amount was 11.10, and the second row was different but no error was raised.\n\nHmm, maybe the conflict is in whitespace: \"A\" vs \"A \" — we strip, so they become equal. The spec says \"if any field differs, must raise ValueError\" — but since we strip, the fields are considered equal. But the test expects an error. Hmm, but stripping is reasonable...\n\nAlternatively, the conflict is in amount formatting: \"11.10\" vs \"11.1\" — numerically the same amount but the field strings differ. Our digest compares raw strings → digests differ → error raised. But the actual shows no error...\n\nWait, maybe the test framework catches exceptions and reports actual as None when an exception occurs? \"expected\": null might mean the expected result is an exception. And \"actual\" shows a dict — meaning no exception was raised. So our code didn't raise.\n\nLet me double-check the digest logic: order_digests[order_id] is only set when a row is first added. Looking at the code:\n\n```\nif order_id in order_digests:\n    if order_digests[order_id] != digest: raise\n    continue\ndigest = ... \n```\n\nWait, the order: compute digest first, then check. Let me re-read what I wrote:\n\n```\ndigest = _digest(row, order_columns)\nif order_id in order_digests:\n    if order_digests[order_id] != digest:\n        raise ValueError(...)\n    continue\n```\n\nHmm wait, did I write `digest = _digest(...)` before the check? Yes. And order_digests[order_id] = digest is set later. Looks correct.\n\nBut wait — order_columns contains \"status\", and the row dict keys come from the header. If the test CSV's header is different (e.g., no created_at), the digest uses \"\" for both. The conflict must be in a column we're not including... which columns could the test vary? Maybe \"created_at\" is named differently, like \"created\"? Then row.get(\"created_at\",\"\") = \"\" for both rows, and the conflict in the created column is ignored → no error. And the amount: first row 11.10? The actual shows 1110.\n\nHmm, but the base_exact test passed with our column names. The conflict test probably uses the same header. Let me think: maybe the conflict is in status: \"paid\" vs \"Paid\"? We lowercase status when storing, but the digest uses raw values → different → error. So that's not it.\n\nMaybe the test expects an error but our code raised one... no, the actual shows a dict.\n\nOr, maybe the test's semantics are: \"expected\": null means the test expects an exception, and the harness reports actual as the returned value when no exception occurs. Our code didn't raise. Why?\n\nPossibility: the test's conflict rows are identical except for amount formatting: \"11.10\" vs \"11.100\"? Both parse to 1110. The digests differ as strings → error. Not it.\n\nPossibility: the test's conflict rows differ in a field we're normalizing: status \"PAID\" vs \"paid\"? The digests differ → error. Not it.\n\nPossibility: the test's conflict rows differ in customer's case? \"a\" vs \"A\"? The digests differ → error.\n\nHmm, maybe the test's conflict rows differ in created_at, and the test considers created_at metadata that shouldn't trigger a conflict? But the spec says \"if any field differs, must raise ValueError\". The test expects an error (expected null). Our code should raise... unless the header order is different and our zip mapping fails? We map by header name, so that's fine.\n\nWait — maybe the test passes orders_csv with \\r\\n line endings? csv.reader handles that.\n\nLet me reconsider: maybe the test expects no error, and expected null means... hmm, \"expected\": null might just mean the harness doesn't disclose the expected value. The failure detail shows actual. Maybe the test expects a ValueError but our code returned a result. Or maybe the test expects a specific result and our result differs.\n\nActually, maybe the test expects an error and our code didn't raise because... let me trace: rows: O01,A,10.10,paid,... and O01,A,11.10,paid,...? First row's paid=1010, actual shows 1110. So the first row is 11.10. Maybe the rows are: O01 ... 11.10 ... then O01 ... 10.10 ...? Then the digests differ → raise. So that's not it.\n\nUnless the two rows are byte-identical except for amount, and the amount strings are \"11.1\" and \"11.10\"? The digests differ → raise.\n\nHmm, maybe the conflict is in refund? No, the test name is order_duplicate_conflict.\n\nMaybe the test's CSV has extra columns like \"note\" that we don't include in order_columns, and the conflict is there. Our digest only uses the 5 canonical columns; the conflict in an extra column is ignored → no error. The spec says any field differs → ValueError. Fix: include all columns in the digest, not just the canonical ones. That's a robust fix: digest the entire row (all columns). Let's change _digest to use all columns present in the row (sorted keys or header order).\n\nAlso, the actual result shows O01's paid 1110 — consistent with the conflict being in an extra column? But then the amounts would be equal... the base data's O01 is 10.10, but the conflict test is separate data with 11.10. The conflict could be in an extra column like \"note\". Including all columns in the digest would fix it.\n\nLet's update: digest = _digest(row, sorted(row.keys())) — but the row dict is built from columns; use tuple(columns) from the header. Simpler: pass row and digest all values in header order. Change _digest to accept a list of columns; call it with all columns from the header. Need to keep the header list. Modify _read_rows to return (rows, columns)? Or just digest sorted(row.items()). Use json-style payload: join \"k=v\" pairs sorted by key.\n\nLet's rewrite: _digest(row): payload = \"\\x1f\".join(\"%s=%s\" % (k, row[k]) for k in sorted(row)). This covers all fields.\n\nAlso, the refund conflict test is probably similar.\n\nLet's update the code accordingly.\n",
+          "tool_calls": [
+            {
+              "id": "call_f2e6c6d59112428f8a60b424",
+              "type": "function",
+              "function": {
+                "name": "write_file",
+                "arguments": "{\"path\":\"workflow.py\",\"content\":\"import csv\\nimport io\\nimport json\\nimport hashlib\\nfrom decimal import Decimal, InvalidOperation\\n\\n\\ndef _parse_amount(raw, context):\\n    if raw is None:\\n        raise ValueError(\\\"%s: missing amount\\\" % context)\\n    text = raw.strip()\\n    if text == \\\"\\\":\\n        raise ValueError(\\\"%s: empty amount\\\" % context)\\n    lowered = text.lower()\\n    if lowered in (\\\"nan\\\", \\\"inf\\\", \\\"+inf\\\", \\\"-inf\\\", \\\"infinity\\\", \\\"+infinity\\\", \\\"-infinity\\\"):\\n        raise ValueError(\\\"%s: NaN/Infinity not allowed: %r\\\" % (context, raw))\\n    try:\\n        value = Decimal(text)\\n    except InvalidOperation:\\n        raise ValueError(\\\"%s: invalid decimal amount %r\\\" % (context, raw))\\n    if not value.is_finite():\\n        raise ValueError(\\\"%s: non-finite amount %r\\\" % (context, raw))\\n    if value < 0:\\n        raise ValueError(\\\"%s: negative amount %r\\\" % (context, raw))\\n    exponent = value.as_tuple().exponent\\n    if not isinstance(exponent, int) or exponent < -2:\\n        raise ValueError(\\\"%s: more than two decimal places: %r\\\" % (context, raw))\\n    return int((value * 100).to_integral_exact())\\n\\n\\ndef _read_rows(csv_text, required, label):\\n    if csv_text is None:\\n        raise ValueError(\\\"%s csv is None\\\" % label)\\n    reader = csv.reader(io.StringIO(csv_text))\\n    try:\\n        header = next(reader)\\n    except StopIteration:\\n        raise ValueError(\\\"%s csv must contain a header row\\\" % label)\\n    columns = [name.strip() for name in header]\\n    for name in required:\\n        if name not in columns:\\n            raise ValueError(\\\"%s csv missing column: %s\\\" % (label, name))\\n    rows = []\\n    for line in reader:\\n        if len(line) == 1 and (line[0] is None or line[0].strip() == \\\"\\\"):\\n            continue\\n        if len(line) != len(columns):\\n            raise ValueError(\\\"%s csv row has wrong field count: %r\\\" % (label, line))\\n        rows.append({name: (value.strip() if value is not None else \\\"\\\") for name, value in zip(columns, line)})\\n    return rows\\n\\n\\ndef _digest(row):\\n    payload = \\\"\\\\x1f\\\".join(\\\"%s=%s\\\" % (key, row[key]) for key in sorted(row))\\n    return hashlib.sha256(payload.encode(\\\"utf-8\\\")).hexdigest()\\n\\n\\ndef _validate_policy(policy):\\n    if policy != \\\"v1\\\":\\n        raise ValueError(\\\"unsupported policy: %r\\\" % (policy,))\\n\\n\\ndef _validate_cutoff(cutoff):\\n    if cutoff is None:\\n        return\\n    if not isinstance(cutoff, str) or not cutoff.strip():\\n        raise ValueError(\\\"cutoff must be a non-empty string or None\\\")\\n\\n\\ndef reconcile(orders_csv, refunds_csv, policy=\\\"v1\\\", cutoff=None):\\n    _validate_policy(policy)\\n    _validate_cutoff(cutoff)\\n\\n    order_rows = _read_rows(orders_csv, [\\\"order_id\\\", \\\"customer\\\", \\\"amount\\\", \\\"status\\\"], \\\"orders\\\")\\n    refund_rows = _read_rows(refunds_csv, [\\\"refund_id\\\", \\\"order_id\\\", \\\"amount\\\"], \\\"refunds\\\")\\n\\n    orders = {}\\n    order_digests = {}\\n    for row in order_rows:\\n        order_id = row[\\\"order_id\\\"]\\n        if order_id == \\\"\\\":\\n            raise ValueError(\\\"orders: empty order_id\\\")\\n        digest = _digest(row)\\n        if order_id in order_digests:\\n            if order_digests[order_id] != digest:\\n                raise ValueError(\\\"orders: conflicting rows for order_id %s\\\" % order_id)\\n            continue\\n        order_digests[order_id] = digest\\n        paid_cents = _parse_amount(row[\\\"amount\\\"], \\\"orders %s\\\" % order_id)\\n        orders[order_id] = {\\n            \\\"order_id\\\": order_id,\\n            \\\"customer\\\": row[\\\"customer\\\"],\\n            \\\"status\\\": row[\\\"status\\\"].lower(),\\n            \\\"paid_cents\\\": paid_cents,\\n            \\\"refund_cents\\\": 0,\\n        }\\n\\n    refund_digests = {}\\n    for row in refund_rows:\\n        refund_id = row[\\\"refund_id\\\"]\\n        if refund_id == \\\"\\\":\\n            raise ValueError(\\\"refunds: empty refund_id\\\")\\n        digest = _digest(row)\\n        if refund_id in refund_digests:\\n            if refund_digests[refund_id] != digest:\\n                raise ValueError(\\\"refunds: conflicting rows for refund_id %s\\\" % refund_id)\\n            continue\\n        refund_digests[refund_id] = digest\\n        order_id = row[\\\"order_id\\\"]\\n        if order_id not in orders:\\n            raise ValueError(\\\"refunds: unknown order_id %s for refund %s\\\" % (order_id, refund_id))\\n        order = orders[order_id]\\n        if order[\\\"status\\\"] != \\\"paid\\\":\\n            raise ValueError(\\\"refunds: refund %s targets non-paid order %s\\\" % (refund_id, order_id))\\n        refund_cents = _parse_amount(row[\\\"amount\\\"], \\\"refunds %s\\\" % refund_id)\\n        order[\\\"refund_cents\\\"] += refund_cents\\n        if order[\\\"refund_cents\\\"] > order[\\\"paid_cents\\\"]:\\n            raise ValueError(\\n                \\\"refunds: cumulative refund %d exceeds paid %d for order %s\\\"\\n                % (order[\\\"refund_cents\\\"], order[\\\"paid_cents\\\"], order_id)\\n            )\\n\\n    result_orders = []\\n    customer_totals = {}\\n    total_paid = 0\\n    total_refund = 0\\n    for order_id in sorted(orders):\\n        order = orders[order_id]\\n        if order[\\\"status\\\"] != \\\"paid\\\":\\n            continue\\n        net_cents = order[\\\"paid_cents\\\"] - order[\\\"refund_cents\\\"]\\n        result_orders.append(\\n            {\\n                \\\"order_id\\\": order[\\\"order_id\\\"],\\n                \\\"customer\\\": order[\\\"customer\\\"],\\n                \\\"paid_cents\\\": order[\\\"paid_cents\\\"],\\n                \\\"refund_cents\\\": order[\\\"refund_cents\\\"],\\n                \\\"net_cents\\\": net_cents,\\n            }\\n        )\\n        total_paid += order[\\\"paid_cents\\\"]\\n        total_refund += order[\\\"refund_cents\\\"]\\n        customer_totals[order[\\\"customer\\\"]] = customer_totals.get(order[\\\"customer\\\"], 0) + net_cents\\n\\n    customers = [\\n        {\\\"customer\\\": name, \\\"net_cents\\\": customer_totals[name]}\\n        for name in sorted(customer_totals)\\n    ]\\n    return {\\n        \\\"orders\\\": result_orders,\\n        \\\"customers\\\": customers,\\n        \\\"totals\\\": {\\n            \\\"paid_cents\\\": total_paid,\\n            \\\"refund_cents\\\": total_refund,\\n            \\\"net_cents\\\": total_paid - total_refund,\\n        },\\n    }\\n\\n\\ndef export_bundle(result):\\n    summary = {\\n        \\\"totals\\\": result[\\\"totals\\\"],\\n        \\\"order_count\\\": len(result[\\\"orders\\\"]),\\n        \\\"customer_count\\\": len(result[\\\"customers\\\"]),\\n    }\\n    return {\\\"summary.json\\\": json.dumps(summary, sort_keys=True)}\\n\"}"
+              }
+            }
+          ]
+        },
+        "finish_reason": "tool_calls"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 3981,
+      "completion_tokens": 3650,
+      "total_tokens": 7631,
+      "prompt_tokens_details": {
+        "cached_tokens": 3652
+      }
+    },
+    "timings": {
+      "cache_n": 3652,
+      "prompt_n": 329,
+      "prompt_ms": 3421.6,
+      "prompt_per_token_ms": 10.4,
+      "prompt_per_second": 96.2,
+      "predicted_n": 3650,
+      "predicted_ms": 68092.8,
+      "predicted_per_token_ms": 18.656,
+      "predicted_per_second": 53.6,
+      "draft_n": 3030,
+      "draft_n_accepted": 2389
+    }
+  },
+  "timing": {
+    "first_event_s": 0.004159667994827032,
+    "first_reasoning_s": 3.474794784007827,
+    "first_content_s": 40.10052131200791,
+    "first_tool_s": 41.825847611995414,
+    "api_elapsed_s": 71.52278806001414,
+    "evidence_capture_s": 0.002669709996553138,
+    "HTTP_status": 200,
+    "SSE_DONE_seen": true,
+    "error": null,
+    "engine_log_begin_byte": 62724,
+    "engine_log_end_byte": 63465,
+    "engine_log_device": 66306,
+    "engine_log_inode": 8793155,
+    "request_SHA256": "ef6f0092999b611d7f66830b2b55354f7e22b773b3474b10bd89aa660428c7dd",
+    "native_capture": {
+      "capture_complete": true,
+      "capture_errors": [],
+      "metrics_new_request": {
+        "id": "de8a6723d944",
+        "projection": null,
+        "time": 1793054146.6084266,
+        "duration_s": 71.5,
+        "finish": "stop",
+        "prompt_tokens": 3981,
+        "reused": 3652,
+        "output_tokens": 3650,
+        "first_engine_token_s": 3.471,
+        "prompt_total": 3981,
+        "prompt_read": 329,
+        "reasoning_recoveries": 0,
+        "reasoning_repeat_coverage": 0.0,
+        "engine_generated": 3650,
+        "prompt_ms": 3421.6,
+        "decode_ms": 68092.8,
+        "decode_tok_s": 53.6,
+        "hit_rate": 0.862,
+        "pcie_share": 0.049,
+        "ram_blobs": 0,
+        "file_blobs": 0,
+        "file_mb": 0,
+        "drafts_offered": 3030,
+        "drafts_accepted": 2389
+      },
+      "all_GEN_legs": [
+        {
+          "prompt": 3981,
+          "cache": 3652,
+          "read": 329,
+          "generated": 3650,
+          "prompt_ms": 3422.0,
+          "decode_ms": 68093.0,
+          "expected_read": 329,
+          "line_no": 3,
+          "raw": "strata serve: prompt 3981 tokens = 3652 reused + 329 read in 3422 ms (96.2 tok/s), 3650 generated in 68093 ms (53.6 tok/s), drafts accepted 2389 of 3030, 6 checkpoints",
+          "prompt_complete": true
+        }
+      ],
+      "native": {
+        "native_legs": 1,
+        "capture_complete": true,
+        "new_prompt_tokens": 329,
+        "prompt_ms": 3422.0,
+        "generated_tokens": 3650,
+        "decode_ms": 68093.0,
+        "prefill_tok_s": 96.1426066627703,
+        "decode_tok_s": 53.60316038359302,
+        "timing_source": "native_engine_stderr_summaries",
+        "precision_note": "Use the native milliseconds as printed; do not reconstruct higher precision from displayed tok/s."
+      },
+      "internal_prefix_reuse_tokens": [],
+      "metrics_drafts_offered": 3030,
+      "metrics_drafts_accepted": 2389
+    },
+    "capture_exceptions": []
+  }
+}

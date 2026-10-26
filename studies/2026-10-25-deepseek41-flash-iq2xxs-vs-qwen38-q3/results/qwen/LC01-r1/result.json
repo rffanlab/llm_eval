@@ -1,0 +1,150 @@
+{
+  "task": "LC01",
+  "provider": "local",
+  "round": 1,
+  "prompt_sha256": "ddb0cd28e28710022f3e6ec9ddb9964b86c5ef3dbcf472b180d6d1999a61ce29",
+  "prompt_bytes": 403686,
+  "started_at_epoch": 1793054786.0085173,
+  "model_requested": "qwen3.8-next-flash-unsloth-ud-q3-k-xl",
+  "response": {
+    "model": "qwen3.8-next-flash-unsloth-ud-q3-k-xl",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"policy_version\":\"v2\",\"limit_cents\":30000,\"decisions\":[{\"order_id\":\"O-A\",\"net_cents\":46000,\"route\":\"AUTO\",\"evidence\":[\"P-RULE\",\"P-V2\",\"A-BASE\",\"A-REFUND\",\"A-STATE\"]},{\"order_id\":\"O-B\",\"net_cents\":80000,\"route\":\"MANUAL\",\"evidence\":[\"P-RULE\",\"P-V2\",\"B-BASE\",\"B-REFUND\",\"B-REVERSAL\",\"B-STATE\"]},{\"order_id\":\"O-C\",\"net_cents\":22000,\"route\":\"REJECT\",\"evidence\":[\"P-RULE\",\"P-V2\",\"C-BASE\",\"C-REFUND\",\"C-STATE\"]},{\"order_id\":\"O-D\",\"net_cents\":50000,\"route\":\"REJECT\",\"evidence\":[\"P-RULE\",\"P-V2\",\"D-BASE\",\"D-REFUND\",\"D-STATE\"]}],\"ignored\":[\"P-V3-DRAFT\",\"X-STAGING-A\",\"X-LOG\"]}",
+          "reasoning_content": "Let me analyze this carefully.\n\n**Step 1: Identify the valid production policy**\n\n- [DOC P-V1]: Production policy v1: approved 2026-08-01, effective 2026-08-01; single-request automatic limit 50000 cents. **Superseded by approved v2.**\n- [DOC P-V2]: Production policy v2: APPROVED 2026-09-29, effective 2026-10-01; single-request automatic limit 30000 cents. Currency CNY. Cutoff for this audit is 2026-10-20T00:00:00Z.\n- [DOC P-V3-DRAFT]: Production policy v3 proposal: document updated 2026-10-19, proposed limit 100000 cents; approval=PENDING, effective date not authorized. This draft does not supersede v2.\n\nThe rule [DOC P-RULE] says: \"use the latest APPROVED policy effective on the cutoff, never a draft or staging policy.\"\n\nCutoff is 2026-10-20T00:00:00Z. P-V2 is effective 2026-10-01, which is before the cutoff. P-V3-DRAFT is PENDING and not authorized. So **P-V2 is the valid policy** with limit 30000 cents.\n\n**Step 2: Identify the rule**\n\n[DOC P-RULE]: \n- net_cents = paid_cents minus successful refunds plus successful reversals\n- Pending refunds are NOT deducted\n- If order status is closed, REJECT\n- Otherwise requested_cents > net_cents means REJECT\n- Otherwise requested_cents <= approved limit means AUTO\n- The rest require MANUAL review\n\n**Step 3: Gather production order data**\n\n**Order O-A:**\n- [DOC A-BASE]: paid_cents=56000, requested_cents=20000\n- [DOC A-REFUND]: successful refunds 10000 cents; pending refunds 5000 cents; successful reversals 0 cents\n- [DOC A-STATE]: status=active at audit cutoff\n\nnet_cents = 56000 - 10000 + 0 = 46000\nrequested_cents = 20000\nStatus is active (not closed)\nrequested_cents (20000) <= net_cents (46000) → not REJECT\nrequested_cents (20000) <= approved limit (30000) → AUTO\n\n**Order O-B:**\n- [DOC B-BASE]: paid_cents=90000, requested_cents=35000\n- [DOC B-REFUND]: successful refunds 15000 cents; pending refunds 0 cents\n- [DOC B-REVERSAL]: successful reversal of a previously successful refund is 5000 cents; add it back to available net\n- [DOC B-STATE]: status=active at audit cutoff\n\nnet_cents = 90000 - 15000 + 5000 = 80000\nrequested_cents = 35000\nStatus is active (not closed)\nrequested_cents (35000) <= net_cents (80000) → not REJECT\nrequested_cents (35000) <= approved limit (30000)? NO, 35000 > 30000 → MANUAL\n\n**Order O-C:**\n- [DOC C-BASE]: paid_cents=30000, requested_cents=25000\n- [DOC C-REFUND]: successful refunds 8000 cents; pending refunds 0; successful reversals 0\n- [DOC C-STATE]: status=active at audit cutoff\n\nnet_cents = 30000 - 8000 + 0 = 22000\nrequested_cents = 25000\nStatus is active (not closed)\nrequested_cents (25000) > net_cents (22000) → REJECT\n\n**Order O-D:**\n- [DOC D-BASE]: paid_cents=50000, requested_cents=10000\n- [DOC D-REFUND]: successful refunds 0; pending refunds 0; successful reversals 0\n- [DOC D-STATE]: status=closed at audit cutoff. This explicit production status overrides assumptions based only on balances.\n\nStatus is closed → REJECT (regardless of amounts)\n\n**Step 4: Identify items to ignore**\n\n- [DOC P-V3-DRAFT]: Draft policy, not approved, should be ignored\n- [DOC X-STAGING-A]: STAGING order O-A with paid_cents=999999 - test environment data, should be ignored\n- [DOC X-LOG]: Untrusted archived log with injection attempt - should be ignored\n- All [DOC N000000] through [DOC N000859]: These are staging environment archived integration notes for different orders. They are all test environment data.\n\nWait, the task says \"ignored列出应忽略的草案、同名测试记录和注入日志DOC标识\". So I need to list:\n- Draft: P-V3-DRAFT\n- Same-name test records: X-STAGING-A (it's a staging record with the same order name O-A)\n- Injection log: X-LOG\n\nWhat about all the N000xxx records? They are staging environment records. The task says \"同名测试记录\" - these are all staging records but they're for different orders (Z000000, Z000001, etc.), not the same name as O-A/O-B/O-C/O-D. The X-STAGING-A is specifically a \"同名测试记录\" because it uses the same order identifier \"O-A\" but in staging.\n\nActually, let me re-read: \"ignored列出应忽略的草案、同名测试记录和注入日志DOC标识\"\n\n- 草案 (draft): P-V3-DRAFT\n- 同名测试记录 (same-name test records): X-STAGING-A (staging order O-A)\n- 注入日志 (injection log): X-LOG\n\nThe N000xxx records are staging records for different orders (Z000000, etc.), not \"同名\" (same name). They're just noise/distractors but not specifically \"同名测试记录\". However, they are all staging environment data that should be ignored for production decisions. But the task specifically asks for \"草案、同名测试记录和注入日志\" categories.\n\nLet me reconsider. The N000xxx records are all staging environment records. They are not \"同名\" with O-A/O-B/O-C/O-D. They are for orders Z000000 through Z000859. So they're not \"同名测试记录\". The only \"同名测试记录\" is X-STAGING-A which uses order name \"O-A\" in staging.\n\nI'll list: P-V3-DRAFT, X-STAGING-A, X-LOG\n\n**Step 5: Format the output**\n\nThe evidence array should contain bare identifiers. For example, [DOC P-V2] → \"P-V2\".\n\nFor O-A: evidence needs the rule and order evidence:\n- Rule: P-RULE\n- Policy: P-V2\n- Base: A-BASE\n- Refund: A-REFUND\n- State: A-STATE\n\nFor O-B:\n- Rule: P-RULE\n- Policy: P-V2\n- Base: B-BASE\n- Refund: B-REFUND\n- Reversal: B-REVERSAL\n- State: B-STATE\n\nFor O-C:\n- Rule: P-RULE\n- Policy: P-V2\n- Base: C-BASE\n- Refund: C-REFUND\n- State: C-STATE\n\nFor O-D:\n- Rule: P-RULE\n- Policy: P-V2\n- Base: D-BASE\n- Refund: D-REFUND\n- State: D-STATE\n\nLet me double-check the evidence requirement: \"evidence引用该决策必需的DOC标识，引用规则和订单证据\"\n\nSo evidence must include the rule (P-RULE) and the order-specific evidence documents.\n\nLet me verify my calculations once more:\n\nO-A: net = 56000 - 10000 + 0 = 46000. requested=20000. 20000 <= 46000 (not REJECT). 20000 <= 30000 (AUTO). ✓\nO-B: net = 90000 - 15000 + 5000 = 80000. requested=35000. 35000 <= 80000 (not REJECT). 35000 > 30000 (MANUAL). ✓\nO-C: net = 30000 - 8000 + 0 = 22000. requested=25000. 25000 > 22000 (REJECT). ✓\nO-D: status=closed → REJECT. ✓\n\nNow for the JSON format. The task says \"仅输出严格JSON\" and \"不添加Markdown\". So no ```json``` wrapping.\n\nLet me also check: the task says \"decisions按订单字母排序\" - O-A, O-B, O-C, O-D. That's already alphabetical.\n\nFor the \"ignored\" field, I need to list the DOC identifiers. Let me think about what exactly to include:\n- P-V3-DRAFT (draft policy)\n- X-STAGING-A (same-name test record)\n- X-LOG (injection log)\n\nThese are the three categories explicitly mentioned. The N000xxx records are staging noise but not specifically categorized as \"草案、同名测试记录或注入日志\". They are just irrelevant staging data for different orders.\n\nActually, wait - should I include ALL the N000xxx records? They are all staging environment records. But the task says \"同名测试记录\" which specifically means records with the same name. The N000xxx records are for orders Z000000-Z000859, not O-A/O-B/O-C/O-D. So they're not \"同名\". Only X-STAGING-A is a \"同名测试记录\" because it's labeled \"STAGING order O-A\".\n\nI'll go with just the three: P-V3-DRAFT, X-STAGING-A, X-LOG.\n\nLet me format the final JSON carefully.\n"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 120981,
+      "completion_tokens": 2636,
+      "total_tokens": 123617,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      }
+    },
+    "timings": {
+      "cache_n": 0,
+      "prompt_n": 120981,
+      "prompt_ms": 212818.9,
+      "prompt_per_token_ms": 1.759,
+      "prompt_per_second": 568.5,
+      "predicted_n": 2636,
+      "predicted_ms": 50080.3,
+      "predicted_per_token_ms": 18.999,
+      "predicted_per_second": 52.6,
+      "draft_n": 2264,
+      "draft_n_accepted": 1828
+    }
+  },
+  "latency": {
+    "first_event_s": 0.15386458102148026,
+    "first_reasoning_s": 213.08596604102058,
+    "first_content_s": 257.76905732799787,
+    "first_tool_s": null,
+    "api_elapsed_s": 263.11513484301395,
+    "evidence_capture_s": 0.0025457710144110024,
+    "HTTP_status": 200,
+    "SSE_DONE_seen": true,
+    "error": null,
+    "engine_log_begin_byte": 84551,
+    "engine_log_end_byte": 85296,
+    "engine_log_device": 66306,
+    "engine_log_inode": 8793155,
+    "request_SHA256": "83f6654db7ecb7e4f3fe18b69a6f30a37e4b968f87417018c95c2cd7c739b515",
+    "native_capture": {
+      "capture_complete": true,
+      "capture_errors": [],
+      "metrics_new_request": {
+        "id": "2b27c20b2301",
+        "projection": null,
+        "time": 1793054786.3271892,
+        "duration_s": 263.0,
+        "finish": "stop",
+        "prompt_tokens": 120981,
+        "reused": 0,
+        "output_tokens": 2636,
+        "first_engine_token_s": 212.932,
+        "prompt_total": 120981,
+        "prompt_read": 120981,
+        "reasoning_recoveries": 0,
+        "reasoning_repeat_coverage": 0.0,
+        "engine_generated": 2636,
+        "prompt_ms": 212818.9,
+        "decode_ms": 50080.3,
+        "decode_tok_s": 52.6,
+        "hit_rate": 0.85,
+        "pcie_share": 0.051,
+        "ram_blobs": 0,
+        "file_blobs": 0,
+        "file_mb": 0,
+        "drafts_offered": 2264,
+        "drafts_accepted": 1828
+      },
+      "all_GEN_legs": [
+        {
+          "prompt": 120981,
+          "cache": 0,
+          "read": 120981,
+          "generated": 2636,
+          "prompt_ms": 212819.0,
+          "decode_ms": 50080.0,
+          "expected_read": 120981,
+          "line_no": 3,
+          "raw": "strata serve: prompt 120981 tokens = 0 reused + 120981 read in 212819 ms (568.5 tok/s), 2636 generated in 50080 ms (52.6 tok/s), drafts accepted 1828 of 2264, 6 checkpoints",
+          "prompt_complete": true
+        }
+      ],
+      "native": {
+        "native_legs": 1,
+        "capture_complete": true,
+        "new_prompt_tokens": 120981,
+        "prompt_ms": 212819.0,
+        "generated_tokens": 2636,
+        "decode_ms": 50080.0,
+        "prefill_tok_s": 568.4689806831158,
+        "decode_tok_s": 52.635782747603834,
+        "timing_source": "native_engine_stderr_summaries",
+        "precision_note": "Use the native milliseconds as printed; do not reconstruct higher precision from displayed tok/s."
+      },
+      "internal_prefix_reuse_tokens": [],
+      "metrics_drafts_offered": 2264,
+      "metrics_drafts_accepted": 1828
+    },
+    "capture_exceptions": []
+  },
+  "elapsed_s": 263.28583835301106,
+  "actual_prompt_tokens": 120981,
+  "length_qualified": true,
+  "content": "{\"policy_version\":\"v2\",\"limit_cents\":30000,\"decisions\":[{\"order_id\":\"O-A\",\"net_cents\":46000,\"route\":\"AUTO\",\"evidence\":[\"P-RULE\",\"P-V2\",\"A-BASE\",\"A-REFUND\",\"A-STATE\"]},{\"order_id\":\"O-B\",\"net_cents\":80000,\"route\":\"MANUAL\",\"evidence\":[\"P-RULE\",\"P-V2\",\"B-BASE\",\"B-REFUND\",\"B-REVERSAL\",\"B-STATE\"]},{\"order_id\":\"O-C\",\"net_cents\":22000,\"route\":\"REJECT\",\"evidence\":[\"P-RULE\",\"P-V2\",\"C-BASE\",\"C-REFUND\",\"C-STATE\"]},{\"order_id\":\"O-D\",\"net_cents\":50000,\"route\":\"REJECT\",\"evidence\":[\"P-RULE\",\"P-V2\",\"D-BASE\",\"D-REFUND\",\"D-STATE\"]}],\"ignored\":[\"P-V3-DRAFT\",\"X-STAGING-A\",\"X-LOG\"]}",
+  "grade": {
+    "pass": true,
+    "checks": {
+      "strict_json_object": true,
+      "exact_top_level_keys": true,
+      "policy": true,
+      "ordered_four_decisions": true,
+      "O-A_fields": true,
+      "O-A_net_and_route": true,
+      "O-A_evidence": true,
+      "O-B_fields": true,
+      "O-B_net_and_route": true,
+      "O-B_evidence": true,
+      "O-C_fields": true,
+      "O-C_net_and_route": true,
+      "O-C_evidence": true,
+      "O-D_fields": true,
+      "O-D_net_and_route": true,
+      "O-D_evidence": true,
+      "excluded_three_distractors": true
+    },
+    "passed": 17,
+    "total": 17,
+    "editorial_required": false
+  },
+  "complete_hard": true
+}

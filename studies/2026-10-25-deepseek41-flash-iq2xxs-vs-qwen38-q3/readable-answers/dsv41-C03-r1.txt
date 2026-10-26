@@ -1,0 +1,87 @@
+```python
+def schedule(tasks, capacity):
+    if not tasks:
+        return {"jobs": [], "makespan": 0}
+
+    n = len(tasks)
+    ids = []
+    durations = []
+    units = []
+    deps = []
+    id_to_index = {}
+
+    for i, task in enumerate(tasks):
+        tid = task["id"]
+        if tid in id_to_index:
+            raise ValueError("duplicate id")
+        id_to_index[tid] = i
+        ids.append(tid)
+        durations.append(task["duration"])
+        units.append(task["units"])
+        deps.append(list(task["deps"]))
+        if task["units"] > capacity:
+            raise ValueError("units exceeds capacity")
+
+    indegree = [0] * n
+    adj = [[] for _ in range(n)]
+
+    for i in range(n):
+        for dep in deps[i]:
+            if dep not in id_to_index:
+                raise ValueError("unknown dependency")
+            j = id_to_index[dep]
+            adj[j].append(i)
+            indegree[i] += 1
+
+    queue = [i for i in range(n) if indegree[i] == 0]
+    processed = 0
+
+    while queue:
+        i = queue.pop()
+        processed += 1
+        for k in adj[i]:
+            indegree[k] -= 1
+            if indegree[k] == 0:
+                queue.append(k)
+
+    if processed != n:
+        raise ValueError("cycle dependency")
+
+    order = sorted(range(n), key=lambda i: ids[i])
+
+    started = [False] * n
+    completed = [False] * n
+    start_time = [0] * n
+    end_time = [0] * n
+    running = []
+    remaining = capacity
+    t = 0
+
+    while True:
+        new_running = []
+        for i in running:
+            if end_time[i] <= t:
+                completed[i] = True
+                remaining += units[i]
+            else:
+                new_running.append(i)
+        running = new_running
+
+        for i in order:
+            if started[i] or completed[i]:
+                continue
+
+            ready = True
+            for dep in deps[i]:
+                j = id_to_index[dep]
+                if not completed[j]:
+                    ready = False
+                    break
+
+            if not ready:
+                continue
+
+            if units[i] <= remaining:
+                started[i] = True
+                start_time[i] = t
+                end_time[i] = t + durations[i]

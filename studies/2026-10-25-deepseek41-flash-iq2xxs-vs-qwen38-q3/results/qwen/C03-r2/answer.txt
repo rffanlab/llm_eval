@@ -1,0 +1,159 @@
+def schedule(tasks, capacity):
+    if isinstance(capacity, bool) or not isinstance(capacity, int) or capacity <= 0:
+        raise ValueError("capacity must be a positive integer")
+
+    if tasks is None:
+        raise ValueError("tasks must be a list")
+
+    if len(tasks) == 0:
+        return {"jobs": [], "makespan": 0}
+
+    info = {}
+
+    for task in tasks:
+        if not isinstance(task, dict):
+            raise ValueError("each task must be a dict")
+
+        if "id" not in task:
+            raise ValueError("each task must have an id")
+
+        tid = task["id"]
+        if not isinstance(tid, str):
+            raise ValueError("task id must be a string")
+
+        if tid in info:
+            raise ValueError("task ids must be unique")
+
+        if "duration" not in task or "units" not in task:
+            raise ValueError("each task must have duration and units")
+
+        duration = task["duration"]
+        units = task["units"]
+
+        if isinstance(duration, bool) or not isinstance(duration, int) or duration <= 0:
+            raise ValueError("duration must be a positive integer")
+
+        if isinstance(units, bool) or not isinstance(units, int) or units <= 0:
+            raise ValueError("units must be a positive integer")
+
+        if units > capacity:
+            raise ValueError("units cannot exceed capacity")
+
+        deps = task.get("deps", [])
+        if deps is None:
+            deps = []
+
+        if isinstance(deps, str):
+            raise ValueError("deps must be a list of task ids")
+
+        try:
+            deps = list(deps)
+        except TypeError:
+            raise ValueError("deps must be a list of task ids")
+
+        info[tid] = {
+            "duration": duration,
+            "units": units,
+            "deps": deps,
+        }
+
+    for tid, data in info.items():
+        for dep in data["deps"]:
+            if dep not in info:
+                raise ValueError("unknown dependency")
+
+    deps_sets = {}
+    indegree = {}
+    dependents = {tid: [] for tid in info}
+
+    for tid, data in info.items():
+        dset = set(data["deps"])
+        deps_sets[tid] = dset
+        indegree[tid] = len(dset)
+        for dep in dset:
+            dependents[dep].append(tid)
+
+    queue = [tid for tid in info if indegree[tid] == 0]
+    head = 0
+    seen = 0
+
+    while head < len(queue):
+        tid = queue[head]
+        head += 1
+        seen += 1
+
+        for nxt in dependents[tid]:
+            indegree[nxt] -= 1
+            if indegree[nxt] == 0:
+                queue.append(nxt)
+
+    if seen != len(info):
+        raise ValueError("cyclic dependency")
+
+    sorted_ids = sorted(info.keys())
+    deps_list = {tid: list(deps_sets[tid]) for tid in info}
+
+    status = {tid: 0 for tid in info}
+    start = {}
+    end = {}
+    running = {}
+
+    used = 0
+    current_time = 0
+    completed = 0
+    total = len(info)
+
+    while completed < total:
+        for tid, finish in list(running.items()):
+            if finish <= current_time:
+                used -= info[tid]["units"]
+                status[tid] = 2
+                completed += 1
+                del running[tid]
+
+        for tid in sorted_ids:
+            if status[tid] != 0:
+                continue
+
+            ready = True
+            for dep in deps_list[tid]:
+                if status[dep] != 2:
+                    ready = False
+                    break
+
+            if not ready:
+                continue
+
+            units = info[tid]["units"]
+            if used + units <= capacity:
+                status[tid] = 1
+                start[tid] = current_time
+                finish = current_time + info[tid]["duration"]
+                end[tid] = finish
+                running[tid] = finish
+                used += units
+
+        if completed == total:
+            break
+
+        if not running:
+            raise ValueError("deadlock")
+
+        earliest = None
+        for finish in running.values():
+            if earliest is None or finish < earliest:
+                earliest = finish
+
+        current_time = earliest
+
+    jobs = [
+        {
+            "id": tid,
+            "start": start[tid],
+            "end": end[tid],
+        }
+        for tid in sorted_ids
+    ]
+
+    makespan = max(end.values()) if end else 0
+    return {"jobs": jobs, "makespan": makespan}

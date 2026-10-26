@@ -1,0 +1,112 @@
+{
+  "response": {
+    "model": "qwen3.8-next-flash-unsloth-ud-q3-k-xl",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```python\n\"\"\"\nQuartz Independent Measurement Round 2 - Invoice Validation and Event Sorting Library\n\nThis library provides pure functions for validating invoice entries from a synthetic ledger\nand sorting events based on various criteria. The ledger format is:\nR{ID}: account={ACCOUNT}; status={STATUS}; qty={QTY}; unit_cents={UNIT_CENTS}; note={NOTE}\n\nAll functions are pure (no side effects) and operate on parsed ledger data.\n\"\"\"\n\nimport re\nfrom typing import List, Dict, Tuple, Optional, Any\n\n\ndef parse_ledger_line(line: str) -> Optional[Dict[str, Any]]:\n    \"\"\"\n    Parse a single ledger line into a dictionary.\n    \n    Args:\n        line: A string in the format 'R{ID}: account={ACCOUNT}; status={STATUS}; qty={QTY}; unit_cents={UNIT_CENTS}; note={NOTE}'\n        \n    Returns:\n        A dictionary with keys: id, account, status, qty, unit_cents, note.\n        Returns None if the line cannot be parsed.\n    \"\"\"\n    pattern = r'^R(\\d+):\\s*account=([^;]+);\\s*status=([^;]+);\\s*qty=(\\d+);\\s*unit_cents=(\\d+);\\s*note=(.+)$'\n    match = re.match(pattern, line.strip())\n    if not match:\n        return None\n    \n    return {\n        'id': int(match.group(1)),\n        'account': match.group(2).strip(),\n        'status': match.group(3).strip(),\n        'qty': int(match.group(4)),\n        'unit_cents': int(match.group(5)),\n        'note': match.group(6).strip()\n    }\n\n\ndef parse_ledger(ledger_text: str) -> List[Dict[str, Any]]:\n    \"\"\"\n    Parse multiple ledger lines into a list of dictionaries.\n    \n    Args:\n        ledger_text: A multi-line string containing ledger entries.\n        \n    Returns:\n        A list of parsed ledger entry dictionaries.\n    \"\"\"\n    entries = []\n    for line in ledger_text.strip().split('\\n'):\n        if line.strip():\n            parsed = parse_ledger_line(line)\n            if parsed:\n                entries.append(parsed)\n    return entries\n\n\ndef validate_account_format(account: str) -> bool:"
+        },
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 4057,
+      "completion_tokens": 512,
+      "total_tokens": 4569,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      }
+    },
+    "timings": {
+      "cache_n": 0,
+      "prompt_n": 4057,
+      "prompt_ms": 8536.1,
+      "prompt_per_token_ms": 2.104,
+      "prompt_per_second": 475.3,
+      "predicted_n": 512,
+      "predicted_ms": 8678.9,
+      "predicted_per_token_ms": 16.951,
+      "predicted_per_second": 59.0,
+      "draft_n": 430,
+      "draft_n_accepted": 347
+    }
+  },
+  "timing": {
+    "first_event_s": 0.013738414010731503,
+    "first_reasoning_s": null,
+    "first_content_s": 8.586250714026392,
+    "first_tool_s": null,
+    "api_elapsed_s": 17.232861193013377,
+    "evidence_capture_s": 0.0024712979793548584,
+    "HTTP_status": 200,
+    "SSE_DONE_seen": true,
+    "error": null,
+    "engine_log_begin_byte": 88461,
+    "engine_log_end_byte": 89094,
+    "engine_log_device": 66306,
+    "engine_log_inode": 8793155,
+    "request_SHA256": "f6fd06db930a1a020dcf881927d704a94d75afcd553290701bad035388932b86",
+    "native_capture": {
+      "capture_complete": true,
+      "capture_errors": [],
+      "metrics_new_request": {
+        "id": "6ade4b4b1e96",
+        "projection": null,
+        "time": 1793055366.645606,
+        "duration_s": 17.2,
+        "finish": "length",
+        "prompt_tokens": 4057,
+        "reused": 0,
+        "output_tokens": 512,
+        "first_engine_token_s": 8.572,
+        "prompt_total": 4057,
+        "prompt_read": 4057,
+        "reasoning_recoveries": 0,
+        "reasoning_repeat_coverage": 0.0,
+        "engine_generated": 512,
+        "prompt_ms": 8536.1,
+        "decode_ms": 8678.9,
+        "decode_tok_s": 59.0,
+        "hit_rate": 0.879,
+        "pcie_share": 0.039,
+        "ram_blobs": 0,
+        "file_blobs": 0,
+        "file_mb": 0,
+        "drafts_offered": 430,
+        "drafts_accepted": 347
+      },
+      "all_GEN_legs": [
+        {
+          "prompt": 4057,
+          "cache": 0,
+          "read": 4057,
+          "generated": 512,
+          "prompt_ms": 8536.0,
+          "decode_ms": 8679.0,
+          "expected_read": 4057,
+          "line_no": 2,
+          "raw": "strata serve: prompt 4057 tokens = 0 reused + 4057 read in 8536 ms (475.3 tok/s), 512 generated in 8679 ms (59.0 tok/s), drafts accepted 347 of 430, 1 checkpoints",
+          "prompt_complete": true
+        }
+      ],
+      "native": {
+        "native_legs": 1,
+        "capture_complete": true,
+        "new_prompt_tokens": 4057,
+        "prompt_ms": 8536.0,
+        "generated_tokens": 512,
+        "decode_ms": 8679.0,
+        "prefill_tok_s": 475.2811621368323,
+        "decode_tok_s": 58.99297154050006,
+        "timing_source": "native_engine_stderr_summaries",
+        "precision_note": "Use the native milliseconds as printed; do not reconstruct higher precision from displayed tok/s."
+      },
+      "internal_prefix_reuse_tokens": [],
+      "metrics_drafts_offered": 430,
+      "metrics_drafts_accepted": 347
+    },
+    "capture_exceptions": []
+  }
+}

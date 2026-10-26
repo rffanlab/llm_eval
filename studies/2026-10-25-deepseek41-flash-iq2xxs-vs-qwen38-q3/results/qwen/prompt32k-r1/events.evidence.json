@@ -1,0 +1,112 @@
+{
+  "response": {
+    "model": "qwen3.8-next-flash-unsloth-ud-q3-k-xl",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```python\n\"\"\"\nCedar Independent Measurement Round 1 - Invoice Validation and Event Sorting Library\n\nThis library provides pure functions for validating invoice data structures\nand sorting ledger events based on various criteria. It is designed to work\nwith the synthetic ledger format provided in the measurement round.\n\nLedger Entry Format:\n    R{ID}: account={ACC}; status={STATUS}; qty={QTY}; unit_cents={UNIT}; note={NOTE}\n\nAll functions are pure, meaning they do not modify input data and return\nnew data structures or boolean results.\n\"\"\"\n\nimport re\nfrom typing import List, Dict, Any, Tuple, Optional, Union\n\n# Constants for validation\nVALID_STATUSES = {\"paid\", \"pending\", \"failed\", \"refunded\", \"void\"}\nACCOUNT_PATTERN = re.compile(r\"^A\\d{2,}$\")\nRECORD_ID_PATTERN = re.compile(r\"^R\\d{6,}$\")\nNOTE_PATTERN = re.compile(r\"^[a-zA-Z0-9\\s\\-\\.]+$\")\n\ndef parse_ledger_line(line: str) -> Optional[Dict[str, Any]]:\n    \"\"\"\n    Parse a single ledger line into a dictionary.\n    \n    Args:\n        line: A string representing a single ledger entry.\n        \n    Returns:\n        A dictionary with keys: record_id, account, status, qty, unit_cents, note.\n        Returns None if the line cannot be parsed.\n    \"\"\"\n    line = line.strip()\n    if not line:\n        return None\n    \n    # Split record ID from the rest\n    if \":\" not in line:\n        return None\n    \n    record_id_part, rest = line.split(\":\", 1)\n    record_id = record_id_part.strip()\n    \n    if not RECORD_ID_PATTERN.match(record_id):\n        return None\n    \n    # Parse key-value pairs\n    fields = {}\n    pairs = rest.split(\";\")\n    for pair in pairs:\n        pair = pair.strip()\n        if not pair:\n            continue\n        if \"=\" not in pair:\n            return None\n        key, value = pair.split(\"=\", 1)\n        fields[key.strip()] = value.strip()\n    \n    # Validate required fields\n    required_fields = [\"account\", \"status\", \"qty\", \"unit_cents\", \"note\"]\n    for field in required_fields:\n        if field not in fields:\n            return None\n    \n   "
+        },
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 32713,
+      "completion_tokens": 512,
+      "total_tokens": 33225,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      }
+    },
+    "timings": {
+      "cache_n": 0,
+      "prompt_n": 32713,
+      "prompt_ms": 54936.5,
+      "prompt_per_token_ms": 1.679,
+      "prompt_per_second": 595.5,
+      "predicted_n": 512,
+      "predicted_ms": 9040.1,
+      "predicted_per_token_ms": 17.656,
+      "predicted_per_second": 56.6,
+      "draft_n": 447,
+      "draft_n_accepted": 340
+    }
+  },
+  "timing": {
+    "first_event_s": 0.04676357301650569,
+    "first_reasoning_s": null,
+    "first_content_s": 55.03452356302296,
+    "first_tool_s": null,
+    "api_elapsed_s": 64.04205775502487,
+    "evidence_capture_s": 0.0024498620186932385,
+    "HTTP_status": 200,
+    "SSE_DONE_seen": true,
+    "error": null,
+    "engine_log_begin_byte": 89725,
+    "engine_log_end_byte": 90205,
+    "engine_log_device": 66306,
+    "engine_log_inode": 8793155,
+    "request_SHA256": "d062b11d6026076906a73e82451d12bc6e9d7c508852c6d6a2012620b6c4b9f2",
+    "native_capture": {
+      "capture_complete": true,
+      "capture_errors": [],
+      "metrics_new_request": {
+        "id": "509c9b6091c4",
+        "projection": null,
+        "time": 1793055401.7422166,
+        "duration_s": 64.0,
+        "finish": "length",
+        "prompt_tokens": 32713,
+        "reused": 0,
+        "output_tokens": 512,
+        "first_engine_token_s": 54.988,
+        "prompt_total": 32713,
+        "prompt_read": 32713,
+        "reasoning_recoveries": 0,
+        "reasoning_repeat_coverage": 0.0,
+        "engine_generated": 512,
+        "prompt_ms": 54936.5,
+        "decode_ms": 9040.1,
+        "decode_tok_s": 56.6,
+        "hit_rate": 0.878,
+        "pcie_share": 0.036,
+        "ram_blobs": 0,
+        "file_blobs": 0,
+        "file_mb": 0,
+        "drafts_offered": 447,
+        "drafts_accepted": 340
+      },
+      "all_GEN_legs": [
+        {
+          "prompt": 32713,
+          "cache": 0,
+          "read": 32713,
+          "generated": 512,
+          "prompt_ms": 54937.0,
+          "decode_ms": 9040.0,
+          "expected_read": 32713,
+          "line_no": 2,
+          "raw": "strata serve: prompt 32713 tokens = 0 reused + 32713 read in 54937 ms (595.5 tok/s), 512 generated in 9040 ms (56.6 tok/s), drafts accepted 340 of 447, 2 checkpoints",
+          "prompt_complete": true
+        }
+      ],
+      "native": {
+        "native_legs": 1,
+        "capture_complete": true,
+        "new_prompt_tokens": 32713,
+        "prompt_ms": 54937.0,
+        "generated_tokens": 512,
+        "decode_ms": 9040.0,
+        "prefill_tok_s": 595.4638950070081,
+        "decode_tok_s": 56.63716814159292,
+        "timing_source": "native_engine_stderr_summaries",
+        "precision_note": "Use the native milliseconds as printed; do not reconstruct higher precision from displayed tok/s."
+      },
+      "internal_prefix_reuse_tokens": [],
+      "metrics_drafts_offered": 447,
+      "metrics_drafts_accepted": 340
+    },
+    "capture_exceptions": []
+  }
+}

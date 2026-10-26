@@ -1,0 +1,460 @@
+{
+  "task": "C03",
+  "provider": "local",
+  "profile": "qwen",
+  "round": 2,
+  "variant": "main",
+  "model_requested": "qwen3.8-next-flash-unsloth-ud-q3-k-xl",
+  "fixture_sha256": "2d5e5590b5fa51c5e34a33400a6aa16967f8d44737f87fa36af6d886b39d874d",
+  "usage": {
+    "prompt_tokens": 257,
+    "completion_tokens": 7216,
+    "total_tokens": 7473
+  },
+  "usage_complete": true,
+  "turns": [
+    {
+      "index": 1,
+      "content": "def schedule(tasks, capacity):\n    if isinstance(capacity, bool) or not isinstance(capacity, int) or capacity <= 0:\n        raise ValueError(\"capacity must be a positive integer\")\n\n    if tasks is None:\n        raise ValueError(\"tasks must be a list\")\n\n    if len(tasks) == 0:\n        return {\"jobs\": [], \"makespan\": 0}\n\n    info = {}\n\n    for task in tasks:\n        if not isinstance(task, dict):\n            raise ValueError(\"each task must be a dict\")\n\n        if \"id\" not in task:\n            raise ValueError(\"each task must have an id\")\n\n        tid = task[\"id\"]\n        if not isinstance(tid, str):\n            raise ValueError(\"task id must be a string\")\n\n        if tid in info:\n            raise ValueError(\"task ids must be unique\")\n\n        if \"duration\" not in task or \"units\" not in task:\n            raise ValueError(\"each task must have duration and units\")\n\n        duration = task[\"duration\"]\n        units = task[\"units\"]\n\n        if isinstance(duration, bool) or not isinstance(duration, int) or duration <= 0:\n            raise ValueError(\"duration must be a positive integer\")\n\n        if isinstance(units, bool) or not isinstance(units, int) or units <= 0:\n            raise ValueError(\"units must be a positive integer\")\n\n        if units > capacity:\n            raise ValueError(\"units cannot exceed capacity\")\n\n        deps = task.get(\"deps\", [])\n        if deps is None:\n            deps = []\n\n        if isinstance(deps, str):\n            raise ValueError(\"deps must be a list of task ids\")\n\n        try:\n            deps = list(deps)\n        except TypeError:\n            raise ValueError(\"deps must be a list of task ids\")\n\n        info[tid] = {\n            \"duration\": duration,\n            \"units\": units,\n            \"deps\": deps,\n        }\n\n    for tid, data in info.items():\n        for dep in data[\"deps\"]:\n            if dep not in info:\n                raise ValueError(\"unknown dependency\")\n\n    deps_sets = {}\n    indegree = {}\n    dependents = {tid: [] for tid in info}\n\n    for tid, data in info.items():\n        dset = set(data[\"deps\"])\n        deps_sets[tid] = dset\n        indegree[tid] = len(dset)\n        for dep in dset:\n            dependents[dep].append(tid)\n\n    queue = [tid for tid in info if indegree[tid] == 0]\n    head = 0\n    seen = 0\n\n    while head < len(queue):\n        tid = queue[head]\n        head += 1\n        seen += 1\n\n        for nxt in dependents[tid]:\n            indegree[nxt] -= 1\n            if indegree[nxt] == 0:\n                queue.append(nxt)\n\n    if seen != len(info):\n        raise ValueError(\"cyclic dependency\")\n\n    sorted_ids = sorted(info.keys())\n    deps_list = {tid: list(deps_sets[tid]) for tid in info}\n\n    status = {tid: 0 for tid in info}\n    start = {}\n    end = {}\n    running = {}\n\n    used = 0\n    current_time = 0\n    completed = 0\n    total = len(info)\n\n    while completed < total:\n        for tid, finish in list(running.items()):\n            if finish <= current_time:\n                used -= info[tid][\"units\"]\n                status[tid] = 2\n                completed += 1\n                del running[tid]\n\n        for tid in sorted_ids:\n            if status[tid] != 0:\n                continue\n\n            ready = True\n            for dep in deps_list[tid]:\n                if status[dep] != 2:\n                    ready = False\n                    break\n\n            if not ready:\n                continue\n\n            units = info[tid][\"units\"]\n            if used + units <= capacity:\n                status[tid] = 1\n                start[tid] = current_time\n                finish = current_time + info[tid][\"duration\"]\n                end[tid] = finish\n                running[tid] = finish\n                used += units\n\n        if completed == total:\n            break\n\n        if not running:\n            raise ValueError(\"deadlock\")\n\n        earliest = None\n        for finish in running.values():\n            if earliest is None or finish < earliest:\n                earliest = finish\n\n        current_time = earliest\n\n    jobs = [\n        {\n            \"id\": tid,\n            \"start\": start[tid],\n            \"end\": end[tid],\n        }\n        for tid in sorted_ids\n    ]\n\n    makespan = max(end.values()) if end else 0\n    return {\"jobs\": jobs, \"makespan\": makespan}",
+      "returned_model": "qwen3.8-next-flash-unsloth-ud-q3-k-xl",
+      "reasoning_chars": 22732,
+      "tool_calls": [],
+      "usage": {
+        "prompt_tokens": 257,
+        "completion_tokens": 7216,
+        "total_tokens": 7473,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "finish_reason": "stop",
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 257,
+        "prompt_ms": 14240.6,
+        "prompt_per_token_ms": 55.411,
+        "prompt_per_second": 18.0,
+        "predicted_n": 7216,
+        "predicted_ms": 139242.3,
+        "predicted_per_token_ms": 19.339,
+        "predicted_per_second": 51.7,
+        "draft_n": 5790,
+        "draft_n_accepted": 4151
+      },
+      "first_event_s": 0.0024790120078250766,
+      "first_reasoning_s": 2.8143029140192084,
+      "first_content_s": 135.1179715010221,
+      "first_tool_s": null,
+      "api_elapsed_s": 153.4923987640068,
+      "evidence_capture_s": 0.002989155997056514,
+      "HTTP_status": 200,
+      "SSE_DONE_seen": true,
+      "error": null,
+      "engine_log_begin_byte": 19760,
+      "engine_log_end_byte": 21134,
+      "engine_log_device": 66306,
+      "engine_log_inode": 8793155,
+      "request_SHA256": "7b4d9a8f80a70b8a47c3bf56eb6f31955a1e8b35de469feb83010ec1fec6806d",
+      "native_capture": {
+        "capture_complete": true,
+        "capture_errors": [],
+        "metrics_new_request": {
+          "id": "875c8320ccc3",
+          "projection": null,
+          "time": 1793053221.7351942,
+          "duration_s": 153.5,
+          "finish": "stop",
+          "prompt_tokens": 257,
+          "reused": 0,
+          "output_tokens": 7216,
+          "first_engine_token_s": 2.812,
+          "prompt_total": 257,
+          "prompt_read": 257,
+          "reasoning_recoveries": 0,
+          "reasoning_repeat_coverage": 0.0,
+          "engine_generated": 7200,
+          "prompt_ms": 14240.599999999999,
+          "decode_ms": 139242.30000000002,
+          "decode_tok_s": 51.7,
+          "hit_rate": 0.881,
+          "pcie_share": 0.038,
+          "ram_blobs": 0,
+          "file_blobs": 0,
+          "file_mb": 0,
+          "drafts_offered": 5790,
+          "drafts_accepted": 4151
+        },
+        "all_GEN_legs": [
+          {
+            "prompt": 257,
+            "cache": 0,
+            "read": 257,
+            "generated": 6146,
+            "prompt_ms": 2787.0,
+            "decode_ms": 120818.0,
+            "expected_read": 257,
+            "line_no": 3,
+            "raw": "strata serve: prompt 257 tokens = 0 reused + 257 read in 2787 ms (92.2 tok/s), 6146 generated in 120818 ms (50.9 tok/s), drafts accepted 3382 of 4961, 1 checkpoints",
+            "prompt_complete": true
+          },
+          {
+            "prompt": 6419,
+            "cache": 252,
+            "read": 6167,
+            "generated": 1054,
+            "prompt_ms": 11454.0,
+            "decode_ms": 18424.0,
+            "expected_read": 6167,
+            "line_no": 8,
+            "raw": "strata serve: prompt 6419 tokens = 252 reused + 6167 read in 11454 ms (538.4 tok/s), 1054 generated in 18424 ms (57.2 tok/s), drafts accepted 769 of 829, 1 checkpoints",
+            "prompt_complete": true
+          }
+        ],
+        "native": {
+          "native_legs": 2,
+          "capture_complete": true,
+          "new_prompt_tokens": 6424,
+          "prompt_ms": 14241.0,
+          "generated_tokens": 7200,
+          "decode_ms": 139242.0,
+          "prefill_tok_s": 451.0919177024085,
+          "decode_tok_s": 51.70853621752058,
+          "timing_source": "native_engine_stderr_summaries",
+          "precision_note": "Use the native milliseconds as printed; do not reconstruct higher precision from displayed tok/s."
+        },
+        "internal_prefix_reuse_tokens": [
+          252
+        ],
+        "metrics_drafts_offered": 5790,
+        "metrics_drafts_accepted": 4151
+      },
+      "capture_exceptions": []
+    }
+  ],
+  "started_at_epoch": 1793053221.5623348,
+  "human_corrections": 0,
+  "content": "def schedule(tasks, capacity):\n    if isinstance(capacity, bool) or not isinstance(capacity, int) or capacity <= 0:\n        raise ValueError(\"capacity must be a positive integer\")\n\n    if tasks is None:\n        raise ValueError(\"tasks must be a list\")\n\n    if len(tasks) == 0:\n        return {\"jobs\": [], \"makespan\": 0}\n\n    info = {}\n\n    for task in tasks:\n        if not isinstance(task, dict):\n            raise ValueError(\"each task must be a dict\")\n\n        if \"id\" not in task:\n            raise ValueError(\"each task must have an id\")\n\n        tid = task[\"id\"]\n        if not isinstance(tid, str):\n            raise ValueError(\"task id must be a string\")\n\n        if tid in info:\n            raise ValueError(\"task ids must be unique\")\n\n        if \"duration\" not in task or \"units\" not in task:\n            raise ValueError(\"each task must have duration and units\")\n\n        duration = task[\"duration\"]\n        units = task[\"units\"]\n\n        if isinstance(duration, bool) or not isinstance(duration, int) or duration <= 0:\n            raise ValueError(\"duration must be a positive integer\")\n\n        if isinstance(units, bool) or not isinstance(units, int) or units <= 0:\n            raise ValueError(\"units must be a positive integer\")\n\n        if units > capacity:\n            raise ValueError(\"units cannot exceed capacity\")\n\n        deps = task.get(\"deps\", [])\n        if deps is None:\n            deps = []\n\n        if isinstance(deps, str):\n            raise ValueError(\"deps must be a list of task ids\")\n\n        try:\n            deps = list(deps)\n        except TypeError:\n            raise ValueError(\"deps must be a list of task ids\")\n\n        info[tid] = {\n            \"duration\": duration,\n            \"units\": units,\n            \"deps\": deps,\n        }\n\n    for tid, data in info.items():\n        for dep in data[\"deps\"]:\n            if dep not in info:\n                raise ValueError(\"unknown dependency\")\n\n    deps_sets = {}\n    indegree = {}\n    dependents = {tid: [] for tid in info}\n\n    for tid, data in info.items():\n        dset = set(data[\"deps\"])\n        deps_sets[tid] = dset\n        indegree[tid] = len(dset)\n        for dep in dset:\n            dependents[dep].append(tid)\n\n    queue = [tid for tid in info if indegree[tid] == 0]\n    head = 0\n    seen = 0\n\n    while head < len(queue):\n        tid = queue[head]\n        head += 1\n        seen += 1\n\n        for nxt in dependents[tid]:\n            indegree[nxt] -= 1\n            if indegree[nxt] == 0:\n                queue.append(nxt)\n\n    if seen != len(info):\n        raise ValueError(\"cyclic dependency\")\n\n    sorted_ids = sorted(info.keys())\n    deps_list = {tid: list(deps_sets[tid]) for tid in info}\n\n    status = {tid: 0 for tid in info}\n    start = {}\n    end = {}\n    running = {}\n\n    used = 0\n    current_time = 0\n    completed = 0\n    total = len(info)\n\n    while completed < total:\n        for tid, finish in list(running.items()):\n            if finish <= current_time:\n                used -= info[tid][\"units\"]\n                status[tid] = 2\n                completed += 1\n                del running[tid]\n\n        for tid in sorted_ids:\n            if status[tid] != 0:\n                continue\n\n            ready = True\n            for dep in deps_list[tid]:\n                if status[dep] != 2:\n                    ready = False\n                    break\n\n            if not ready:\n                continue\n\n            units = info[tid][\"units\"]\n            if used + units <= capacity:\n                status[tid] = 1\n                start[tid] = current_time\n                finish = current_time + info[tid][\"duration\"]\n                end[tid] = finish\n                running[tid] = finish\n                used += units\n\n        if completed == total:\n            break\n\n        if not running:\n            raise ValueError(\"deadlock\")\n\n        earliest = None\n        for finish in running.values():\n            if earliest is None or finish < earliest:\n                earliest = finish\n\n        current_time = earliest\n\n    jobs = [\n        {\n            \"id\": tid,\n            \"start\": start[tid],\n            \"end\": end[tid],\n        }\n        for tid in sorted_ids\n    ]\n\n    makespan = max(end.values()) if end else 0\n    return {\"jobs\": jobs, \"makespan\": makespan}",
+  "elapsed_s": 153.66678277001483,
+  "reasoning_chars": 22732,
+  "grade": {
+    "score": 100.0,
+    "pass": true,
+    "tests": [
+      {
+        "test": 1,
+        "pass": true,
+        "actual": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "expected": {
+          "jobs": [],
+          "makespan": 0
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 2,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 3,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 4,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 5,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 5
+            }
+          ],
+          "makespan": 5
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 6,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 4
+            },
+            {
+              "id": "b",
+              "start": 4,
+              "end": 6
+            },
+            {
+              "id": "c",
+              "start": 0,
+              "end": 1
+            }
+          ],
+          "makespan": 6
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 4
+            },
+            {
+              "id": "b",
+              "start": 4,
+              "end": 6
+            },
+            {
+              "id": "c",
+              "start": 0,
+              "end": 1
+            }
+          ],
+          "makespan": 6
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 7,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "c",
+              "start": 2,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "b",
+              "start": 0,
+              "end": 2
+            },
+            {
+              "id": "c",
+              "start": 2,
+              "end": 3
+            }
+          ],
+          "makespan": 3
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 8,
+        "pass": true,
+        "actual": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 2,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 4
+            },
+            {
+              "id": "z",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 4
+        },
+        "expected": {
+          "jobs": [
+            {
+              "id": "a",
+              "start": 2,
+              "end": 3
+            },
+            {
+              "id": "b",
+              "start": 3,
+              "end": 4
+            },
+            {
+              "id": "z",
+              "start": 0,
+              "end": 2
+            }
+          ],
+          "makespan": 4
+        },
+        "input_unchanged": true
+      },
+      {
+        "test": 9,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 10,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 11,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 12,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      },
+      {
+        "test": 13,
+        "pass": true,
+        "actual": "ValueError",
+        "expected": "ValueError",
+        "input_unchanged": true
+      }
+    ]
+  },
+  "complete_hard": true,
+  "hidden_grading_s_excluded": 0.0429966899973806
+}

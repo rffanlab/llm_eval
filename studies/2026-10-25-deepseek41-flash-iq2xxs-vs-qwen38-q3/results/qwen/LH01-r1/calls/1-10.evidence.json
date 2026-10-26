@@ -1,0 +1,123 @@
+{
+  "response": {
+    "model": "qwen3.8-next-flash-unsloth-ud-q3-k-xl",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning_content": "Alright, I'll write workflow.py implementing the v1 contract.\n\nMain requirements:\n- reconcile(orders_csv, refunds_csv, policy=\"v1\", cutoff=None)\n- Parse CSV from string using the csv module.\n- Amounts: use Decimal, no float multiplication allowed. v1: at most 2 decimal places. Reject NaN/Infinity/negative values/more than 2 decimal places.\n- Deduplicate by order_id: identical rows with the same id are counted only once; same id but different fields → ValueError.\n- Same for refund_id.\n- Refunds against unknown orders, refunds against cancelled orders, or per-order cumulative refunds exceeding the payment amount → ValueError.\n- Include only paid orders in the result; cancelled ones are not included.\n- orders sorted by order_id; customers sorted by customer name.\n- customers: only customers of paid orders, including those with zero net amount.\n- totals.\n- Empty CSV with header → empty list and zero.\n- Must not modify the input (strings are immutable anyway).\n- Non-negative amounts.\n\nEdge cases: amount parsing — use Decimal from string. Reject NaN/Infinity: Decimal('NaN') would parse; check with is_finite(). Reject negative values. At most 2 decimal places: check exponent >= -2. Convert to cents: int(Decimal * 100) — but \"no float multiplication by 100\" — Decimal multiplication is fine.\n\nDeduplication: \"identical rows with the same id are counted only once\" — completely identical rows. Same id but any field differs → ValueError. So keep the first row per id and compare the entire row tuple.\n\nRefunds: refund_id is the key. Same rule.\n\nRefunds against cancelled orders → ValueError. Refunds against unknown orders → ValueError. Cumulative refund per order > payment amount → ValueError. Note: refunds against paid orders are fine.\n\nWhat about refunds against paid orders that got excluded by cutoff? In v1, cutoff is probably ignored. Keep the cutoff parameter for future compatibility.\n\nPolicy check: if policy != \"v1\" then… future phases might add a \"v2\" policy. For now, handle v1; raise ValueError for unknown policies? But future phases will add v2 while maintaining compatibility. For now, implement v1 and raise ValueError for other policies. Actually, to preserve compatibility, it might be better to structure it so policy is checked and v1 logic is applied. I'll go with raising ValueError(\"unsupported policy\") for anything other than v1.\n\nHeader handling: empty CSV with header returns empty. What if there's no header at all (empty string)? The spec says \"empty CSV with header returns empty list and three zeros\". Empty string — probably also fine to return empty. Parse with csv.reader; if no rows, return empty result.\n\nExpected base reconciliation:\nOrders after deduplication: O01 A 10.10 paid; O02 A 20.20 paid; O03 B cancelled; O04 B 9.90 paid.\nRefunds: R01 O01 2.10 (deduplicated), R02 O02 1.20.\nOrders:\n- O01: paid 1010, refund 210, net 800\n- O02: paid 2020, refund 120, net 1900\n- O04: paid 990, refund 0, net 990\nCustomers: A: 800+1900=2700; B: 990.\nTotals: paid 4020, refund 330, net 3690.\n\nexport_bundle: keep something reasonable — return a dict containing summary.json with JSON of result? The current stub returns {\"summary.json\": \"{}\"}. Might be used in a later phase. Implement export_bundle to serialize result into summary.json, and maybe also include manifest. Keep it simple: {\"summary.json\": json.dumps(result, sort_keys=True...)}? Not specified in v1. I'll implement it to produce a dict with \"summary.json\" containing the JSON of the result. Harmless.\n\nValidation details:\n- Amount string must be parseable as Decimal; catch InvalidOperation → ValueError.\n- Reject NaN/Infinity: not dec.is_finite().\n- Reject negative values: dec < 0.\n- At most 2 decimal places: -dec.as_tuple().exponent <= 2. Note: Decimal('10.10') has exponent -2, OK; Decimal('1e3') has exponent 3, OK. Decimal('1.234') has exponent -3 → reject.\n- Conversion to cents: int(dec * 100) — Decimal*int is exact. Assert it's an integer.\n\nRow field validation: orders rows need 5 fields? Use csv.DictReader. If fields are missing (None) → ValueError. Empty customer? Not specified in spec; allow it.\n\nDeduplication comparison: compare normalized row values (dict). \"Identical rows with the same id are counted only once; same id but any field differs must raise ValueError\". Compare raw field dicts.\n\nRefund against cancelled order: need to know the order's status. O03 is cancelled — refund against it → ValueError.\n\nAlso, empty amount or whitespace? Decimal('') raises InvalidOperation → convert to ValueError.\n\ncutoff: v1 ignores cutoff. Keep the parameter.\n\nInput immutability: strings are immutable; no problem.\n\nAlso, ensure output is a plain dict/list.\n\nWrite the file.\n",
+          "tool_calls": [
+            {
+              "id": "call_4059e4363f014849a46d7863",
+              "type": "function",
+              "function": {
+                "name": "write_file",
+                "arguments": "{\"path\":\"workflow.py\",\"content\":\"\\\"\\\"\\\"Order reconciliation - v1 contract (spec-v1.md).\\n\\nPure functions only: parse CSV strings, compute integer-cent results.\\nNo file/network/process access; only stdlib csv/io/json/decimal.\\n\\\"\\\"\\\"\\n\\nimport csv\\nimport io\\nimport json\\nfrom decimal import Decimal, InvalidOperation\\n\\n\\n_ORDER_FIELDS = (\\\"order_id\\\", \\\"customer\\\", \\\"amount\\\", \\\"status\\\", \\\"created_at\\\")\\n_REFUND_FIELDS = (\\\"refund_id\\\", \\\"order_id\\\", \\\"amount\\\")\\n\\n\\ndef _parse_amount_cents(raw, policy):\\n    \\\"\\\"\\\"Parse an amount string to integer cents using Decimal (no float math).\\n\\n    v1: non-negative, at most two decimal places, reject NaN/Infinity.\\n    \\\"\\\"\\\"\\n    if raw is None:\\n        raise ValueError(\\\"missing amount\\\")\\n    text = str(raw).strip()\\n    if text == \\\"\\\":\\n        raise ValueError(\\\"empty amount\\\")\\n    try:\\n        dec = Decimal(text)\\n    except InvalidOperation:\\n        raise ValueError(\\\"invalid amount: %r\\\" % (raw,))\\n    if not dec.is_finite():\\n        raise ValueError(\\\"non-finite amount: %r\\\" % (raw,))\\n    if dec < 0:\\n        raise ValueError(\\\"negative amount: %r\\\" % (raw,))\\n    if policy == \\\"v1\\\":\\n        exponent = dec.as_tuple().exponent\\n        if not isinstance(exponent, int) or exponent < -2:\\n            raise ValueError(\\\"amount has more than two decimals: %r\\\" % (raw,))\\n    cents = dec * 100\\n    if cents != cents.to_integral_value():\\n        raise ValueError(\\\"amount is not an integral number of cents: %r\\\" % (raw,))\\n    return int(cents.to_integral_value())\\n\\n\\ndef _read_rows(csv_text, fields, kind):\\n    \\\"\\\"\\\"Parse CSV text into a list of dicts keyed by the expected fields.\\n\\n    Header-only or empty input yields an empty list.\\n    \\\"\\\"\\\"\\n    if csv_text is None:\\n        raise ValueError(\\\"missing %s CSV\\\" % kind)\\n    reader = csv.reader(io.StringIO(csv_text))\\n    rows = [row for row in reader if row and not (len(row) == 1 and row[0].strip() == \\\"\\\")]\\n    if not rows:\\n        return []\\n    header = [h.strip() for h in rows[0]]\\n    if tuple(header) != fields:\\n        raise ValueError(\\\"bad %s header: %r\\\" % (kind, rows[0]))\\n    records = []\\n    for row in rows[1:]:\\n        if len(row) != len(fields):\\n            raise ValueError(\\\"bad %s row: %r\\\" % (kind, row))\\n        records.append({name: value.strip() for name, value in zip(fields, row)})\\n    return records\\n\\n\\ndef _dedupe(records, id_field, kind):\\n    \\\"\\\"\\\"Deduplicate by id: exact-duplicate rows collapse; conflicting rows raise.\\\"\\\"\\\"\\n    seen = {}\\n    unique = []\\n    for record in records:\\n        key = record[id_field]\\n        if key in seen:\\n            if seen[key] != record:\\n                raise ValueError(\\n                    \\\"conflicting duplicate %s id %r\\\" % (kind, key)\\n                )\\n            continue\\n        seen[key] = record\\n        unique.append(record)\\n    return unique\\n\\n\\ndef reconcile(orders_csv, refunds_csv, policy=\\\"v1\\\", cutoff=None):\\n    \\\"\\\"\\\"Reconcile orders and refunds per the v1 contract.\\n\\n    Returns {\\\"orders\\\": [...], \\\"customers\\\": [...], \\\"totals\\\": {...}} with all\\n    money as integer cents. cutoff is reserved for future policies (ignored\\n    in v1).\\n    \\\"\\\"\\\"\\n    if policy != \\\"v1\\\":\\n        raise ValueError(\\\"unsupported policy: %r\\\" % (policy,))\\n\\n    order_rows = _read_rows(orders_csv, _ORDER_FIELDS, \\\"orders\\\")\\n    refund_rows = _read_rows(refunds_csv, _REFUND_FIELDS, \\\"refunds\\\")\\n\\n    order_rows = _dedupe(order_rows, \\\"order_id\\\", \\\"order\\\")\\n    refund_rows = _dedupe(refund_rows, \\\"refund_id\\\", \\\"refund\\\")\\n\\n    orders = {}  # order_id -> record with paid_cents\\n    for record in order_rows:\\n        if record[\\\"order_id\\\"] == \\\"\\\" or record[\\\"customer\\\"] == \\\"\\\":\\n            raise ValueError(\\\"empty order_id or customer: %r\\\" % (record,))\\n        paid_cents = _parse_amount_cents(record[\\\"amount\\\"], policy)\\n        orders[record[\\\"order_id\\\"]] = {\\n            \\\"order_id\\\": record[\\\"order_id\\\"],\\n            \\\"customer\\\": record[\\\"customer\\\"],\\n            \\\"status\\\": record[\\\"status\\\"],\\n            \\\"paid_cents\\\": paid_cents,\\n        }\\n\\n    refund_by_order = {}\\n    for record in refund_rows:\\n        refund_id = record[\\\"refund_id\\\"]\\n        if refund_id == \\\"\\\":\\n            raise ValueError(\\\"empty refund_id: %r\\\" % (record,))\\n        order_id = record[\\\"order_id\\\"]\\n        order = orders.get(order_id)\\n        if order is None:\\n            raise ValueError(\\\"refund %s references unknown order %r\\\" % (refund_id, order_id))\\n        if order[\\\"status\\\"] != \\\"paid\\\":\\n            raise ValueError(\\n                \\\"refund %s targets non-paid order %r\\\" % (refund_id, order_id)\\n            )\\n        refund_cents = _parse_amount_cents(record[\\\"amount\\\"], policy)\\n        refund_by_order[order_id] = refund_by_order.get(order_id, 0) + refund_cents\\n\\n    for order_id, refund_cents in refund_by_order.items():\\n        if refund_cents > orders[order_id][\\\"paid_cents\\\"]:\\n            raise ValueError(\\n                \\\"order %r refunded %d cents exceeds paid %d cents\\\"\\n                % (order_id, refund_cents, orders[order_id][\\\"paid_cents\\\"])\\n            )\\n\\n    result_orders = []\\n    customer_totals = {}\\n    totals = {\\\"paid_cents\\\": 0, \\\"refund_cents\\\": 0, \\\"net_cents\\\": 0}\\n    for order_id in sorted(orders):\\n        order = orders[order_id]\\n        if order[\\\"status\\\"] != \\\"paid\\\":\\n            continue  # cancelled orders never enter the result\\n        paid_cents = order[\\\"paid_cents\\\"]\\n        refund_cents = refund_by_order.get(order_id, 0)\\n        net_cents = paid_cents - refund_cents\\n        result_orders.append(\\n            {\\n                \\\"order_id\\\": order_id,\\n                \\\"customer\\\": order[\\\"customer\\\"],\\n                \\\"paid_cents\\\": paid_cents,\\n                \\\"refund_cents\\\": refund_cents,\\n                \\\"net_cents\\\": net_cents,\\n            }\\n        )\\n        customer = order[\\\"customer\\\"]\\n        customer_totals[customer] = customer_totals.get(customer, 0) + net_cents\\n        totals[\\\"paid_cents\\\"] += paid_cents\\n        totals[\\\"refund_cents\\\"] += refund_cents\\n        totals[\\\"net_cents\\\"] += net_cents\\n\\n    customers = [\\n        {\\\"customer\\\": name, \\\"net_cents\\\": customer_totals[name]}\\n        for name in sorted(customer_totals)\\n    ]\\n    return {\\\"orders\\\": result_orders, \\\"customers\\\": customers, \\\"totals\\\": totals}\\n\\n\\ndef export_bundle(result):\\n    \\\"\\\"\\\"Serialize a reconcile result into a simple in-memory bundle.\\\"\\\"\\\"\\n    return {\\\"summary.json\\\": json.dumps(result, sort_keys=True)}\\n\"}"
+              }
+            }
+          ]
+        },
+        "finish_reason": "tool_calls"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 2070,
+      "completion_tokens": 2879,
+      "total_tokens": 4949,
+      "prompt_tokens_details": {
+        "cached_tokens": 1999
+      }
+    },
+    "timings": {
+      "cache_n": 1999,
+      "prompt_n": 71,
+      "prompt_ms": 2099.0,
+      "prompt_per_token_ms": 29.563,
+      "prompt_per_second": 33.8,
+      "predicted_n": 2879,
+      "predicted_ms": 50383.8,
+      "predicted_per_token_ms": 17.5,
+      "predicted_per_second": 57.1,
+      "draft_n": 2392,
+      "draft_n_accepted": 1873
+    }
+  },
+  "timing": {
+    "first_event_s": 0.004563260998111218,
+    "first_reasoning_s": 2.1259533999837004,
+    "first_content_s": null,
+    "first_tool_s": 25.088331039994955,
+    "api_elapsed_s": 52.49078444999759,
+    "evidence_capture_s": 0.0024870049965102226,
+    "HTTP_status": 200,
+    "SSE_DONE_seen": true,
+    "error": null,
+    "engine_log_begin_byte": 32436,
+    "engine_log_end_byte": 33170,
+    "engine_log_device": 66306,
+    "engine_log_inode": 8793155,
+    "request_SHA256": "0fad4ae6ad5d98a6faea3548a3b86642439017fc9acd42063f184a7886a5af77",
+    "native_capture": {
+      "capture_complete": true,
+      "capture_errors": [],
+      "metrics_new_request": {
+        "id": "5d0b1cd53ac1",
+        "projection": null,
+        "time": 1793053548.943815,
+        "duration_s": 52.5,
+        "finish": "stop",
+        "prompt_tokens": 2070,
+        "reused": 1999,
+        "output_tokens": 2879,
+        "first_engine_token_s": 2.121,
+        "prompt_total": 2070,
+        "prompt_read": 71,
+        "reasoning_recoveries": 0,
+        "reasoning_repeat_coverage": 0.0,
+        "engine_generated": 2879,
+        "prompt_ms": 2099.0,
+        "decode_ms": 50383.8,
+        "decode_tok_s": 57.1,
+        "hit_rate": 0.88,
+        "pcie_share": 0.038,
+        "ram_blobs": 0,
+        "file_blobs": 0,
+        "file_mb": 0,
+        "drafts_offered": 2392,
+        "drafts_accepted": 1873
+      },
+      "all_GEN_legs": [
+        {
+          "prompt": 2070,
+          "cache": 1999,
+          "read": 71,
+          "generated": 2879,
+          "prompt_ms": 2099.0,
+          "decode_ms": 50384.0,
+          "expected_read": 71,
+          "line_no": 3,
+          "raw": "strata serve: prompt 2070 tokens = 1999 reused + 71 read in 2099 ms (33.8 tok/s), 2879 generated in 50384 ms (57.1 tok/s), drafts accepted 1873 of 2392, 6 checkpoints",
+          "prompt_complete": true
+        }
+      ],
+      "native": {
+        "native_legs": 1,
+        "capture_complete": true,
+        "new_prompt_tokens": 71,
+        "prompt_ms": 2099.0,
+        "generated_tokens": 2879,
+        "decode_ms": 50384.0,
+        "prefill_tok_s": 33.82563125297761,
+        "decode_tok_s": 57.14115592251508,
+        "timing_source": "native_engine_stderr_summaries",
+        "precision_note": "Use the native milliseconds as printed; do not reconstruct higher precision from displayed tok/s."
+      },
+      "internal_prefix_reuse_tokens": [],
+      "metrics_drafts_offered": 2392,
+      "metrics_drafts_accepted": 1873
+    },
+    "capture_exceptions": []
+  }
+}

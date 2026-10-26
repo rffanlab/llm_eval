@@ -1,0 +1,112 @@
+{
+  "response": {
+    "model": "deepseek-v4.1-flash-1017-gsq-rco-iq2xxs",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```python\n\"\"\"\ninvoice_validation.py\n\nA pure-Python library of invoice validation and event-sorting helpers.\nNo external dependencies. All functions are deterministic and side-effect free\nexcept where explicitly documented.\n\nThe synthetic ledger format used by the helpers is:\n\n    R000000: account=A00; status=paid; qty=1; unit_cents=137; note=verified ledger entry.\n\nEach record is a single line. Fields are separated by \"; \" and the record id\nis separated from the fields by \": \".\n\"\"\"\n\nfrom __future__ import annotations\n\nimport re\nfrom typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple\n\n\n# ---------------------------------------------------------------------------\n# Constants and small helpers\n# ---------------------------------------------------------------------------\n\nRECORD_RE = re.compile(\n    r\"^(R\\d{6}):\\s*account=([^;]+);\\s*status=([^;]+);\\s*qty=(\\d+);\\s*\"\n    r\"unit_cents=(\\d+);\\s*note=([^;]+)$\"\n)\n\nVALID_STATUSES = {\"paid\", \"pending\", \"void\", \"refunded\", \"cancelled\"}\nVALID_ACCOUNT_RE = re.compile(r\"^A\\d{2}$\")\nVALID_RECORD_ID_RE = re.compile(r\"^R\\d{6}$\")\n\n\ndef _parse_int(value: Any, field: str) -> int:\n    \"\"\"Convert value to int, raising ValueError with a helpful message.\"\"\"\n    try:\n        return int(value)\n    except (TypeError, ValueError) as exc:\n        raise ValueError(f\"invalid integer for {field}: {value!r}\") from exc\n\n\ndef _require_non_negative(value: int, field: str) -> int:\n    \"\"\"Ensure an integer is non-negative.\"\"\"\n    if value < 0:\n        raise ValueError(f\"{field} must be non-negative, got {value}\")\n    return value\n\n\n# ---------------------------------------------------------------------------\n# 1. Record parsing\n# ---------------------------------------------------------------------------\n\ndef parse_record(line: str) -> Dict[str, Any]:\n    \"\"\"Parse a single ledger line into a dict.\n\n    Returns keys: record_id, account, status, qty, unit_cents, note.\n    Raises ValueError if the line does not match the expected format.\n    \"\"\"\n    if not isinstance(line, str):\n        raise TypeError(\"line must be a string\")\n    match = RECORD_RE.match(line.strip())\n    if not match:\n       "
+        },
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 26354,
+      "completion_tokens": 512,
+      "total_tokens": 26866,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      }
+    },
+    "timings": {
+      "cache_n": 0,
+      "prompt_n": 26354,
+      "prompt_ms": 88340.8,
+      "prompt_per_token_ms": 3.352,
+      "prompt_per_second": 298.3,
+      "predicted_n": 512,
+      "predicted_ms": 114378.1,
+      "predicted_per_token_ms": 223.395,
+      "predicted_per_second": 4.5,
+      "draft_n": 0,
+      "draft_n_accepted": 0
+    }
+  },
+  "timing": {
+    "first_event_s": 0.09972117698634975,
+    "first_reasoning_s": null,
+    "first_content_s": 88.46053141300217,
+    "first_tool_s": null,
+    "api_elapsed_s": 202.83857499799342,
+    "evidence_capture_s": 0.002434983995044604,
+    "HTTP_status": 200,
+    "SSE_DONE_seen": true,
+    "error": null,
+    "engine_log_begin_byte": 3856,
+    "engine_log_end_byte": 4183,
+    "engine_log_device": 66306,
+    "engine_log_inode": 8792977,
+    "request_SHA256": "1daf01348b036341a94620f5aa9f466ff71fdc2951e602d19c723eb343853770",
+    "native_capture": {
+      "capture_complete": true,
+      "capture_errors": [],
+      "metrics_new_request": {
+        "id": "c58a4092de09",
+        "projection": null,
+        "time": 1793051864.7934194,
+        "duration_s": 202.7,
+        "finish": "length",
+        "prompt_tokens": 26354,
+        "reused": 0,
+        "output_tokens": 512,
+        "first_engine_token_s": 88.361,
+        "prompt_total": 26354,
+        "prompt_read": null,
+        "reasoning_recoveries": 0,
+        "reasoning_repeat_coverage": 0.0,
+        "engine_generated": 512,
+        "prompt_ms": 88340.8,
+        "decode_ms": 114378.1,
+        "decode_tok_s": 4.5,
+        "hit_rate": null,
+        "pcie_share": null,
+        "ram_blobs": null,
+        "file_blobs": null,
+        "file_mb": null,
+        "drafts_offered": 0,
+        "drafts_accepted": 0
+      },
+      "all_GEN_legs": [
+        {
+          "prompt": 26354,
+          "cache": 0,
+          "read": 26354,
+          "generated": 512,
+          "prompt_ms": 88341.0,
+          "decode_ms": 114378.0,
+          "expected_read": 26354,
+          "line_no": 2,
+          "raw": "maya ds4 serve: prompt 26354 tokens = 0 reused + 26354 read in 88341 ms (298.3 tok/s), 512 generated in 114378 ms (4.48 tok/s); CPU lane 4.9% of the experts",
+          "prompt_complete": true
+        }
+      ],
+      "native": {
+        "native_legs": 1,
+        "capture_complete": true,
+        "new_prompt_tokens": 26354,
+        "prompt_ms": 88341.0,
+        "generated_tokens": 512,
+        "decode_ms": 114378.0,
+        "prefill_tok_s": 298.3212777758912,
+        "decode_tok_s": 4.476385318855025,
+        "timing_source": "native_engine_stderr_summaries",
+        "precision_note": "Use the native milliseconds as printed; do not reconstruct higher precision from displayed tok/s."
+      },
+      "internal_prefix_reuse_tokens": [],
+      "metrics_drafts_offered": 0,
+      "metrics_drafts_accepted": 0
+    },
+    "capture_exceptions": []
+  }
+}
