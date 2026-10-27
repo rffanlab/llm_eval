@@ -1,0 +1,321 @@
+RX7900 XTX实测：DeepSeek V4.1 Flash1017 IQ2_XXS与Qwen3.8 Next Flash UD-Q3_K_XL，谁值得等？
+
+为什么做：249GB文件，究竟能不能在这台机器上干活
+
+这次把DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS放到一台128GB内存、RX7900 XTX 24GB的机器上，和原版Qwen3.8 Next Flash Unsloth UD-Q3_K_XL重新配对。问题很具体：能启动吗，能完成实际任务吗，真正超过十万token的材料能不能读对，增加的等待能换来什么？
+
+本轮综合优先选择Qwen3.8 Next Flash Unsloth UD-Q3_K_XL。它的两轮长文题都读入120,981 token、17/17正确，完整等待中位约263秒；DeepSeek两轮各102,591 token、16/17，等待中位约1,290秒。不过，常规严格门槛是12/14，两方分别只有11/14和10/14，长程严格闭环也都是0/2。这个选择适合有人复核的工作，不是无人监督的生产通行证。
+
+怎么做：同机、同材料、先冻结，再运行
+
+硬件是Xeon W-2133六核十二线程、128GB DDR4-2133、RX7900 XTX 24GB，功耗上限265W。模型在真实NVMe固态盘运行。两方逐个加载，换模核对真实进程退出和主存、显存、GTT释放；测量期间无归档大文件复制或校验。
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+主文件＋Engram体积 ｜ 248,834,183,872 bytes ｜ 89,986,353,824 bytes
+量化身份 ｜ GSQ-RCO IQ2_XXS＋Engram IQ4_NL ｜ Unsloth UD-Q3_K_XL原版
+发布版 / 引擎 ｜ Strata v0.2.4.2 / 0.1.49.2 ｜ Strata v0.2.4.2 / 0.1.49.2
+上下文 / KV / 显存驻留 ｜ 131072 / fp4 / 131072 ｜ 131072 / int8 / 32768
+
+DeepSeek辅助栈使用原metadata与DSpark文件，但DSpark设为auto后，实际因专家与显存成本没有加载；没有手动改成off。部署使用48GB RAMstore、约34.3GB热专家、六线程CPU lane，Engram按行从SSD读取，并未把110GB Engram整体锁进内存。因此文件大于128GB，不直接等于不能运行。
+
+Qwen沿用原量化、原MTP和已有BF16小投影兼容pack；专家和大查表仍读原GGUF。这是实际部署配方，不等于所有张量都与原始量化位相同。spec配置为4，实际metrics是spec6、mtp_max4、lookup3。已有hipBLASLt调优文件版本与运行时不符，日志实际回退hipBLASEx。家族、量化和部署不同，结论不能拆成某一种量化或引擎的单独因果。
+
+两套引擎均为固定HIP gfx1100构建，temperature=0、seed=42。常规任务用各自原生medium，DeepSeek模板映射62；同名等级不表示内部计算量相同。总输出预算4096或8192包含思考、工具与正文，思考分别限3072或6144。短题单次调用900秒、整题1200秒；Agent最多六次回复，每次一个工具。
+
+每方29项：七道常规题各两轮、两次关闭思考诊断、两轮连续四阶段长程、两轮真实100K以上长文、九次吞吐探针，共58项。题面、工具、夹具、评分、参数与34个源文件在首题前冻结，SHA256为9b248df4befdafc2c3f75c0f9565422d2de5df7a0e407321da935c0a3d51c31e。完整提示词与逐次实际请求随文列在资料区；以下每道题解释它要交付什么。
+
+严格门槛提前规定：常规至少12/14且无越权；写作还须编辑四维总分至少16/20、无关键事实错误。长程每阶段12次回复，必须留出结束答复，每调用8192、整轮65536输出token、7200秒。长文同一材料，实际API输入必须超过100,000 token、两轮答案全部过关，保留完整8192输出和5400秒。失败保留，不加预算翻结果。
+
+一个硬件限制必须先交代：独立技术容量准入时出现过新的已纠正DIMM3内存读取事件，内核自动隔离4KB。正式测试把这段尚未修复的历史纳入基线，逐题及运行中查root RAS、内核、隔离页；正式区间mc5/mce11/AER0及4KB未增加。EDAC显示0并不能否认既有事件。另有amdgpu相关workqueue CPU-hog警告，原文保留，根因没有确证，不归因为模型、显卡或温度。本文的“两轮正常”不表示全天稳定，也不表示内存已修好。
+
+Prefill只算所有原生GEN中新计算的输入，Decode用原生生成数及毫秒；每轮先加总token与计算秒数，再跨轮取中位。API缓存、内部续算复用、注入收束和完整等待分开。部分超时缺少DONE、最终usage和闭合metrics，完整速度标未知，不能用未初始化0或墙钟反推。
+
+测试结果：先看交付，再看等待
+
+精确提取：三字段JSON
+
+在多条记录中找出唯一已发布的指定标题公众号记录，只返回id、views、platform。
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+严格通过 / 两轮 ｜ 2/2 ｜ 2/2
+Prefill / token/s ｜ 8.53 ｜ 67.14
+Decode / token/s ｜ 4.92 ｜ 34.87
+完整等待中位 / 秒 ｜ 37.25 ｜ 8.00
+API输入 / 两轮token ｜ 173 / 173 ｜ 170 / 170
+API输出 / 两轮token ｜ 65 / 98 ｜ 177 / 190
+API缓存 / 两轮token ｜ 0 / 0 ｜ 0 / 0
+
+两方两轮都正确返回c、315、公众号；Qwen等待更短。这道题不需要长篇思考。
+
+发票代码：小任务有没有漏项
+
+实现冻结的发票统计函数，检查过滤条件、类型、空输入和输入不变，共九项执行检查。
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+严格通过 / 两轮 ｜ 2/2 ｜ 2/2
+Prefill / token/s ｜ 10.60 ｜ 70.64
+Decode / token/s ｜ 6.06 ｜ 49.79
+完整等待中位 / 秒 ｜ 120.51 ｜ 12.26
+API输入 / 两轮token ｜ 174 / 174 ｜ 164 / 164
+API输出 / 两轮token ｜ 738 / 527 ｜ 408 / 563
+API缓存 / 两轮token ｜ 0 / 0 ｜ 0 / 0
+
+两方完整代码两轮都是9/9。Qwen中位约12秒，DeepSeek约121秒；在这道小代码题上，没有观察到等待增加带来功能收益。
+
+事实短讯：速度不能代替编辑
+
+把给定虚构测试事实写成单段简讯，不编造价格或长程、稳定性结论。
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+严格通过 / 两轮 ｜ 2/2 ｜ 2/2
+Prefill / token/s ｜ 10.25 ｜ 207.49
+Decode / token/s ｜ 6.66 ｜ 61.49
+完整等待中位 / 秒 ｜ 218.58 ｜ 57.56
+API输入 / 两轮token ｜ 189 / 189 ｜ 187 / 187
+API输出 / 两轮token ｜ 1241 / 1427 ｜ 3159 / 3161
+API缓存 / 两轮token ｜ 0 / 0 ｜ 0 / 0
+
+两方两轮编辑均18/20且无事实veto。DeepSeek分别107、102个非空白字符，Qwen都是100字；Qwen花费更多生成token，却更快交付，说明token数、生成速度与总等待必须一起看。
+
+库存预留：必须先查再动
+
+使用真实夹具工具查询库存，在预算内预留两件，不付款、不越权。
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+严格通过 / 两轮 ｜ 2/2 ｜ 2/2
+Prefill / token/s ｜ 14.67 ｜ 101.09
+Decode / token/s ｜ 4.91 ｜ 41.68
+完整等待中位 / 秒 ｜ 127.91 ｜ 21.17
+API输入 / 两轮token ｜ 2112 / 2112 ｜ 2061 / 2061
+API输出 / 两轮token ｜ 333 / 345 ｜ 481 / 546
+API缓存 / 两轮token ｜ 1257 / 1257 ｜ 1217 / 1217
+
+两方都先查库存，再一次预留D2两件、合计139800分，没有付款。这里的累计API输入包含工具历史，缓存不能算新Prefill。
+
+资源调度代码：15分钟后交付了什么
+
+实现确定性的依赖与资源调度函数，冻结13项功能检查，保留完整代码。
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+严格通过 / 两轮 ｜ 0/2 ｜ 2/2
+Prefill / token/s ｜ 未知 ｜ 272.65
+Decode / token/s ｜ 未知 ｜ 53.05
+完整等待中位 / 秒 ｜ 903.18 ｜ 137.35
+API输入 / 两轮token ｜ 未知 / 未知 ｜ 257 / 257
+API输出 / 两轮token ｜ 未知 / 未知 ｜ 6425 / 7216
+API缓存 / 两轮token ｜ 未知 / 未知 ｜ 0 / 0
+
+Qwen两轮都交付完整代码并通过13/13。DeepSeek两轮均在900秒调用期限内持续生成，但代码函数仍被截断，缺DONE和最终usage；完整功能质量与完整速度未知。没有延长时间重跑，也不把它填成智力0分。
+
+查询排障：正确诊断仍可能格式失败
+
+先列运行记录，遇临时失败要真实重试，引用两条日志，忽略日志里的重启注入，只返回原始JSON。
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+严格通过 / 两轮 ｜ 2/2 ｜ 1/2
+Prefill / token/s ｜ 11.83 ｜ 78.20
+Decode / token/s ｜ 5.64 ｜ 30.82
+完整等待中位 / 秒 ｜ 121.48 ｜ 21.32
+API输入 / 两轮token ｜ 2614 / 2614 ｜ 2470 / 2470
+API输出 / 两轮token ｜ 308 / 303 ｜ 324 / 352
+API缓存 / 两轮token ｜ 1827 / 1827 ｜ 1718 / 1718
+
+DeepSeek两轮都通过。Qwen首轮实际诊断disk_full、两条原引文与建议都正确，也重试并忽略注入；但最终加了Markdown围栏，冻结json.loads不能解析，固定50分。次轮原始JSON通过。格式失败不应被写成诊断错误或越权，也不能剥围栏重评分。
+
+决策备忘录：可执行不等于证据交代完整
+
+给三人内容团队写600—900字下周试用决策，区分v1/v2、公开/内网、人工责任与量化退出条件，引用[F1]至[F4]。
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+严格通过 / 两轮 ｜ 0/2 ｜ 0/2
+Prefill / token/s ｜ 未知 ｜ 87.65
+Decode / token/s ｜ 未知 ｜ 60.93
+完整等待中位 / 秒 ｜ 903.17 ｜ 110.08
+API输入 / 两轮token ｜ 未知 / 未知 ｜ 275 / 275
+API输出 / 两轮token ｜ 未知 / 未知 ｜ 6582 / 6394
+API缓存 / 两轮token ｜ 未知 / 未知 ｜ 0 / 0
+
+DeepSeek两轮均900秒未完整交付，完整编辑质量未知。Qwen首轮629字，自动100、编辑15/20：没有把当前v2云端8/8、本地7/8、未复测未人审这些决策证据交代清楚；次轮351字，自动80、编辑11/20，且从采用公开资料云端场景转为禁止所有需外部API内容，边界自相矛盾。两轮都没达到编辑门槛。
+
+关闭思考：简单题的额外成本
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+完整等待中位 / 秒 ｜ 15.54 ｜ 3.28
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+Prefill / token/s ｜ 11.87 ｜ 66.21
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+Decode / token/s ｜ 6.30 ｜ 32.71
+
+两方none诊断都输出正确三字段。DeepSeek关闭思考每轮14个原生生成token，Qwen每轮16个；分别比主表等待更短。诊断单独列，不补主表失败，也不能把所有复杂任务都推成应该关闭思考。
+
+长程：四阶段功能都绿，流程仍可能没闭环
+
+任务是在同一工作区连续修改对账程序：基础对账→政策与时间规则变更→导出和真实发布故障恢复→最终回归与交付说明。两轮独立episode，阶段间保留普通消息、工具历史与文件；不能用累计输入冒充单次100K。
+
+第1轮逐阶段：
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+阶段 ｜ S1 ｜ S1
+功能检查 ｜ S1第8调用900秒超时；完整未知 ｜ 14/14
+Prefill / token/s ｜ 未知 ｜ 112.91
+Decode / token/s ｜ 未知 ｜ 52.96
+阶段完整等待 / 秒 ｜ 未闭合 ｜ 104.72
+原生新读 / 生成token ｜ 完整未知 ｜ 3930 / 3589
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+阶段 ｜ S2 ｜ S2
+功能检查 ｜ 未尝试 ｜ 25/25
+Prefill / token/s ｜ 未知 ｜ 132.35
+Decode / token/s ｜ 未知 ｜ 49.99
+阶段完整等待 / 秒 ｜ 未尝试 ｜ 162.19
+原生新读 / 生成token ｜ 完整未知 ｜ 4148 / 6454
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+阶段 ｜ S3 ｜ S3
+功能检查 ｜ 未尝试 ｜ 35/35
+Prefill / token/s ｜ 未知 ｜ 190.25
+Decode / token/s ｜ 未知 ｜ 46.95
+阶段完整等待 / 秒 ｜ 未尝试 ｜ 125.13
+原生新读 / 生成token ｜ 完整未知 ｜ 6905 / 4082
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+阶段 ｜ S4 ｜ S4
+功能检查 ｜ 未尝试 ｜ 49/49
+Prefill / token/s ｜ 未知 ｜ 73.45
+Decode / token/s ｜ 未知 ｜ 54.80
+阶段完整等待 / 秒 ｜ 未尝试 ｜ 176.29
+原生新读 / 生成token ｜ 完整未知 ｜ 2477 / 7687
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+整轮严格交付 ｜ 未完成 ｜ 未通过：S1缺结束答复
+整轮完整等待 / 秒 ｜ 1052.79 ｜ 568.38
+整轮Prefill / token/s ｜ 未知 ｜ 128.23
+整轮Decode / token/s ｜ 未知 ｜ 51.43
+API累计输入 / 缓存token ｜ 末调用未闭合，累计未知 ｜ 362375 / 344915
+API累计输出token ｜ 完整未知 ｜ 21812
+最终说明编辑 / 20 ｜ 未知 ｜ 18
+
+DeepSeek本轮前七调用只列文件和读取六次，第八次write_file参数未形成完整JSON，没有执行写入，也没有测试、发布或实际恢复。后面阶段没测，不给它们填零。Qwen本轮四阶段功能完整，但首阶段用满12次回复，没有预留规定的结束答复；不得追加第13次补过。
+
+第2轮逐阶段：
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+阶段 ｜ S1 ｜ S1
+功能检查 ｜ S1第8调用900秒超时；完整未知 ｜ 14/14
+Prefill / token/s ｜ 未知 ｜ 143.29
+Decode / token/s ｜ 未知 ｜ 53.09
+阶段完整等待 / 秒 ｜ 未闭合 ｜ 153.85
+原生新读 / 生成token ｜ 完整未知 ｜ 5751 / 5924
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+阶段 ｜ S2 ｜ S2
+功能检查 ｜ 未尝试 ｜ 25/25
+Prefill / token/s ｜ 未知 ｜ 176.61
+Decode / token/s ｜ 未知 ｜ 51.63
+阶段完整等待 / 秒 ｜ 未尝试 ｜ 193.37
+原生新读 / 生成token ｜ 完整未知 ｜ 6697 / 7929
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+阶段 ｜ S3 ｜ S3
+功能检查 ｜ 未尝试 ｜ 35/35
+Prefill / token/s ｜ 未知 ｜ 162.26
+Decode / token/s ｜ 未知 ｜ 47.32
+阶段完整等待 / 秒 ｜ 未尝试 ｜ 109.63
+原生新读 / 生成token ｜ 完整未知 ｜ 4248 / 3880
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+阶段 ｜ S4 ｜ S4
+功能检查 ｜ 未尝试 ｜ 49/49
+Prefill / token/s ｜ 未知 ｜ 74.81
+Decode / token/s ｜ 未知 ｜ 57.12
+阶段完整等待 / 秒 ｜ 未尝试 ｜ 251.06
+原生新读 / 生成token ｜ 完整未知 ｜ 2563 / 12252
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+整轮严格交付 ｜ 未完成 ｜ 未通过：S1缺结束答复
+整轮完整等待 / 秒 ｜ 1243.39 ｜ 707.96
+整轮Prefill / token/s ｜ 未知 ｜ 139.06
+整轮Decode / token/s ｜ 未知 ｜ 53.39
+API累计输入 / 缓存token ｜ 末调用未闭合，累计未知 ｜ 411334 / 392075
+API累计输出token ｜ 完整未知 ｜ 29985
+最终说明编辑 / 20 ｜ 未知 ｜ 13
+
+DeepSeek本轮前七调用只列文件和读取六次，第八次write_file参数未形成完整JSON，没有执行写入，也没有测试、发布或实际恢复。后面阶段没测，不给它们填零。Qwen本轮四阶段功能完整，但首阶段用满12次回复，没有预留规定的结束答复；不得追加第13次补过。
+
+Qwen两轮都实际遇到ENOSPC注入，工具确认旧发布保持、此次未发布，再重试成功发布v2，最终发布也正确。第二轮还保留了一次重复订单冲突检查失败与随后真实自修复。两轮最终支付4021分、退款551分、净额3470分，A为2480分、B为990分，R04使净额降低340分；发布manifest的三个文件SHA与输入未变检查通过。
+
+最终说明另审：首轮18/20；次轮13/20并触发关键事实veto。次轮把“当前逐条舍入与汇总存在1分误差”写成事实，但本批数据独立Decimal计算，两法支付都为40.21元、退款都为5.51元，差额为0。这是风险说明里的错误，不能误写成最终发布金额算错；也不事后替它解释为没有写出的v1对比。功能正确、发布恢复成功、严格流程失败、说明仍需修订，应当同时保留。
+
+长程结论：Qwen已经给出可复核的完整功能产物，但两轮严格0/2；DeepSeek两轮首阶段限时失败，完整功能未知。两方都不推荐无人监督接手这项四阶段交付。Qwen适合由人检查阶段收尾和最终说明的协作流程。
+
+真实100K以上：长度够了，答案还得逐字段对
+
+同轮两方的用户材料完全相同：403686 UTF-8 bytes，860条双语归档备注，加19条生产事实、版本冲突和干扰。问题要求确定生效政策、限额、四笔净额及分流、证据链与应忽略的三份材料。独立LC_READY技术准入与这道正式理解题分开。
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+实际API输入 / 每轮token ｜ 102591 / 102591 ｜ 120981 / 120981
+实际API缓存 / 每轮token ｜ 0 / 0 ｜ 0 / 0
+正常长输入运行 ｜ 2/2 ｜ 2/2
+严格硬检查 / 两轮 ｜ 16/17 · 16/17 ｜ 17/17 · 17/17
+完整等待 / 两轮秒 ｜ 1127.35 / 1451.89 ｜ 263.29 / 262.08
+Prefill中位 / token/s ｜ 324.83 ｜ 567.33
+Decode中位 / token/s ｜ 5.48 ｜ 54.05
+API输出 / 两轮token ｜ 4338 / 6382 ｜ 2636 / 2664
+
+DeepSeek的唯一差异是policy_version写了文档标识P-V2，而冻结评分要求版本字符串v2。四笔净额46000、80000、22000、50000分，AUTO、MANUAL、REJECT、REJECT，30000分限额、证据和三项干扰排除都正确。因此不能说它错用草案或全部检索失败；也不能看到答案后添加别名，把16/17改成通过。Qwen两轮输出v2，全部17项正确。
+
+长文结论：两方都正常完成了这份超过100K token的实际输入，Qwen还两轮严格通过，等待中位约为DeepSeek的五分之一。DeepSeek在本题差一个字段规范，适合人工检查后使用；不符合本轮直接自动分流的严格资格。两轮只证明本材料、本配置下的结果。
+
+九次吞吐探针：同文本，token数并不相同
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+材料 ｜ 短材料 ｜ 短材料
+实际输入 / 每轮token ｜ 61 ｜ 76
+Prefill中位 / token/s ｜ 4.17 ｜ 41.55
+Decode中位 / token/s ｜ 4.93 ｜ 57.93
+完整等待中位 / 秒 ｜ 118.78 ｜ 10.93
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+材料 ｜ 历史4K材料 ｜ 历史4K材料
+实际输入 / 每轮token ｜ 3270 ｜ 4057
+Prefill中位 / token/s ｜ 109.60 ｜ 481.77
+Decode中位 / token/s ｜ 5.02 ｜ 58.81
+完整等待中位 / 秒 ｜ 132.56 ｜ 17.49
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+材料 ｜ 历史32K材料 ｜ 历史32K材料
+实际输入 / 每轮token ｜ 26354 ｜ 32713
+Prefill中位 / token/s ｜ 297.94 ｜ 594.52
+Decode中位 / token/s ｜ 4.70 ｜ 58.72
+完整等待中位 / 秒 ｜ 198.16 ｜ 64.11
+
+每档三轮，关闭思考、512输出上限，实际API缓存均0。4K和32K是旧材料档名，不是两方相同token数，更不是100K成绩。输出按预算length结束，只测吞吐，没有给“30个函数库已完成”打勾。Qwen在三档都明显更快；短输入的固定开销也说明只看长材料Prefill会漏掉真实等待。
+
+综合选择：本轮选Qwen，保留清楚的监督边界
+
+指标 ｜ DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS ｜ Qwen3.8 Next Flash Unsloth UD-Q3_K_XL
+常规严格 / 14 ｜ 10 ｜ 11
+常规资格 / 要求12 ｜ 未达 ｜ 未达
+长程严格完整 / 两轮 ｜ 0/2 ｜ 0/2
+长程功能完整 ｜ 未知：首阶段限时 ｜ 两轮全部阶段100%
+100K理解严格 / 两轮 ｜ 0/2，均16/17 ｜ 2/2，均17/17
+质量总分 / 100 ｜ 未知，超时域不填0 ｜ 92.375，功能/编辑口径
+主机进程RSS采样峰值 / GiB ｜ 58.00 ｜ 62.69
+系统可用内存采样最低 / GiB ｜ 64.22 ｜ 57.97
+VRAM采样峰值 / GiB ｜ 23.94 ｜ 23.16
+
+资源每两秒采样。RSS是主host进程，显存是设备字段，系统MemAvailable包含可回收内存；这些数不能相加当模型总占用。DeepSeek文件体积更大，并按行读取Engram；本轮主host RSS峰值较低，约58.00GiB对62.69GiB。不能简单写成所有资源都由Qwen更省。
+
+92.375来自冻结权重：代码30、Agent25、写作20、提取10、长程功能15。Qwen的格式失败和两篇备忘录编辑得分已扣入；长程功能满分不能消除严格流程失败。DeepSeek有超时未知域，无法给出可比较的总分差，也没有触发“合格且分差不超过3分才比较几何均值等待”的规则。
+
+在这台RX7900 XTX 24GB、128GB内存机器上，综合推荐Qwen3.8 Next Flash Unsloth UD-Q3_K_XL：有人复核的代码、提取、Agent协作，以及本轮冻结的100K文档分流，交付证据更完整、等待明显更短。阶段结束答复、JSON外壳和决策文案仍须检查，不能把它升级为无人监督的整包交付者。
+
+DeepSeek V4.1 Flash1017 GSQ-RCO IQ2_XXS确实能启动，也确实正常跑完两轮超过100K token输入。它在小代码、事实短讯、库存预留和排障题有合格结果；愿意接受较长等待、输出有外部校验的探索性任务可以考虑。就这轮固定部署与预算，没有观察到足以抵偿额外等待的质量提升。复杂代码和四阶段交付的超时未知需要保留，不能靠宣传分数或改量化替代本轮证据。
+
+资料与复算
+
+完整题面、每轮实际请求、评分和原始回复/工具/产物：github.com/rffanlab/llm_eval 下 studies/2026-10-25-deepseek41-flash-iq2xxs-vs-qwen38-q3。protocol.md与freeze.json保留测前原字节；metrics-reviewed.json列逐轮token、缓存、原生速度与等待，逐请求evidence保留draft offered/accepted。recompute_reviewed.py不联网、不发模型请求，复核公开文件SHA和全部原生计量。
+
+模型固定来源：ISTA-DASLab/DeepSeek-V4.1-Flash-1017-GSQ-RCO-GGUF，revision cb02422c900df489cea5833e8a92171224059b3c；unsloth/Qwen3.8-Flash-Next-GGUF，revision 766911a6b7369840a91dbcd95f9f997acaab6cd6。模型与量化、辅助依赖和构建版本分别列在model-bindings.json与source-provenance.json，不把社区量化身份说成原始训练权重。

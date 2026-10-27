@@ -13,6 +13,7 @@
 - [未编辑正文可读提取及来源SHA](readable-answers/manifest.json)
 - [完整LC材料](long-context/materials/)、[短题](tasks.json)、[长程系统/阶段](long-horizon/task.json)、[评分](scoring.json)
 - [许可与分发范围](license-and-provenance.json)
+- [配套公众号文章、视频脚本、字幕与封面](media/README.md)；[实际成片技术与审读范围](media/package-summary.json)
 
 运行 `python recompute_reviewed.py --output recomputed.json`，不联网、不发模型请求，验证公开文件SHA与全部逐题/阶段原生计量、API缓存、资源和中位数。165闭合请求metricsID唯一；6未闭合调用保留未知。完整原始SSE与根权限准入证据私有保留。未分发权重、引擎二进制、凭据或私密参考音。
 
